@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <declare-styleable name="RemotePeerView">
+        <attr format="string" name="display_text"/>
+        <attr format="boolean" name="video_active"/>
+        <attr format="boolean" name="audio_active"/>
+    </declare-styleable>
+</resources>

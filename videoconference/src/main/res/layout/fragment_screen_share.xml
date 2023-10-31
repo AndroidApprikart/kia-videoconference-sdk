@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="screenShareVM"
+            type="com.app.vc.screenshare.ScreenShareViewModel" />
+
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:paddingVertical="@dimen/_10sdp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_bottom_sheet">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/tv_screen_share_msg"
+            style="@style/text_view_regular"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/_10sdp"
+            android:layout_marginTop="@dimen/_10sdp"
+            android:text="@string/screen_share_info"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/_10sdp"
+            android:layout_marginVertical="@dimen/_5sdp"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:paddingHorizontal="@dimen/_10sdp"
+            android:text="@string/cancel"
+            android:textAllCaps="false"
+            app:cornerRadius="@dimen/_7sdp"
+            app:layout_constraintEnd_toStartOf="@+id/btn_start_screen_share"
+            app:layout_constraintTop_toBottomOf="@id/tv_screen_share_msg"
+            app:strokeColor="@color/color_kia_black" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_start_screen_share"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="@dimen/_5sdp"
+            android:layout_marginEnd="@dimen/_10sdp"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:paddingHorizontal="@dimen/_10sdp"
+            android:text="@string/start_sharing"
+            android:textAllCaps="false"
+            app:cornerRadius="@dimen/_7sdp"
+            app:layout_constraintBottom_toBottomOf="@+id/btn_cancel"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/btn_cancel" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/tv_screen_share_msg_ongoing"
+            style="@style/text_view_regular"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/_10sdp"
+            android:layout_marginTop="@dimen/_10sdp"
+            android:text="@string/screen_share_info_ongoing"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_stop_screen_share"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/tv_screen_share_msg_ongoing"
+            android:layout_marginVertical="@dimen/_10sdp"
+            android:layout_marginEnd="@dimen/_10sdp"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/stop_sharing"
+            android:textAlignment="viewEnd"
+            android:textAllCaps="false"
+            app:cornerRadius="@dimen/_7sdp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_screen_share_msg_ongoing" />
+
+
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/screen_share_main_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:constraint_referenced_ids="tv_screen_share_msg,btn_cancel,btn_start_screen_share" />
+
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/stop_screen_share_main_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="visible"
+            app:constraint_referenced_ids="tv_screen_share_msg_ongoing,btn_stop_screen_share" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

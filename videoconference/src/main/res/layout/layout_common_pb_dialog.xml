@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ProgressBar
+        android:layout_centerInParent="true"
+        android:id="@+id/pb"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_margin="5dp"
+        android:indeterminateTint="@color/colorPrimary" />
+
+    <!--    <TextView-->
+    <!--        android:id="@+id/pbMessage"-->
+    <!--        android:layout_height="wrap_content"-->
+    <!--        android:layout_width="0dp"-->
+    <!--        android:layout_marginEnd="5dp"-->
+    <!--        android:text="@string/please_wait"-->
+    <!--        android:gravity="center_vertical"-->
+    <!--        android:textColor="@color/black"-->
+    <!--        app:layout_constraintBottom_toBottomOf="@+id/pb"-->
+    <!--        app:layout_constraintEnd_toEndOf="parent"-->
+    <!--        app:layout_constraintStart_toEndOf="@+id/pb"-->
+    <!--        app:layout_constraintTop_toTopOf="@+id/pb" />-->
+</RelativeLayout>

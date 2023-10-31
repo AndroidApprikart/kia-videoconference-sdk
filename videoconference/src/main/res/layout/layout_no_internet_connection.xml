@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="@dimen/_5sdp"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <TextView
+        android:id="@+id/no_internet_header"
+        style="@style/text_view_regular"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="top|center_horizontal"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/pb_no_internet"
+        android:text="@string/lost_internet_connection_info"
+        android:textColor="@color/black" />
+    <ProgressBar
+        android:layout_centerInParent="true"
+        android:id="@+id/pb_no_internet"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_width="@dimen/_40sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_height="@dimen/_40sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:indeterminateTint="@color/colorPrimary" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
