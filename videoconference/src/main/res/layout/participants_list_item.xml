@@ -13,7 +13,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="@dimen/_5sdp"
-            android:src="@drawable/ic_participant_image"
+            android:src="@drawable/ic_participant"
+            app:tint = "@color/black"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/tv_participant_name"
             app:layout_constraintStart_toStartOf="parent"
@@ -29,7 +30,6 @@
             android:layout_toEndOf="@id/img_participant"
             android:text="Participant"
             android:textAlignment="viewStart"
-            android:textSize="@dimen/_14ssp"
             app:layout_constraintBottom_toBottomOf="@+id/img_participant"
             app:layout_constraintEnd_toStartOf="@id/img_participant_mic"
             app:layout_constraintStart_toEndOf="@id/img_participant"
@@ -40,7 +40,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:scaleType="fitCenter"
-            android:src="@drawable/ic_mic_on"
+
+            app:tint= "@color/black"
             app:layout_constraintBottom_toBottomOf="@+id/tv_participant_name"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@+id/tv_participant_name" />

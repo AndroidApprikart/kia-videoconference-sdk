@@ -420,7 +420,8 @@ class VCDynamicActivity4 : BaseActivity() {
                         for (e in binding.sContainer.children) {
                             e.visibility = View.GONE
                         }
-                        binding.btnGrid.setImageResource(R.drawable.ic_grid_off)
+                        binding.btnHidPeersSlash.visibility = View.VISIBLE
+//                        binding.btnGrid.setImageResource(R.drawable.ic_grid_off)
 
                     } else {
                         /*grid is hidden.,..make it visible*/
@@ -431,7 +432,8 @@ class VCDynamicActivity4 : BaseActivity() {
                         for (e in binding.sContainer.children) {
                             e.visibility = View.VISIBLE
                         }
-                        binding.btnGrid.setImageResource(R.drawable.ic_grid_on)
+                        binding.btnHidPeersSlash.visibility = View.GONE
+//                        binding.btnGrid.setImageResource(R.drawable.ic_show_peers)
 
                     }
                     viewModel.grid = !viewModel.grid

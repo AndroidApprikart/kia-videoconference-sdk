@@ -15,8 +15,8 @@
         android:background="@drawable/bg_bottom_sheet"
         android:minHeight="10dp"
         android:orientation="vertical"
-        android:paddingHorizontal="@dimen/_10sdp"
-        android:paddingVertical="@dimen/_10sdp">
+
+      >
 
         <View
             android:id="@+id/line_divider_for_sound_device"
@@ -31,8 +31,9 @@
 
         <TextView
             android:id="@+id/tv_sound_header"
-            style="@style/text_view_bold"
+            android:fontFamily="@font/kia_signature_fix_bold"
             android:textSize="@dimen/_14ssp"
+            android:layout_marginStart="@dimen/_10sdp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
@@ -58,9 +59,9 @@
             <RelativeLayout
                 android:id="@+id/speaker_phone_layout"
                 android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
+                android:layout_height="wrap_content"
                 android:paddingHorizontal="@dimen/_10sdp"
-                android:visibility="gone">
+                android:visibility="visible">
 
                 <ImageView
                     android:id="@+id/speaker_phone_iv"
@@ -70,7 +71,7 @@
                     android:layout_centerVertical="true"
                     android:layout_marginEnd="@dimen/_5sdp"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_volume_up" />
+                    android:src="@drawable/ic_audio_test" />
 
                 <TextView
                     style="@style/text_view_regular"
@@ -78,6 +79,7 @@
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
                     android:layout_marginHorizontal="@dimen/_5sdp"
+                    android:fontFamily="@font/kia_signature_fix_regular"
                     android:layout_toEndOf="@id/speaker_phone_iv"
                     android:text="SPEAKER PHONE"
                     android:textAlignment="viewStart" />
@@ -98,7 +100,7 @@
             <RelativeLayout
                 android:id="@+id/earpiece_layout"
                 android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
+                android:layout_height="wrap_content"
                 android:layout_below="@id/speaker_phone_layout"
                 android:paddingHorizontal="@dimen/_10sdp"
                 android:visibility="gone">
@@ -111,7 +113,7 @@
                     android:layout_centerVertical="true"
                     android:layout_marginEnd="@dimen/_5sdp"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_volume_up" />
+                    android:src="@drawable/ic_audio_test" />
 
                 <TextView
                     style="@style/text_view_regular"
@@ -119,6 +121,7 @@
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
                     android:layout_marginHorizontal="@dimen/_5sdp"
+                    android:fontFamily="@font/kia_signature_fix_regular"
                     android:layout_toEndOf="@id/earpiece_iv"
                     android:text="EARPIECE"
                     android:textAlignment="viewStart" />
@@ -139,7 +142,7 @@
             <RelativeLayout
                 android:id="@+id/wired_headset_layout"
                 android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
+                android:layout_height="wrap_content"
                 android:layout_below="@id/earpiece_layout"
                 android:paddingHorizontal="@dimen/_10sdp"
                 android:visibility="gone">
@@ -152,7 +155,7 @@
                     android:layout_centerVertical="true"
                     android:layout_marginEnd="@dimen/_5sdp"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_wired_headset" />
+                    android:src="@drawable/ic_headset" />
 
                 <TextView
                     style="@style/text_view_regular"
@@ -160,8 +163,8 @@
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
                     android:layout_marginHorizontal="@dimen/_5sdp"
-                    android:layout_toEndOf="@id/wired_headset_iv"
                     android:fontFamily="@font/kia_signature_fix_regular"
+                    android:layout_toEndOf="@id/wired_headset_iv"
                     android:text="Wired Headset"
                     android:textAlignment="viewStart" />
 
@@ -181,7 +184,7 @@
             <RelativeLayout
                 android:id="@+id/bluetooth_layout"
                 android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
+                android:layout_height="wrap_content"
                 android:layout_below="@id/wired_headset_layout"
                 android:paddingHorizontal="@dimen/_10sdp"
                 android:visibility="gone">
@@ -192,17 +195,17 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentStart="true"
                     android:layout_centerVertical="true"
-                    android:layout_marginEnd="@dimen/_5sdp"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_volume_up" />
+                    android:src="@drawable/ic_bluetooth" />
 
                 <TextView
                     style="@style/text_view_regular"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
-                    android:layout_marginHorizontal="@dimen/_5sdp"
+                    android:layout_marginHorizontal="@dimen/_10sdp"
                     android:layout_toEndOf="@id/bluetooth_iv"
+                    android:fontFamily="@font/kia_signature_fix_regular"
                     android:text="Bluetooth"
                     android:textAlignment="viewStart" />
 
@@ -225,7 +228,7 @@
         <RelativeLayout
             android:id="@+id/cancel_sound_device_layout"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="wrap_content"
             android:layout_below="@id/device_layout"
             android:paddingHorizontal="@dimen/_10sdp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -239,8 +242,9 @@
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
                 android:layout_marginEnd="@dimen/_5sdp"
+                android:src="@drawable/ic_bluetooth"
                 android:scaleType="fitCenter"
-                android:src="@drawable/ic_close" />
+                app:tint="@color/white"/>
 
             <TextView
                 android:id="@+id/tv_cancel_sound_device"
