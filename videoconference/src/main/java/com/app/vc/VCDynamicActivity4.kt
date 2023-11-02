@@ -34,7 +34,6 @@ import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.view.children
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
@@ -1524,14 +1523,14 @@ class VCDynamicActivity4 : BaseActivity() {
         Log.d(TAG, "processCameraUIForPublishContainer: ")
         if (eventType.equals(CAM_TURNED_OFF)) {
             /*change Video UI to video muted UI*/
-            binding.btnVideo.setBackgroundResource(R.drawable.bg_rounded_new)
-            binding.btnVideo.setImageResource(R.drawable.ic_video_off)
-            binding.btnVideo.setColorFilter(ContextCompat.getColor(this, R.color.black))
+//            binding.btnVideo.setBackgroundResource(R.drawable.bg_rounded_new)
+            binding.btnVideo.setImageResource(R.drawable.ic_video_disabled)
+//            binding.btnVideo.setColorFilter(ContextCompat.getColor(this, R.color.black))
         } else if (eventType.equals(CAM_TURNED_ON)) {
             /*change Video UI to video active UI*/
             binding.btnVideo.setBackgroundResource(0)
-            binding.btnVideo.setImageResource(R.drawable.ic_video_on)
-            binding.btnVideo.setColorFilter(ContextCompat.getColor(this, R.color.white))
+            binding.btnVideo.setImageResource(R.drawable.ic_video_enabled)
+//            binding.btnVideo.setColorFilter(ContextCompat.getColor(this, R.color.white))
         } else {
             /*do nothing*/
         }
@@ -1546,14 +1545,15 @@ class VCDynamicActivity4 : BaseActivity() {
         Log.d(TAG, "processMicUIForPublishContainer: ")
         if (eventType.equals(MIC_MUTED)) {
             /*change MIC UI to mic muted UI*/
-            binding.btnAudio.setBackgroundResource(R.drawable.bg_rounded_new)
-            binding.btnAudio.setImageResource(R.drawable.ic_mic_off)
-            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.black))
+//            binding.btnAudio.setBackgroundResource(R.drawable.bg_rounded_new)
+            binding.btnAudio.setImageResource(R.drawable.ic_mic_disabled)
+//            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.black))
         } else if (eventType.equals(MIC_UNMUTED)) {
             /*change MIC UI to mic active UI*/
-            binding.btnAudio.setBackgroundResource(0)
-            binding.btnAudio.setImageResource(R.drawable.ic_mic_on)
-            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.white))
+//            binding.btnAudio.setBackgroundResource(0)
+            binding.btnAudio.setImageResource(R.drawable.ic_mic_enabled)
+
+//            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.white))
         } else {
             /*do nothing*/
         }
