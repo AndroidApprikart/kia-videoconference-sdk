@@ -6,14 +6,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_dialog"
-        android:padding="@dimen/_10sdp">
+        android:padding="@dimen/_10sdp"
+        android:theme="@style/Base.Theme.VideoConference">
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/message_tv"
             style="@style/text_view_regular"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="@dimen/_10sdp"
             android:text="@string/end_the_call"
             android:textAlignment="center"
             android:textColor="@color/black"
@@ -27,7 +27,6 @@
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="@dimen/_10sdp"
             android:layout_marginEnd="@dimen/_5sdp"
             android:fontFamily="@font/kia_signature_fix_bold"
             android:text="@string/no"
@@ -44,7 +43,6 @@
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="@dimen/_10sdp"
             android:layout_marginStart="@dimen/_10sdp"
             android:fontFamily="@font/kia_signature_fix_bold"
             android:text="@string/yes"
@@ -52,8 +50,7 @@
             app:cornerRadius="@dimen/_7sdp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/neg_btn"
-            app:layout_constraintTop_toBottomOf="@id/message_tv"
-            />
+            app:layout_constraintTop_toBottomOf="@id/message_tv" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -6,20 +6,32 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_dialog"
-        android:padding="@dimen/_10sdp">
+       android:padding="@dimen/_10sdp"
+        android:theme="@style/Base.Theme.VideoConference">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/iv_ready_to_join_logo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/message_tv"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:src="@drawable/ic_ready_to_join"/>
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/message_tv"
-            style="@style/text_view_regular"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:textSize="@dimen/_14ssp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="@dimen/_10sdp"
             android:text="@string/ready_to_join_msg"
             android:textAlignment="center"
             android:textColor="@color/black"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:layout_marginTop="@dimen/_20sdp"
+            app:layout_constraintTop_toBottomOf="@id/iv_ready_to_join_logo"/>
 
 
         <com.google.android.material.button.MaterialButton
@@ -27,15 +39,15 @@
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="@dimen/_10sdp"
-            android:layout_marginEnd="@dimen/_5sdp"
+
+            android:layout_marginTop="@dimen/_10sdp"
+            android:layout_marginEnd="@dimen/_2sdp"
             android:fontFamily="@font/kia_signature_fix_bold"
             android:text="@string/cancel"
             android:textAllCaps="false"
-            app:cornerRadius="@dimen/_7sdp"
-            app:layout_constraintHorizontal_chainStyle="packed"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toStartOf="@id/pos_btn"
+            app:layout_constraintHorizontal_chainStyle="spread"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/message_tv"
             app:strokeColor="@color/color_kia_black" />
 
@@ -44,16 +56,14 @@
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="@dimen/_10sdp"
-            android:layout_marginStart="@dimen/_10sdp"
+            android:layout_marginStart="@dimen/_2sdp"
+            android:layout_marginTop="@dimen/_10sdp"
             android:fontFamily="@font/kia_signature_fix_bold"
             android:text="@string/join_now"
             android:textAllCaps="false"
-            app:cornerRadius="@dimen/_7sdp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/neg_btn"
-            app:layout_constraintTop_toBottomOf="@id/message_tv"
-             />
+            app:layout_constraintTop_toBottomOf="@id/message_tv" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

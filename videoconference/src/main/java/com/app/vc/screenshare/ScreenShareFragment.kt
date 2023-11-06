@@ -94,6 +94,7 @@ class ScreenShareFragment : BottomSheetDialogFragment() {
         binding.btnStartScreenShare.setOnClickListener {
             viewModel.dostartScreenShare()
         }
+
         binding.btnStopScreenShare.setOnClickListener {
             viewModel.doStopScreenShare()
         }

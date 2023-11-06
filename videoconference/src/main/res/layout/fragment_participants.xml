@@ -11,18 +11,16 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:background="@drawable/bg_bottom_sheet"
         android:minHeight="10dp"
-        android:orientation="vertical"
-        android:paddingHorizontal="@dimen/_10sdp"
-        android:paddingVertical="@dimen/_10sdp">
+        android:padding="@dimen/_5sdp"
+        android:orientation="vertical">
 
         <View
             android:id="@+id/line_divider_for_participants"
             android:layout_width="@dimen/_20sdp"
-            android:layout_height="@dimen/_2sdp"
-            android:layout_marginVertical="@dimen/_10sdp"
+            android:layout_height="@dimen/_1sdp"
             android:background="@color/color_kia_black"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -36,11 +34,11 @@
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:layout_marginTop="@dimen/_10sdp"
             android:text="@string/participants"
             android:textAlignment="viewStart"
             android:textColor="@color/black"
-            android:textSize="@dimen/_12ssp"
+            android:textSize="@dimen/_6ssp"
+            android:fontFamily="@font/kia_signature_fix_bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/line_divider_for_participants" />
 
@@ -48,8 +46,8 @@
             android:id="@+id/rv_data"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="@dimen/_10sdp"
             app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="@dimen/_5sdp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_attending" />
 

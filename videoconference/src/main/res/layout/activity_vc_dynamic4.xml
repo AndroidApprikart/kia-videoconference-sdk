@@ -59,7 +59,7 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_camera_toggle"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_show_peers"
+                app:srcCompat="@drawable/ic_hide_participants"
                 android:layout_marginEnd="@dimen/_10sdp"
                 app:tint="@color/white"
                 />
@@ -84,7 +84,7 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_camera_switch"
+                app:srcCompat="@drawable/ic_switch_camera"
                 android:layout_marginEnd="@dimen/_10sdp"/>
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -137,14 +137,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/btn_audio"
+                app:layout_constraintEnd_toStartOf="@id/btn_audio_switch"
                 app:layout_constraintHorizontal_chainStyle="spread"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:srcCompat="@drawable/ic_messages" />
 
             <com.google.android.material.imageview.ShapeableImageView
-                android:id="@+id/btn_audio"
+                android:id="@+id/btn_audio_switch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -162,7 +162,7 @@
                 android:backgroundTint="@color/red"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_video"
-                app:layout_constraintStart_toEndOf="@id/btn_audio"
+                app:layout_constraintStart_toEndOf="@id/btn_audio_switch"
                 app:layout_constraintTop_toTopOf="parent"
                 app:srcCompat="@drawable/ic_end_call" />
 
@@ -209,7 +209,7 @@
                 android:paddingBottom="@dimen/_10sdp"
                 android:translationZ="1dp"
                 app:behavior_hideable="true"
-                app:behavior_peekHeight="500dp"
+                app:behavior_peekHeight="0dp"
                 app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
                 <View
@@ -331,7 +331,7 @@
                         android:layout_alignParentStart="true"
                         android:layout_centerVertical="true"
                         android:scaleType="fitXY"
-                        android:src="@drawable/ic_audio_test"
+                        android:src="@drawable/ic_audio_output_devices"
                         app:tint="@color/color_kia_black" />
 
                     <TextView

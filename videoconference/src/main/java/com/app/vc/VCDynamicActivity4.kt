@@ -102,7 +102,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
 
     val serverUrl: String = "ws://vc.apprikart.com:5080/WebRTCAppEE/websocket"
-    val roomId = "room1"
+    val roomId = "room2"
     var streamId: String? = null
 
     private var conferenceManager: MultitrackConferenceManager? = null
@@ -132,6 +132,8 @@ class VCDynamicActivity4 : BaseActivity() {
     private lateinit var soundDeviceFragment: SoundDeviceFragment
     private lateinit var screenShareFragment: ScreenShareFragment
     private lateinit var messageFragment: MessageFragment
+
+    private var isLandscape: Boolean = false
 
 
     /*any customized local broadcasts made exclusively in SDK will be reveived here*/
@@ -247,6 +249,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            streamId = intent.getStringExtra("stream_id_in_use")
         }
         Log.d(TAG, "onCreate: intentForReconnect -> $isIntentForReconnect")
+        isLandscape = resources.getBoolean(R.bool.landscape_only)
         // Set window styles for fullscreen-window size. Needs to be done before
         // adding content.
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -269,6 +272,8 @@ class VCDynamicActivity4 : BaseActivity() {
         viewModelObservers()
         setUpOnClickListeners()
         checkForMandatoryPermissions()
+
+
     }
 
     private fun init() {
@@ -382,7 +387,7 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun setUpOnClickListeners() {
-        binding.btnAudio.setOnClickListener {
+        binding.btnAudioSwitch.setOnClickListener {
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
                     controlAudio()
@@ -453,7 +458,7 @@ class VCDynamicActivity4 : BaseActivity() {
         }
 
 
-        binding.btnMoreMenu.setOnClickListener {
+        binding.btnMoreMenu?.setOnClickListener {
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
                     showMoreOptions(viewModel.bottomSheet)
@@ -472,6 +477,15 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+        binding.btnScreenShare?.setOnClickListener {
+            /*check fro screen share and do action*/
+            Log.d(TAG, "setUpOnClickListeners: ")
+            if (conferenceManager != null) {
+                if (conferenceManager!!.isJoined) {
+                    openScreenShareOptions()
+                }
+            }
+        }
 
         binding.participantsOptionsLayout.setOnClickListener {
             /*check for participants and do action*/
@@ -481,8 +495,38 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+        binding.btnParticipants?.setOnClickListener {
+            /*check for participants and do action*/
+            if (conferenceManager != null) {
+                if (conferenceManager!!.isJoined) {
+                    openParticipantsListInRoom()
+                }
+            }
+        }
 
         binding.soundDeviceOptionLayout.setOnClickListener {
+            /*check for sound device options and do action*/
+            if (conferenceManager != null) {
+                if (conferenceManager!!.isJoined) {
+                    viewModel.audioDevices.value = getAudioDevices()
+                    viewModel.currentSelectedAudioDevice.value = getCurrentSelectedAudioDevice()
+                    Log.d(
+                        TAG,
+                        "setUpOnClickListeners: btnSoundDevice getAudioDevices -> " + Gson().toJson(
+                            getAudioDevices().toString()
+                        )
+                    )
+                    Log.d(
+                        TAG,
+                        "setUpOnClickListeners: btnSoundDevice getCurrentSelectedAudioDevice-> " + Gson().toJson(
+                            getCurrentSelectedAudioDevice().toString()
+                        )
+                    )
+                    openSoundDeviceListInRoom()
+                }
+            }
+        }
+        binding.btnAudioOutputDevices?.setOnClickListener {
             /*check for sound device options and do action*/
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
@@ -1010,10 +1054,19 @@ class VCDynamicActivity4 : BaseActivity() {
         joinVCDialog.setContentView(dialogBinding.root)
         joinVCDialog.setCancelable(false)
         joinVCDialog.setCanceledOnTouchOutside(false)
-        joinVCDialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        Log.d(TAG, "showJoinVCRoomDialog: ${isLandscape}")
+        if(isLandscape) {
+            joinVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }else {
+            joinVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
 
         dialogBinding.negBtn.setOnClickListener {
             joinVCDialog.dismiss()
@@ -1548,12 +1601,12 @@ class VCDynamicActivity4 : BaseActivity() {
         if (eventType.equals(MIC_MUTED)) {
             /*change MIC UI to mic muted UI*/
 //            binding.btnAudio.setBackgroundResource(R.drawable.bg_rounded_new)
-            binding.btnAudio.setImageResource(R.drawable.ic_mic_disabled)
+            binding.btnAudioSwitch.setImageResource(R.drawable.ic_mic_disabled)
 //            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.black))
         } else if (eventType.equals(MIC_UNMUTED)) {
             /*change MIC UI to mic active UI*/
 //            binding.btnAudio.setBackgroundResource(0)
-            binding.btnAudio.setImageResource(R.drawable.ic_mic_enabled)
+            binding.btnAudioSwitch.setImageResource(R.drawable.ic_mic_enabled)
 
 //            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.white))
         } else {
