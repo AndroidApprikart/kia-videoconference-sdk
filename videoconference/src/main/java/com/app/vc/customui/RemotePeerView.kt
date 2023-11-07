@@ -4,9 +4,11 @@ import android.content.Context
 import android.content.res.TypedArray
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.ShapeDrawable
+import android.graphics.drawable.shapes.OvalShape
 import android.graphics.drawable.shapes.RectShape
 import android.util.AttributeSet
 import android.view.LayoutInflater
@@ -51,43 +53,51 @@ class RemotePeerView @JvmOverloads constructor(
         surfaceViewRenderer = view.findViewById(R.id.surface_view_renderer)
         streamName  = view.findViewById(R.id.stream_name)
         streamName.text = displayText
+
         surfaceViewRenderer.setOnClickListener {
 
         }
         if(audioActive){
-            micImage.setImageResource(R.drawable.ic_mic_on)
+            micImage.setImageResource(R.drawable.ic_mic_enabled_without_bg)
+            micImage.setColorFilter(Color.parseColor("#FFFFFF"));
         }else
         {
-            micImage.setImageResource(R.drawable.ic_mic_off)
+            micImage.setImageResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
+            micImage.setColorFilter(Color.parseColor("#FFFFFF"));
         }
 
         if(videoActive){
-            videoImage.setImageResource(R.drawable.ic_video_on)
+            videoImage.setImageResource(R.drawable.ic_video_enabled_without_bg)
         }else
         {
-            videoImage.setImageResource(R.drawable.ic_video_off)
+            videoImage.setImageResource(R.drawable.ic_video_disabled_without_bg)
         }
+        videoImage.setColorFilter(Color.parseColor("#FFFFFF"));
         
     }
 
     fun changeVideoActiveStatus(incomingVideoActiveStatus : Boolean) {
         videoActive = incomingVideoActiveStatus
+
         if(videoActive){
-            videoImage.setImageResource(R.drawable.ic_video_on)
+            videoImage.setImageResource(R.drawable.ic_video_enabled_without_bg)
         }else
         {
-            videoImage.setImageResource(R.drawable.ic_video_off)
+            videoImage.setImageResource(R.drawable.ic_video_disabled_without_bg)
         }
+        videoImage.setColorFilter(Color.parseColor("#FFFFFF"));
     }
 
     fun changeAudioActiveStatus(incomingAudioActiveStatus : Boolean){
         audioActive = incomingAudioActiveStatus
+
         if(audioActive){
-            micImage.setImageResource(R.drawable.ic_mic_on)
+            micImage.setImageResource(R.drawable.ic_mic_enabled_without_bg)
         }else
         {
-            micImage.setImageResource(R.drawable.ic_mic_off)
+            micImage.setImageResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
         }
+        micImage.setColorFilter(Color.parseColor("#FFFFFF"));
     }
 
     fun addCharacterBg(){
@@ -99,7 +109,7 @@ class RemotePeerView @JvmOverloads constructor(
 
     fun createLayerDrawable(context: Context,character: String): LayerDrawable {
         val rectangleDrawable = ShapeDrawable(RectShape())
-        rectangleDrawable.paint.color = ContextCompat.getColor(context, R.color.color_renderer_background)
+        rectangleDrawable.paint.color = ContextCompat.getColor(context, R.color.colorPrimary)
 
         val customLayout = LayoutInflater.from(context).inflate(R.layout.layout_renderer_background, null) as ViewGroup
         val customTextView = customLayout.findViewById<TextView>(R.id.tv_first_char)

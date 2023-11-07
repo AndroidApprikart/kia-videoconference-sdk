@@ -14,7 +14,8 @@
         android:layout_width="match_parent"
         android:paddingVertical="@dimen/_10sdp"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_bottom_sheet">
+        android:background="@drawable/bg_bottom_sheet"
+        android:theme="@style/Base.Theme.VideoConference">
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/tv_screen_share_msg"
@@ -41,7 +42,6 @@
             android:paddingHorizontal="@dimen/_10sdp"
             android:text="@string/cancel"
             android:textAllCaps="false"
-            app:cornerRadius="@dimen/_7sdp"
             app:layout_constraintEnd_toStartOf="@+id/btn_start_screen_share"
             app:layout_constraintTop_toBottomOf="@id/tv_screen_share_msg"
             app:strokeColor="@color/color_kia_black" />
@@ -57,7 +57,6 @@
             android:paddingHorizontal="@dimen/_10sdp"
             android:text="@string/start_sharing"
             android:textAllCaps="false"
-            app:cornerRadius="@dimen/_7sdp"
             app:layout_constraintBottom_toBottomOf="@+id/btn_cancel"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@+id/btn_cancel" />
@@ -90,7 +89,6 @@
             android:text="@string/stop_sharing"
             android:textAlignment="viewEnd"
             android:textAllCaps="false"
-            app:cornerRadius="@dimen/_7sdp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_screen_share_msg_ongoing" />
 

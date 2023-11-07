@@ -94,5 +94,9 @@ object VCConstants {
     const val SCREEN_SHARE_FRAG = "screenshare_frag"
     const val SOUND_DEVICE_FRAG = "sound_device_frag"
 
+    const val sContainerSizeLandscape = 200
+    const val sContainerSizePortrait = 400
+
+
 
 }

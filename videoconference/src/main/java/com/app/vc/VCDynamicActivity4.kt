@@ -24,6 +24,7 @@ import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.DisplayMetrics
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -1139,10 +1140,19 @@ class VCDynamicActivity4 : BaseActivity() {
         endVCDialog.setContentView(dialogBinding.root)
         endVCDialog.setCancelable(false)
         endVCDialog.setCanceledOnTouchOutside(false)
-        endVCDialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+
+        if(isLandscape) {
+            endVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }else {
+            endVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
         dialogBinding.negBtn.setOnClickListener {
             endVCDialog.dismiss()
 //                vCScreenViewModel.isEndVcEnabled.value = true
@@ -1296,14 +1306,22 @@ class VCDynamicActivity4 : BaseActivity() {
             LinearLayout.LayoutParams.MATCH_PARENT
         )
 //        newContainer.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-        newContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//        newContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
         newContainer.layoutParams = fContainerLayoutParams
 //        binding.sContainer.removeView(newRenderer
         binding.fContainer.addView(newContainer, binding.fContainer.childCount)
 
         val k = binding.fContainer.getChildAt(0)
         binding.fContainer.removeViewAt(0)
-        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+
+        var sContainerLayoutParams:LinearLayout.LayoutParams? = null
+        if(isLandscape) {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+        }else {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+        }
+
+
         sContainerLayoutParams.setMargins(
             containerMargin,
             containerMargin,
@@ -1311,7 +1329,7 @@ class VCDynamicActivity4 : BaseActivity() {
             containerMargin
         )
 //        k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-        k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//        k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
         k.layoutParams = sContainerLayoutParams
 
 //        k.translationZ = 3F
@@ -1350,7 +1368,7 @@ class VCDynamicActivity4 : BaseActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT
                 )
 //                k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-                k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//                k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
                 k.layoutParams = fContainerLayoutParams
                 binding.fContainer.addView(k)
             }
@@ -1358,7 +1376,13 @@ class VCDynamicActivity4 : BaseActivity() {
             /*if the rendere is in S..simply just remove the view from S*/
             binding.sContainer.removeView(leftContainer)
         }
-        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+//        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+        var sContainerLayoutParams:LinearLayout.LayoutParams? = null
+        if(isLandscape) {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+        }else {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+        }
         sContainerLayoutParams.setMargins(
             containerMargin,
             containerMargin,
@@ -1392,15 +1416,21 @@ class VCDynamicActivity4 : BaseActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT
             )
 //            clickedContainer.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-            clickedContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//            clickedContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
             clickedContainer.layoutParams = fContainerLayoutParams
 //        binding.sContainer.removeView(newRenderer
             binding.fContainer.addView(clickedContainer, binding.fContainer.childCount)
 
             val k = binding.fContainer.getChildAt(0)
             binding.fContainer.removeViewAt(0)
-            val sContainerLayoutParams: LinearLayout.LayoutParams =
-                LinearLayout.LayoutParams(500, 500)
+//            val sContainerLayoutParams: LinearLayout.LayoutParams =
+//                LinearLayout.LayoutParams(500, 500)
+            var sContainerLayoutParams:LinearLayout.LayoutParams? = null
+            if(isLandscape) {
+                sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+            }else {
+                sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+            }
             sContainerLayoutParams.setMargins(
                 containerMargin,
                 containerMargin,
@@ -1408,7 +1438,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 containerMargin
             )
 //            k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-            k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//            k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
             k.layoutParams = sContainerLayoutParams
 
 
@@ -1424,7 +1454,13 @@ class VCDynamicActivity4 : BaseActivity() {
             Log.d(TAG, "swapContainer: SWAP already in F")
         }
 
-        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+//        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+        var sContainerLayoutParams:LinearLayout.LayoutParams? = null
+        if(isLandscape) {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+        }else {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+        }
         sContainerLayoutParams.setMargins(
             containerMargin,
             containerMargin,

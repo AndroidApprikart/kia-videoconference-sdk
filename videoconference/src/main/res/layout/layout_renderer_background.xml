@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/color_renderer_background">
+    android:layout_width="@dimen/_200sdp"
+    android:layout_height="@dimen/_200sdp"
+    android:background="@drawable/bg_rounded_circle"
+    android:backgroundTint="@color/color_kia_black">
 
 
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/tv_first_char"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="@dimen/_40sdp"
+        android:layout_height="@dimen/_40sdp"
         android:layout_centerInParent="true"
-        android:background="@drawable/bg_rounded_new"
         android:gravity="center"
-        android:padding="5dp"
+        android:textColor="@android:color/white"
+        android:textSize="30sp"
         android:textStyle="bold"
-        android:textColor="@android:color/holo_green_dark"
-        android:textSize="18sp" />
+       />
 
 </RelativeLayout>

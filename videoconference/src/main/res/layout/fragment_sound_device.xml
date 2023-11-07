@@ -11,10 +11,11 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:background="@drawable/bg_bottom_sheet"
         android:minHeight="10dp"
         android:orientation="vertical"
+        android:padding="@dimen/_10sdp"
 
       >
 
@@ -39,6 +40,7 @@
             android:layout_centerVertical="true"
             android:layout_marginTop="@dimen/_10sdp"
             android:text="@string/sound_device"
+            android:textSize="14sp"
             android:textAlignment="viewStart"
             android:textColor="@color/black"
             app:layout_constraintStart_toStartOf="parent"
@@ -81,6 +83,8 @@
                     android:textAllCaps="false"
                     android:layout_toEndOf="@id/speaker_phone_iv"
                     android:text="Speaker Phone"
+                    android:textSize="12sp"
+                    android:textColor="@color/color_kia_black"
                     android:textAlignment="viewStart" />
 
                 <ImageView
@@ -122,7 +126,9 @@
                     android:layout_marginHorizontal="@dimen/_5sdp"
                     android:fontFamily="@font/kia_signature_fix_regular"
                     android:layout_toEndOf="@id/earpiece_iv"
+                    android:textColor="@color/color_kia_black"
                     android:text="EARPIECE"
+                    android:textSize="12sp"
                     android:textAlignment="viewStart" />
 
                 <ImageView
@@ -164,7 +170,9 @@
                     android:layout_marginHorizontal="@dimen/_5sdp"
                     android:fontFamily="@font/kia_signature_fix_regular"
                     android:layout_toEndOf="@id/wired_headset_iv"
+                    android:textColor="@color/color_kia_black"
                     android:text="Wired Headset"
+                    android:textSize="12sp"
                     android:textAlignment="viewStart" />
 
                 <ImageView
@@ -205,7 +213,9 @@
                     android:layout_marginHorizontal="@dimen/_10sdp"
                     android:layout_toEndOf="@id/bluetooth_iv"
                     android:fontFamily="@font/kia_signature_fix_regular"
+                    android:textColor="@color/color_kia_black"
                     android:text="Bluetooth"
+                    android:textSize="12sp"
                     android:textAlignment="viewStart" />
 
                 <ImageView
@@ -252,8 +262,10 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:layout_marginLeft="@dimen/_5sdp"
+                android:textColor="@color/color_kia_black"
                 android:layout_toEndOf="@id/img_cancel"
                 android:text="@string/cancel"
+                android:textSize="12sp"
                 android:textAlignment="viewStart" />
 
 
