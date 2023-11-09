@@ -25,10 +25,9 @@
                 android:layout_marginStart="@dimen/_10sdp"
                 android:background="@drawable/bg_local_message"
                 android:backgroundTint="#CCCACA"
-                android:padding="@dimen/_10sdp"
+                android:padding="@dimen/_5sdp"
                 android:textAlignment="viewStart"
-                android:textColor="@color/black"
-                android:textSize="@dimen/_14ssp" />
+                android:textColor="@color/black" />
         </androidx.appcompat.widget.LinearLayoutCompat>
 
 
@@ -48,7 +47,6 @@
                 android:layout_marginEnd="@dimen/_5sdp"
                 android:textColor="@color/black"
                 style="@style/text_view_regular"
-                android:textSize="@dimen/_10ssp"
                 app:cardBackgroundColor="@color/white"
                 app:layout_constraintTop_toTopOf="parent" />
 

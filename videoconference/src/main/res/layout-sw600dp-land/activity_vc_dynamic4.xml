@@ -364,8 +364,8 @@
                     android:fontFamily="@font/kia_signature_fix_regular"
                     android:gravity="center"
                     android:maxLength="5"
-                    android:textColor="@color/color_kia_black"
                     android:text="@{vm.participantCount}"
+                    android:textColor="@color/color_kia_black"
                     android:textSize="10sp"
                     android:visibility="visible" />
             </RelativeLayout>
@@ -446,6 +446,12 @@
             app:layout_constraintBottom_toTopOf="@id/cl_bottom_action_bar"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/cl_top_action_bar" />
+
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/group_pip_hide"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:constraint_referenced_ids="cl_bottom_action_bar,cl_top_action_bar,scroll_view" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

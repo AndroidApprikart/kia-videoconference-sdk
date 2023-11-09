@@ -34,10 +34,12 @@ import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.view.children
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.gson.Gson
@@ -103,7 +105,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
 
     val serverUrl: String = "ws://vc.apprikart.com:5080/WebRTCAppEE/websocket"
-    val roomId = "room2"
+    val roomId = "room3"
     var streamId: String? = null
 
     private var conferenceManager: MultitrackConferenceManager? = null
@@ -3328,5 +3330,65 @@ class VCDynamicActivity4 : BaseActivity() {
                 fragmentTransaction.commit()
             }
         }
+    }
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        val isPipSupported = this.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+        if (isPipSupported ) {
+            Log.d(TAG, "onUserLeaveHint: pip : isSupported: true")
+            this.enterPictureInPictureMode()
+        }else {
+            Log.d(TAG, "onUserLeaveHint: pip: isSupported: false")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        Log.d(TAG, "onPictureInPictureModeChanged: ${lifecycle.currentState}")
+
+        if (isInPictureInPictureMode) {
+            // Inflate the PiP layout
+            Log.d(TAG, "onPictureInPictureModeChanged: ")
+            binding.groupPipHide?.visibility = View.GONE
+
+            if(viewModel.messageFragVisible) {
+                binding.fragmentHolderForMessage.visibility = View.GONE
+            }
+
+            // TODO: Handle PiP mode layout and functionality
+        }else if(lifecycle.currentState == Lifecycle.State.STARTED) {
+            if (isInPictureInPictureMode) {
+
+            } else {
+//                if(vCScreenViewModel.isScreenShareEnabled.value!=null) {
+//                    if(vCScreenViewModel.isScreenShareEnabled.value == false) {
+//                        vcScreenBinding.svRenderLayout.visibility = View.VISIBLE
+//                    }
+//                }else {
+//                    vcScreenBinding.svRenderLayout.visibility = View.VISIBLE
+//                }
+                binding.groupPipHide?.visibility = View.VISIBLE
+                if(viewModel.messageFragVisible) {
+                    binding.fragmentHolderForMessage.visibility = View.VISIBLE
+                }
+                Log.d(TAG, "onPictureInPictureModeChanged:  maxClicked: ")
+            }
+        } else if(lifecycle.currentState == Lifecycle.State.CREATED) {
+            Log.d(TAG, "onPictureInPictureModeChanged: close: Clicked: ")
+//            stopCurrentVC()
+
+//            vcScreenBinding.topLayoutVcScreen.visibility = View.VISIBLE
+//            vcScreenBinding.mainOptionsLayout.visibility = View.VISIBLE
+//            vcScreenBinding.svRenderLayout.visibility = View.VISIBLE
+
+            viewModel.endVCByUser = true
+            conferenceManager!!.leaveFromConference()
+            stoppedStream = true
+            // TODO: Handle exiting PiP mode and restore the main activity layout
+        }
+
+
+
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
     }
 }
