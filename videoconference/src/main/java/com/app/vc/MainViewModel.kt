@@ -95,7 +95,7 @@ class MainViewModel : ViewModel() {
     /*message handling functions*/
     fun processNewLocalTextMessage(userInputText: String, id: Long) {
         val tempMessage = MessageModel(
-            userName = "Local",
+            userName = "Local", //nahusha help
             messageText = userInputText.trim().toString(),
             isLocalMessage = true,
             messageType = VCConstants.TEXT_MESSAGE,
