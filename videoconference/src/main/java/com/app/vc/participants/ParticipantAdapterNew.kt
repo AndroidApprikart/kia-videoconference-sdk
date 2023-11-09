@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.R
 import com.app.vc.databinding.ParticipantsListItemBinding
 import com.app.vc.models.ParticipantsModel
+
 /* created by Naghma 20/08/23*/
 
 
@@ -37,11 +38,13 @@ class ParticipantAdapterNew(
 
             if (data.isMicOn) {
 //            holder.imgParticipant.setImageResource(R.drawable.icon_mic_enable)
-                binding.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_on)
+                binding.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_enabled)
 
             } else {
 //            holder.imgParticipant.setImageResource(R.drawable.icon_mic_disable)
-                binding.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_off)
+                binding.imgParticipantMic.background = null
+                binding.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
+
             }
 //        (holder.imgParticipantMic.background as AnimationDrawable).start()
         }

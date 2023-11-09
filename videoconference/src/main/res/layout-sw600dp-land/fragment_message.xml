@@ -21,31 +21,43 @@
         <com.google.android.material.appbar.AppBarLayout
             android:id="@+id/app_bar_layout"
             android:layout_width="match_parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
             android:layout_height="wrap_content"
-            android:background="@color/color_kia_black"
-            android:theme="@style/Theme.AppCompat.Light">
+            android:theme="@style/Theme.AppCompat.Light"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
             <androidx.appcompat.widget.Toolbar
                 android:id="@+id/message_tool_bar"
                 android:layout_width="match_parent"
-                android:layout_height="?android:attr/actionBarSize"
+                android:layout_height="wrap_content"
                 android:fitsSystemWindows="true"
                 android:gravity="start"
                 app:contentInsetStartWithNavigation="0dp"
                 app:layout_collapseMode="pin"
-                app:navigationIcon="@drawable/ic_back_arrow">
+                app:navigationIcon="@drawable/ic_close"
+                android:layoutDirection="rtl">
 
 
                 <com.google.android.material.textview.MaterialTextView
                     android:id="@+id/messages"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center|center_horizontal"
+                    android:layout_gravity="left"
+                    android:layout_marginLeft="@dimen/_5sdp"
                     android:text="Messages"
-                    style="@style/text_view_regular"
-                    android:textSize="@dimen/_14ssp"
-                    android:textColor="@color/white" />
+                    android:textColor="@color/color_kia_black"
+                    android:textSize="16sp"
+                    android:fontFamily="@font/kia_signature_fix_bold"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_save_chat"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="right"
+                    android:text="Save"
+                    android:layout_marginRight="@dimen/_5sdp"/>
+
+
 
             </androidx.appcompat.widget.Toolbar>
 

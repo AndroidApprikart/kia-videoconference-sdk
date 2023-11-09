@@ -39,7 +39,8 @@
             android:background="@color/color_kia_black"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            app:layout_constraintTop_toTopOf="parent"
+            android:padding="@dimen/_10sdp">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/img_logo"
@@ -53,25 +54,38 @@
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_grid"
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:layout_margin="@dimen/_10sdp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_camera_toggle"
                 app:layout_constraintTop_toTopOf="parent"
-                android:tint="@color/white"
-                app:srcCompat="@drawable/ic_grid_on" />
+                app:srcCompat="@drawable/ic_hide_participants"
+                android:layout_marginEnd="@dimen/_10sdp"
+                app:tint="@color/white"
+                />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_hid_peers_slash"
+                android:layout_width="@dimen/_16sdp"
+                android:layout_height="@dimen/_16sdp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                android:layout_marginEnd="@dimen/_15sdp"
+                app:layout_constraintEnd_toStartOf="@id/btn_camera_toggle"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_hide_peers_slash"
+                android:visibility="gone"
+                app:tint="@color/white"/>
+
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_camera_toggle"
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:layout_margin="@dimen/_10sdp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
-                android:tint="@color/white"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_camera_switch" />
+                app:srcCompat="@drawable/ic_switch_camera"
+                android:layout_marginEnd="@dimen/_10sdp"/>
         </androidx.constraintlayout.widget.ConstraintLayout>
 
 
@@ -114,75 +128,65 @@
             android:background="@color/color_kia_black"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            app:layout_constraintStart_toStartOf="parent"
+            android:padding="@dimen/_10sdp">
 
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_chat"
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:layout_margin="@dimen/_10sdp"
-                android:layout_marginStart="30dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/btn_audio"
-                app:layout_constraintHorizontal_chainStyle="packed"
+                app:layout_constraintEnd_toStartOf="@id/btn_audio_switch"
+                app:layout_constraintHorizontal_chainStyle="spread"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_messages"
-                app:tint="@color/white" />
+                app:srcCompat="@drawable/ic_messages" />
 
             <com.google.android.material.imageview.ShapeableImageView
-                android:id="@+id/btn_audio"
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:layout_margin="@dimen/_10sdp"
+                android:id="@+id/btn_audio_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_end_call"
                 app:layout_constraintStart_toEndOf="@id/btn_chat"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_mic_on"
-                app:tint="@color/white" />
+                app:srcCompat="@drawable/ic_mic_enabled" />
 
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_end_call"
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:layout_margin="@dimen/_10sdp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:background="@drawable/bg_rounded_new"
                 android:backgroundTint="@color/red"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_video"
-                app:layout_constraintStart_toEndOf="@id/btn_audio"
+                app:layout_constraintStart_toEndOf="@id/btn_audio_switch"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_phone"
-                app:tint="@color/white" />
+                app:srcCompat="@drawable/ic_end_call" />
 
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_video"
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:layout_margin="@dimen/_10sdp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_more_menu"
                 app:layout_constraintStart_toEndOf="@id/btn_end_call"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_video_on"
-                app:tint="@color/white" />
+                app:srcCompat="@drawable/ic_video_enabled" />
 
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_more_menu"
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:layout_margin="@dimen/_10sdp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/btn_video"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_more"
-                app:tint="@color/white" />
+                app:srcCompat="@drawable/ic_more_options" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
 
@@ -221,6 +225,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="@dimen/_5sdp"
+                    android:fontFamily="@font/kia_signature_fix_bold"
                     android:text="More options"
                     android:textAlignment="viewStart"
                     android:textSize="@dimen/_13ssp" />
@@ -282,7 +287,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/_37sdp"
                     android:paddingHorizontal="0dp"
-                    android:visibility="visible">
+                    android:visibility="gone">
 
                     <ImageView
                         android:id="@+id/img_screen_share_option_icon"
@@ -291,7 +296,8 @@
                         android:layout_alignParentStart="true"
                         android:layout_centerVertical="true"
                         android:scaleType="fitXY"
-                        android:src="@drawable/ic_screen_share" />
+                        android:src="@drawable/ic_screen_share"
+                        app:tint = "@color/black"/>
 
                     <TextView
                         android:id="@+id/tv_screen_share_option"
@@ -302,6 +308,7 @@
                         android:layout_marginHorizontal="@dimen/_10sdp"
                         android:layout_toEndOf="@id/img_screen_share_option_icon"
                         android:text="sreen share"
+                        android:fontFamily="@font/kia_signature_fix_regular"
                         android:textAlignment="viewStart"
                         android:textColor="@color/color_kia_black"
                         android:textSize="@dimen/_12ssp" />
@@ -313,8 +320,9 @@
                 <RelativeLayout
                     android:id="@+id/sound_device_option_layout"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/_37sdp"
-                    android:paddingHorizontal="0dp">
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="0dp"
+                    >
 
                     <ImageView
                         android:id="@+id/img_sound_device_option_icon"
@@ -323,7 +331,7 @@
                         android:layout_alignParentStart="true"
                         android:layout_centerVertical="true"
                         android:scaleType="fitXY"
-                        android:src="@drawable/ic_volume_up"
+                        android:src="@drawable/ic_audio_output_devices"
                         app:tint="@color/color_kia_black" />
 
                     <TextView
@@ -333,6 +341,7 @@
                         android:layout_height="wrap_content"
                         android:layout_centerVertical="true"
                         android:layout_marginHorizontal="@dimen/_10sdp"
+                        android:fontFamily="@font/kia_signature_fix_regular"
                         android:layout_toEndOf="@id/img_sound_device_option_icon"
                         android:text="Sound devices"
                         android:textAlignment="viewStart"
@@ -344,7 +353,7 @@
                 <RelativeLayout
                     android:id="@+id/participants_options_layout"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/_37sdp"
+                    android:layout_height="wrap_content"
                     android:paddingHorizontal="0dp">
 
                     <ImageView
@@ -354,7 +363,7 @@
                         android:layout_alignParentStart="true"
                         android:layout_centerVertical="true"
                         android:scaleType="fitXY"
-                        android:src="@drawable/ic_participant"
+                        android:src="@drawable/ic_participant_group"
                         app:tint="@color/color_kia_black" />
 
                     <TextView
@@ -362,11 +371,13 @@
                         style="@style/text_view_regular"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_alignRight="@+id/img_participants"
-                        android:background="@drawable/bg_rounded_circle"
+                        android:layout_alignParentTop="true"
+                        android:layout_alignEnd="@id/img_participants"
+                        android:background="@drawable/bg_participants_background"
                         android:backgroundTint="@color/color_kia_black"
                         android:gravity="center"
                         android:maxLength="5"
+                        android:textSize="10sp"
                         android:text="@{vm.participantCount}"
                         android:textColor="@color/white"
                         android:visibility="visible" />
@@ -398,6 +409,12 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/group_pip_hide"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:constraint_referenced_ids="cl_bottom_action_bar,cl_top_action_bar,scroll_view" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

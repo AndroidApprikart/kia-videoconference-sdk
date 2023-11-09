@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+
+    <data>
+
+        <variable
+            name="vm"
+            type="com.app.vc.MainViewModel" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <TextView
+            android:id="@+id/broadcasting_text_view"
+            style="@style/text_view_regular"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_tv"
+            android:backgroundTint="@color/white"
+            android:gravity="top|center_horizontal"
+            android:padding="@dimen/_5sdp"
+            android:text="Publishing"
+            android:textColor="@color/white"
+            android:translationZ="@dimen/_2sdp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_top_action_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/color_kia_black"
+            android:padding="@dimen/_5sdp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/img_logo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/_10sdp"
+                android:layout_marginStart="32dp"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_grid"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/_10sdp"
+                android:visibility="visible"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_camera_toggle"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_hide_participants"
+                app:tint="@color/white" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_hid_peers_slash"
+                android:layout_width="@dimen/_10sdp"
+                android:layout_height="@dimen/_10sdp"
+                android:layout_marginEnd="@dimen/_12sdp"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_camera_toggle"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_hide_peers_slash"
+                app:tint="@color/white" />
+
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_camera_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/_10sdp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_switch_camera" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:id="@+id/f_container"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            app:layout_constraintBottom_toTopOf="@id/cl_bottom_action_bar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/fragment_holder_for_message"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cl_top_action_bar">
+
+            <androidx.coordinatorlayout.widget.CoordinatorLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:id="@+id/more_options_layout_sheet"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_bottom_sheet"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="@dimen/_10sdp"
+                    android:paddingBottom="@dimen/_10sdp"
+                    android:translationZ="1dp"
+                    app:behavior_hideable="true"
+                    app:behavior_peekHeight="0dp"
+                    app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+                    <View
+                        android:id="@+id/line_divider"
+                        android:layout_width="@dimen/_20sdp"
+                        android:layout_height="@dimen/_2sdp"
+                        android:layout_marginVertical="@dimen/_5sdp"
+                        android:background="@color/color_kia_black" />
+
+                    <TextView
+                        android:id="@+id/tv_more_options"
+                        style="@style/text_view_bold"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/_5sdp"
+                        android:fontFamily="@font/kia_signature_fix_bold"
+                        android:text="More options"
+                        android:textAlignment="viewStart"
+                        android:textSize="@dimen/_13ssp" />
+
+
+                    <!--        message option-->
+                    <!--            <RelativeLayout-->
+                    <!--                android:id="@+id/message_option_layout"-->
+                    <!--                android:layout_width="match_parent"-->
+                    <!--                android:layout_height="40dp"-->
+
+                    <!--                android:paddingHorizontal="0dp">-->
+
+                    <!--                <ImageView-->
+                    <!--                    android:id="@+id/img_message_option_icon"-->
+                    <!--                    android:layout_width="wrap_content"-->
+                    <!--                    android:layout_height="wrap_content"-->
+                    <!--                    android:layout_alignParentStart="true"-->
+                    <!--                    android:layout_centerVertical="true"-->
+                    <!--                    android:scaleType="fitXY"-->
+                    <!--                    android:backgroundTint="@color/color_kia_black"-->
+                    <!--                    android:src="@drawable/icon_message_24dp"-->
+                    <!--                    android:tint="@color/color_kia_black" />-->
+
+                    <!--                <TextView-->
+                    <!--                    android:id="@+id/message_option"-->
+                    <!--                    android:layout_width="wrap_content"-->
+                    <!--                    android:layout_height="wrap_content"-->
+                    <!--                    android:layout_centerVertical="true"-->
+                    <!--                    android:layout_marginStart="@dimen/margin_for_action_buttons"-->
+                    <!--                    android:layout_toEndOf="@id/img_message_option_icon"-->
+                    <!--                    android:fontFamily="@font/kia_signature_fix_regular"-->
+                    <!--                    android:text="@string/message"-->
+                    <!--                    android:textAlignment="viewStart"-->
+                    <!--                    android:textColor="@color/color_kia_black"-->
+                    <!--                    android:textSize="14sp" />-->
+
+                    <!--                <TextView-->
+                    <!--                    android:id="@+id/unread_message_count"-->
+                    <!--                    android:layout_width="wrap_content"-->
+                    <!--                    android:layout_height="wrap_content"-->
+                    <!--                    android:layout_centerVertical="true"-->
+                    <!--                    android:layout_marginStart="2dp"-->
+                    <!--                    android:layout_toEndOf="@id/message_option"-->
+                    <!--                    android:background="@drawable/bg_message_count"-->
+                    <!--                    android:padding="2dp"-->
+                    <!--                    android:paddingStart="6dp"-->
+                    <!--                    android:paddingEnd="6dp"-->
+                    <!--                    android:textAlignment="viewStart"-->
+                    <!--                    android:textColor="@color/white"-->
+                    <!--                    android:textSize="12sp"-->
+                    <!--                    android:visibility="gone" />-->
+
+
+                    <!--            </RelativeLayout>-->
+                    <!--        screen share option-->
+                    <RelativeLayout
+                        android:id="@+id/screen_share_option_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/_37sdp"
+                        android:paddingHorizontal="0dp"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:id="@+id/img_screen_share_option_icon"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:scaleType="fitXY"
+                            android:src="@drawable/ic_screen_share"
+                            app:tint="@color/black" />
+
+                        <TextView
+                            android:id="@+id/tv_screen_share_option"
+                            style="@style/text_view_regular"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_centerVertical="true"
+                            android:layout_marginHorizontal="@dimen/_10sdp"
+                            android:layout_toEndOf="@id/img_screen_share_option_icon"
+                            android:fontFamily="@font/kia_signature_fix_regular"
+                            android:text="sreen share"
+                            android:textAlignment="viewStart"
+                            android:textColor="@color/color_kia_black"
+                            android:textSize="@dimen/_12ssp" />
+
+
+                    </RelativeLayout>
+
+                    <!--        sound device-->
+                    <RelativeLayout
+                        android:id="@+id/sound_device_option_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="0dp">
+
+                        <ImageView
+                            android:id="@+id/img_sound_device_option_icon"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:scaleType="fitXY"
+                            android:src="@drawable/ic_audio_output_devices"
+                            app:tint="@color/color_kia_black" />
+
+                        <TextView
+                            android:id="@+id/tv_sound_device_option"
+                            style="@style/text_view_regular"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_centerVertical="true"
+                            android:layout_marginHorizontal="@dimen/_10sdp"
+                            android:layout_toEndOf="@id/img_sound_device_option_icon"
+                            android:fontFamily="@font/kia_signature_fix_regular"
+                            android:text="Sound devices"
+                            android:textAlignment="viewStart"
+                            android:textColor="@color/color_kia_black"
+                            android:textSize="@dimen/_12ssp" />
+                    </RelativeLayout>
+
+                    <!--            Participants-->
+                    <RelativeLayout
+                        android:id="@+id/participants_options_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="0dp">
+
+                        <ImageView
+                            android:id="@+id/img_participants"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:scaleType="fitXY"
+                            android:src="@drawable/ic_participant_group"
+                            app:tint="@color/color_kia_black" />
+
+                        <TextView
+                            android:id="@+id/tv_count"
+                            style="@style/text_view_regular"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignEnd="@id/img_participants"
+                            android:layout_alignParentTop="true"
+                            android:background="@drawable/bg_participants_background"
+                            android:backgroundTint="@color/color_kia_black"
+                            android:gravity="center"
+                            android:maxLength="5"
+                            android:text="@{vm.participantCount}"
+                            android:textColor="@color/white"
+                            android:textSize="10sp"
+                            android:visibility="visible" />
+
+                        <TextView
+                            android:id="@+id/tv_participants"
+                            style="@style/text_view_regular"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_centerVertical="true"
+                            android:layout_marginHorizontal="@dimen/_10sdp"
+                            android:layout_toEndOf="@id/img_participants"
+                            android:text="Participants"
+                            android:textAlignment="viewStart"
+                            android:textColor="@color/color_kia_black"
+                            android:textSize="@dimen/_12ssp" />
+                    </RelativeLayout>
+                </LinearLayout>
+
+            </androidx.coordinatorlayout.widget.CoordinatorLayout>
+        </androidx.appcompat.widget.LinearLayoutCompat>
+
+        <HorizontalScrollView
+            android:id="@+id/scroll_view"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:orientation="horizontal"
+            app:layout_constraintBottom_toTopOf="@id/cl_bottom_action_bar"
+            app:layout_constraintEnd_toStartOf="@id/fragment_holder_for_message"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <LinearLayout
+                android:id="@+id/s_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:elevation="@dimen/_1sdp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:translationZ="@dimen/_1sdp" />
+        </HorizontalScrollView>
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_bottom_action_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/color_kia_black"
+            android:paddingVertical="@dimen/_5sdp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintHorizontal_chainStyle="spread"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <RelativeLayout
+                android:id="@+id/btn_participants"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_audio_switch"
+                app:layout_constraintHorizontal_chainStyle="spread"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:id="@+id/img_vc_participants"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/ic_participant_group"
+                    app:tint="@color/white" />
+
+                <TextView
+
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignRight="@+id/img_vc_participants"
+                    android:background="@drawable/bg_participants_background"
+                    android:fontFamily="@font/kia_signature_fix_regular"
+                    android:gravity="center"
+                    android:maxLength="5"
+                    android:text="@{vm.participantCount}"
+                    android:textColor="@color/color_kia_black"
+                    android:textSize="10sp"
+                    android:visibility="visible" />
+            </RelativeLayout>
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_audio_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_video"
+                app:layout_constraintStart_toEndOf="@id/btn_participants"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_mic_enabled" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_video"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_end_call"
+                app:layout_constraintStart_toEndOf="@id/btn_audio_switch"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_video_enabled" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_end_call"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_rounded_new"
+                android:backgroundTint="@color/red"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_screen_share"
+                app:layout_constraintStart_toEndOf="@id/btn_video"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_end_call" />
+
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_screen_share"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_audio_output_devices"
+                app:layout_constraintStart_toEndOf="@id/btn_end_call"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_screen_share" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_audio_output_devices"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_chat"
+                app:layout_constraintStart_toEndOf="@id/btn_screen_share"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_audio_output_devices"
+                app:tint="@color/white" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/btn_chat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/btn_audio_output_devices"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/ic_messages" />
+
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <FrameLayout
+            android:id="@+id/fragment_holder_for_message"
+            android:layout_width="@dimen/_150sdp"
+            android:layout_height="0dp"
+            android:background="@color/white"
+            android:visibility="gone"
+            app:layout_constraintBottom_toTopOf="@id/cl_bottom_action_bar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cl_top_action_bar" />
+
+        <androidx.constraintlayout.widget.Group
+            android:id="@+id/group_pip_hide"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:constraint_referenced_ids="cl_bottom_action_bar,cl_top_action_bar,scroll_view" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</layout>

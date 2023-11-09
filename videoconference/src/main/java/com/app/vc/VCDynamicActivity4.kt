@@ -24,6 +24,7 @@ import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.DisplayMetrics
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -33,11 +34,12 @@ import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.view.children
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.gson.Gson
@@ -102,7 +104,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
 
     val serverUrl: String = "ws://vc.apprikart.com:5080/WebRTCAppEE/websocket"
-    val roomId = "room1"
+    val roomId = "room3"
     var streamId: String? = null
 
     private var conferenceManager: MultitrackConferenceManager? = null
@@ -132,6 +134,8 @@ class VCDynamicActivity4 : BaseActivity() {
     private lateinit var soundDeviceFragment: SoundDeviceFragment
     private lateinit var screenShareFragment: ScreenShareFragment
     private lateinit var messageFragment: MessageFragment
+
+    private var isLandscape: Boolean = false
 
 
     /*any customized local broadcasts made exclusively in SDK will be reveived here*/
@@ -168,7 +172,7 @@ class VCDynamicActivity4 : BaseActivity() {
     private var isIntentForReconnect = false
 
     /*send status of mic and video*/
-    private val STATUS_SEND_PERIOD_MILLIS = 10000
+    private val STATUS_SEND_PERIOD_MILLIS = 5000
 
     private val handler = Handler()
 
@@ -182,7 +186,7 @@ class VCDynamicActivity4 : BaseActivity() {
     /*log internet speed*/
     private val internetLogHandler = Handler(Looper.getMainLooper())
     private val logInternetSpeedRunnable = Runnable { logInternetSpeed() }
-    private val internetLogInterval: Long = 10000 // 1 second
+    private val internetLogInterval: Long = 5000 // 1 second
 
     /*to listen to network changes*/
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -247,6 +251,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            streamId = intent.getStringExtra("stream_id_in_use")
         }
         Log.d(TAG, "onCreate: intentForReconnect -> $isIntentForReconnect")
+        isLandscape = resources.getBoolean(R.bool.landscape_only)
         // Set window styles for fullscreen-window size. Needs to be done before
         // adding content.
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -269,6 +274,8 @@ class VCDynamicActivity4 : BaseActivity() {
         viewModelObservers()
         setUpOnClickListeners()
         checkForMandatoryPermissions()
+
+
     }
 
     private fun init() {
@@ -400,7 +407,7 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun setUpOnClickListeners() {
-        binding.btnAudio.setOnClickListener {
+        binding.btnAudioSwitch.setOnClickListener {
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
                     controlAudio()
@@ -438,7 +445,8 @@ class VCDynamicActivity4 : BaseActivity() {
                         for (e in binding.sContainer.children) {
                             e.visibility = View.GONE
                         }
-                        binding.btnGrid.setImageResource(R.drawable.ic_grid_off)
+                        binding.btnHidPeersSlash.visibility = View.VISIBLE
+//                        binding.btnGrid.setImageResource(R.drawable.ic_grid_off)
 
                     } else {
                         /*grid is hidden.,..make it visible*/
@@ -449,7 +457,8 @@ class VCDynamicActivity4 : BaseActivity() {
                         for (e in binding.sContainer.children) {
                             e.visibility = View.VISIBLE
                         }
-                        binding.btnGrid.setImageResource(R.drawable.ic_grid_on)
+                        binding.btnHidPeersSlash.visibility = View.GONE
+//                        binding.btnGrid.setImageResource(R.drawable.ic_show_peers)
 
                     }
                     viewModel.grid = !viewModel.grid
@@ -469,7 +478,7 @@ class VCDynamicActivity4 : BaseActivity() {
         }
 
 
-        binding.btnMoreMenu.setOnClickListener {
+        binding.btnMoreMenu?.setOnClickListener {
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
                     showMoreOptions(viewModel.bottomSheet)
@@ -488,6 +497,15 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+        binding.btnScreenShare?.setOnClickListener {
+            /*check fro screen share and do action*/
+            Log.d(TAG, "setUpOnClickListeners: ")
+            if (conferenceManager != null) {
+                if (conferenceManager!!.isJoined) {
+                    openScreenShareOptions()
+                }
+            }
+        }
 
         binding.participantsOptionsLayout.setOnClickListener {
             /*check for participants and do action*/
@@ -497,8 +515,38 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+        binding.btnParticipants?.setOnClickListener {
+            /*check for participants and do action*/
+            if (conferenceManager != null) {
+                if (conferenceManager!!.isJoined) {
+                    openParticipantsListInRoom()
+                }
+            }
+        }
 
         binding.soundDeviceOptionLayout.setOnClickListener {
+            /*check for sound device options and do action*/
+            if (conferenceManager != null) {
+                if (conferenceManager!!.isJoined) {
+                    viewModel.audioDevices.value = getAudioDevices()
+                    viewModel.currentSelectedAudioDevice.value = getCurrentSelectedAudioDevice()
+                    Log.d(
+                        TAG,
+                        "setUpOnClickListeners: btnSoundDevice getAudioDevices -> " + Gson().toJson(
+                            getAudioDevices().toString()
+                        )
+                    )
+                    Log.d(
+                        TAG,
+                        "setUpOnClickListeners: btnSoundDevice getCurrentSelectedAudioDevice-> " + Gson().toJson(
+                            getCurrentSelectedAudioDevice().toString()
+                        )
+                    )
+                    openSoundDeviceListInRoom()
+                }
+            }
+        }
+        binding.btnAudioOutputDevices?.setOnClickListener {
             /*check for sound device options and do action*/
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
@@ -1030,10 +1078,19 @@ class VCDynamicActivity4 : BaseActivity() {
         joinVCDialog.setContentView(dialogBinding.root)
         joinVCDialog.setCancelable(false)
         joinVCDialog.setCanceledOnTouchOutside(false)
-        joinVCDialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        Log.d(TAG, "showJoinVCRoomDialog: ${isLandscape}")
+        if(isLandscape) {
+            joinVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }else {
+            joinVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
 
         dialogBinding.negBtn.setOnClickListener {
             joinVCDialog.dismiss()
@@ -1106,10 +1163,19 @@ class VCDynamicActivity4 : BaseActivity() {
         endVCDialog.setContentView(dialogBinding.root)
         endVCDialog.setCancelable(false)
         endVCDialog.setCanceledOnTouchOutside(false)
-        endVCDialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+
+        if(isLandscape) {
+            endVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }else {
+            endVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
         dialogBinding.negBtn.setOnClickListener {
             endVCDialog.dismiss()
 //                vCScreenViewModel.isEndVcEnabled.value = true
@@ -1263,14 +1329,22 @@ class VCDynamicActivity4 : BaseActivity() {
             LinearLayout.LayoutParams.MATCH_PARENT
         )
 //        newContainer.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-        newContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//        newContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
         newContainer.layoutParams = fContainerLayoutParams
 //        binding.sContainer.removeView(newRenderer
         binding.fContainer.addView(newContainer, binding.fContainer.childCount)
 
         val k = binding.fContainer.getChildAt(0)
         binding.fContainer.removeViewAt(0)
-        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+
+        var sContainerLayoutParams:LinearLayout.LayoutParams? = null
+        if(isLandscape) {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+        }else {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+        }
+
+
         sContainerLayoutParams.setMargins(
             containerMargin,
             containerMargin,
@@ -1278,7 +1352,7 @@ class VCDynamicActivity4 : BaseActivity() {
             containerMargin
         )
 //        k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-        k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//        k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
         k.layoutParams = sContainerLayoutParams
 
 //        k.translationZ = 3F
@@ -1317,7 +1391,7 @@ class VCDynamicActivity4 : BaseActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT
                 )
 //                k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-                k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//                k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
                 k.layoutParams = fContainerLayoutParams
                 binding.fContainer.addView(k)
             }
@@ -1325,7 +1399,13 @@ class VCDynamicActivity4 : BaseActivity() {
             /*if the rendere is in S..simply just remove the view from S*/
             binding.sContainer.removeView(leftContainer)
         }
-        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+//        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+        var sContainerLayoutParams:LinearLayout.LayoutParams? = null
+        if(isLandscape) {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+        }else {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+        }
         sContainerLayoutParams.setMargins(
             containerMargin,
             containerMargin,
@@ -1359,15 +1439,21 @@ class VCDynamicActivity4 : BaseActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT
             )
 //            clickedContainer.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-            clickedContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//            clickedContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
             clickedContainer.layoutParams = fContainerLayoutParams
 //        binding.sContainer.removeView(newRenderer
             binding.fContainer.addView(clickedContainer, binding.fContainer.childCount)
 
             val k = binding.fContainer.getChildAt(0)
             binding.fContainer.removeViewAt(0)
-            val sContainerLayoutParams: LinearLayout.LayoutParams =
-                LinearLayout.LayoutParams(500, 500)
+//            val sContainerLayoutParams: LinearLayout.LayoutParams =
+//                LinearLayout.LayoutParams(500, 500)
+            var sContainerLayoutParams:LinearLayout.LayoutParams? = null
+            if(isLandscape) {
+                sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+            }else {
+                sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+            }
             sContainerLayoutParams.setMargins(
                 containerMargin,
                 containerMargin,
@@ -1375,7 +1461,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 containerMargin
             )
 //            k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
-            k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
+//            k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
             k.layoutParams = sContainerLayoutParams
 
 
@@ -1391,7 +1477,13 @@ class VCDynamicActivity4 : BaseActivity() {
             Log.d(TAG, "swapContainer: SWAP already in F")
         }
 
-        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+//        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
+        var sContainerLayoutParams:LinearLayout.LayoutParams? = null
+        if(isLandscape) {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+        }else {
+            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+        }
         sContainerLayoutParams.setMargins(
             containerMargin,
             containerMargin,
@@ -1545,14 +1637,14 @@ class VCDynamicActivity4 : BaseActivity() {
         Log.d(TAG, "processCameraUIForPublishContainer: ")
         if (eventType.equals(CAM_TURNED_OFF)) {
             /*change Video UI to video muted UI*/
-            binding.btnVideo.setBackgroundResource(R.drawable.bg_rounded_new)
-            binding.btnVideo.setImageResource(R.drawable.ic_video_off)
-            binding.btnVideo.setColorFilter(ContextCompat.getColor(this, R.color.black))
+//            binding.btnVideo.setBackgroundResource(R.drawable.bg_rounded_new)
+            binding.btnVideo.setImageResource(R.drawable.ic_video_disabled)
+//            binding.btnVideo.setColorFilter(ContextCompat.getColor(this, R.color.black))
         } else if (eventType.equals(CAM_TURNED_ON)) {
             /*change Video UI to video active UI*/
             binding.btnVideo.setBackgroundResource(0)
-            binding.btnVideo.setImageResource(R.drawable.ic_video_on)
-            binding.btnVideo.setColorFilter(ContextCompat.getColor(this, R.color.white))
+            binding.btnVideo.setImageResource(R.drawable.ic_video_enabled)
+//            binding.btnVideo.setColorFilter(ContextCompat.getColor(this, R.color.white))
         } else {
             /*do nothing*/
         }
@@ -1567,14 +1659,15 @@ class VCDynamicActivity4 : BaseActivity() {
         Log.d(TAG, "processMicUIForPublishContainer: ")
         if (eventType.equals(MIC_MUTED)) {
             /*change MIC UI to mic muted UI*/
-            binding.btnAudio.setBackgroundResource(R.drawable.bg_rounded_new)
-            binding.btnAudio.setImageResource(R.drawable.ic_mic_off)
-            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.black))
+//            binding.btnAudio.setBackgroundResource(R.drawable.bg_rounded_new)
+            binding.btnAudioSwitch.setImageResource(R.drawable.ic_mic_disabled)
+//            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.black))
         } else if (eventType.equals(MIC_UNMUTED)) {
             /*change MIC UI to mic active UI*/
-            binding.btnAudio.setBackgroundResource(0)
-            binding.btnAudio.setImageResource(R.drawable.ic_mic_on)
-            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.white))
+//            binding.btnAudio.setBackgroundResource(0)
+            binding.btnAudioSwitch.setImageResource(R.drawable.ic_mic_enabled)
+
+//            binding.btnAudio.setColorFilter(ContextCompat.getColor(this, R.color.white))
         } else {
             /*do nothing*/
         }
@@ -2861,7 +2954,6 @@ class VCDynamicActivity4 : BaseActivity() {
 //            viewModel.toastMessage.value = "Message is sent ${messageText}"
                     Log.w(TAG, "onMessageSent - success $messageText")
 
-
                 } else {
 //            viewModel.toastMessage.value = "Could not send the text message"
                     Log.w(TAG, "onMessageSent - failure ")
@@ -3309,6 +3401,66 @@ class VCDynamicActivity4 : BaseActivity() {
                 fragmentTransaction.commit()
             }
         }
+    }
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        val isPipSupported = this.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+        if (isPipSupported ) {
+            Log.d(TAG, "onUserLeaveHint: pip : isSupported: true")
+            this.enterPictureInPictureMode()
+        }else {
+            Log.d(TAG, "onUserLeaveHint: pip: isSupported: false")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        Log.d(TAG, "onPictureInPictureModeChanged: ${lifecycle.currentState}")
+
+        if (isInPictureInPictureMode) {
+            // Inflate the PiP layout
+            Log.d(TAG, "onPictureInPictureModeChanged: ")
+            binding.groupPipHide?.visibility = View.GONE
+
+            if(viewModel.messageFragVisible) {
+                binding.fragmentHolderForMessage.visibility = View.GONE
+            }
+
+            // TODO: Handle PiP mode layout and functionality
+        }else if(lifecycle.currentState == Lifecycle.State.STARTED) {
+            if (isInPictureInPictureMode) {
+
+            } else {
+//                if(vCScreenViewModel.isScreenShareEnabled.value!=null) {
+//                    if(vCScreenViewModel.isScreenShareEnabled.value == false) {
+//                        vcScreenBinding.svRenderLayout.visibility = View.VISIBLE
+//                    }
+//                }else {
+//                    vcScreenBinding.svRenderLayout.visibility = View.VISIBLE
+//                }
+                binding.groupPipHide?.visibility = View.VISIBLE
+                if(viewModel.messageFragVisible) {
+                    binding.fragmentHolderForMessage.visibility = View.VISIBLE
+                }
+                Log.d(TAG, "onPictureInPictureModeChanged:  maxClicked: ")
+            }
+        } else if(lifecycle.currentState == Lifecycle.State.CREATED) {
+            Log.d(TAG, "onPictureInPictureModeChanged: close: Clicked: ")
+//            stopCurrentVC()
+
+//            vcScreenBinding.topLayoutVcScreen.visibility = View.VISIBLE
+//            vcScreenBinding.mainOptionsLayout.visibility = View.VISIBLE
+//            vcScreenBinding.svRenderLayout.visibility = View.VISIBLE
+
+            viewModel.endVCByUser = true
+            conferenceManager!!.leaveFromConference()
+            stoppedStream = true
+            // TODO: Handle exiting PiP mode and restore the main activity layout
+        }
+
+
+
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
     }
     private fun processMessageSentFromChat(jsonObject: JSONObject,successful:Boolean) {
         try {
