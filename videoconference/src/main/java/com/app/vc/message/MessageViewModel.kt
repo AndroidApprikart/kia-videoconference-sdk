@@ -2,13 +2,11 @@ package com.app.vc.message
 
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
+//import javax.inject.Inject
 
 /* created by Naghma 27/09/23*/
 
-@HiltViewModel
-class MessageViewModel @Inject constructor():ViewModel() {
+class MessageViewModel:ViewModel() {
 
     var userMessageInput = MutableLiveData<String>()
 

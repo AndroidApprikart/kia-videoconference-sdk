@@ -265,4 +265,10 @@
     <string name="pref_enable_rtceventlog_default">false</string>
 
 <!--    ant media web rtc strings end-->
+    <!--    Message Screen-->
+    <string name="header_part_list"><u>Part List</u></string>
+    <string name="header_labour_list"><u>Labour List</u></string>
+    <string name="send_message">send message</string>
+    <string name="type_a_message">Type a message</string>
+
 </resources>

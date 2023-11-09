@@ -50,7 +50,7 @@ object VCConstants {
         arrayOf(
             android.Manifest.permission.MODIFY_AUDIO_SETTINGS,
             android.Manifest.permission.READ_EXTERNAL_STORAGE,
-//            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
             android.Manifest.permission.READ_PHONE_STATE,
             android.Manifest.permission.RECORD_AUDIO,
             android.Manifest.permission.INTERNET,
@@ -87,7 +87,7 @@ object VCConstants {
     const val TEXT_MESSAGE_VALUE = "TEXT_MESSAGE_VALUE"
 
     const val currentTime = "CURRENT_TIME"
-
+    const val MESSAGEID = "message_id"
     //fragment tags
     const val MESSAGE_FRAG = "msg_frag"
     const val PARTICIPANT_FRAG = "participant_frag"

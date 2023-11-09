@@ -73,7 +73,6 @@ import com.app.vc.participants.ParticipantFragment
 import com.app.vc.screenshare.MediaProjectionService
 import com.app.vc.screenshare.ScreenShareFragment
 import com.app.vc.soundDevice.SoundDeviceFragment
-import dagger.hilt.android.AndroidEntryPoint
 import de.tavendo.autobahn.WebSocket
 import io.antmedia.webrtcandroidframework.IDataChannelObserver
 import io.antmedia.webrtcandroidframework.IWebRTCListener
@@ -88,11 +87,11 @@ import org.json.JSONObject
 import org.webrtc.DataChannel
 import org.webrtc.SurfaceViewRenderer
 import org.webrtc.VideoTrack
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 
-@AndroidEntryPoint
 class VCDynamicActivity4 : BaseActivity() {
     private lateinit var binding: ActivityVcDynamic4Binding
 
@@ -169,7 +168,7 @@ class VCDynamicActivity4 : BaseActivity() {
     private var isIntentForReconnect = false
 
     /*send status of mic and video*/
-    private val STATUS_SEND_PERIOD_MILLIS = 5000
+    private val STATUS_SEND_PERIOD_MILLIS = 10000
 
     private val handler = Handler()
 
@@ -183,7 +182,7 @@ class VCDynamicActivity4 : BaseActivity() {
     /*log internet speed*/
     private val internetLogHandler = Handler(Looper.getMainLooper())
     private val logInternetSpeedRunnable = Runnable { logInternetSpeed() }
-    private val internetLogInterval: Long = 5000 // 1 second
+    private val internetLogInterval: Long = 10000 // 1 second
 
     /*to listen to network changes*/
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -283,6 +282,11 @@ class VCDynamicActivity4 : BaseActivity() {
         soundDeviceFragment = SoundDeviceFragment()
         screenShareFragment = ScreenShareFragment()
         messageFragment = MessageFragment()
+        fragmentManager = this.supportFragmentManager
+        fragmentTransaction = fragmentManager.beginTransaction()
+        fragmentManager.beginTransaction()
+            .replace(R.id.fragment_holder_for_message, messageFragment, "MESSAGE_FRAG")
+            .commit()
 //        LocalBroadcastManager.getInstance(this).registerReceiver(customSDKBroadcastReceiver, IntentFilter(
 //            SDK_CUSTOM_BROADCAST_ACTION))
         val intentFilter = IntentFilter()
@@ -348,7 +352,7 @@ class VCDynamicActivity4 : BaseActivity() {
         viewModel.messageFragmentClose.observe(this) {
             it?.let {
                 if (it) {
-                    closeMessageFragmet()
+                    closeMessageFragment()
                     viewModel.messageFragmentClose.value = false /*to handle the reobserving of it*/
                 }
             }
@@ -364,18 +368,31 @@ class VCDynamicActivity4 : BaseActivity() {
         }
         viewModel.sendLocalTextMessageToDataChannel.observe(this) {
             it?.let {
-                if (it) {
-                    sendTextMessage(viewModel.newLocalMessage)
-                    viewModel.sendLocalTextMessageToDataChannel.value = false
+                if (it!=-1L) {
+                    viewModel.getMessageFromId(it)?.let{ messageAndIndexPair ->
+
+                        if(messageAndIndexPair.first!=null){
+                            sendTextMessage(messageAndIndexPair.first!!)
+                        }
+//                        sendTextMessage(viewModel.newLocalMessage)
+                    }
+//                    viewModel.sendLocalTextMessageToDataChannel.value = false
+                    viewModel.sendLocalTextMessageToDataChannel.value = -1L
                 }
             }
 
         }
         viewModel.sendLocalFileMessageToDataChannel.observe(this) {
             it?.let {
-                if (it) {
-                    sendFileMessage(viewModel.newLocalMessage)
-                    viewModel.sendLocalFileMessageToDataChannel.value = false
+                if (it!=-1L) {
+                    viewModel.getMessageFromId(it)?.let{ messageAndIndexPair ->
+//                        sendFileMessage(viewModel.newLocalMessage)
+                        if(messageAndIndexPair.first!=null) {
+                            sendFileMessage(messageAndIndexPair.first!!)
+                        }
+                    }
+//                    viewModel.sendLocalFileMessageToDataChannel.value = false
+                    viewModel.sendLocalFileMessageToDataChannel.value = -1L
                 }
             }
 
@@ -505,7 +522,10 @@ class VCDynamicActivity4 : BaseActivity() {
         }
 
         binding.btnChat.setOnClickListener {
-            openMessageFragment()
+//            openMessageFragment()
+
+            binding.fragmentHolderForMessage.visibility = View.VISIBLE
+            viewModel.messageFragVisible = true
         }
     }
 
@@ -537,6 +557,7 @@ class VCDynamicActivity4 : BaseActivity() {
         }
         viewModel.isInitialConferenceStarted = false
         clearSendStatusSchedule()
+        removeLogInternetSpeedCallbacks()
     }
 
     //permission result
@@ -2155,7 +2176,7 @@ class VCDynamicActivity4 : BaseActivity() {
         /*clear track list
         * remove other track views*/
         clearRemoteUIs()
-    //ignore
+        //ignore
         intent.putExtra("intent_for_reconnect", true)
         intent.putExtra("stream_id_in_use", conferenceManager!!.publishWebRTCClient.streamId)
         intent.flags = Intent.FLAG_ACTIVITY_NO_ANIMATION
@@ -2840,11 +2861,15 @@ class VCDynamicActivity4 : BaseActivity() {
 //            viewModel.toastMessage.value = "Message is sent ${messageText}"
                     Log.w(TAG, "onMessageSent - success $messageText")
 
+
                 } else {
 //            viewModel.toastMessage.value = "Could not send the text message"
                     Log.w(TAG, "onMessageSent - failure ")
 
                 }
+                val data = buffer?.data
+                val messageText = data?.array()?.let { String(it, StandardCharsets.UTF_8) }
+//                processMessageSentFromChat(JSONObject(messageText),successful)
             }
 
         }
@@ -3009,24 +3034,23 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun openMessageFragment() {
-        fragmentManager = this.supportFragmentManager
-        fragmentTransaction = fragmentManager.beginTransaction()
-        fragmentManager.beginTransaction()
-            .replace(R.id.fragment_holder_for_message, messageFragment, "MESSAGE_FRAG")
-            .commit()
-        binding.fragmentHolderForMessage.visibility = View.VISIBLE
-        viewModel.messageFragVisible = true
+        Log.d(TAG, "openMessageFragment: ")
+
+
+
     }
 
-    private fun closeMessageFragmet() {
+    private fun closeMessageFragment() {
+        binding.fragmentHolderForMessage.visibility = View.GONE
+        viewModel.messageFragVisible = false
+        Log.d(TAG, "closeMessageFragmet: ")
 //        val f = fragmentManager.findFragmentByTag("MESSAGE_FRAG")
 //        if (f != null) {
 //            Log.d(TAG, "closeMessageFragmet: remove_message_screen")
 //            fragmentTransaction.remove(f)
 //        }
 //        fragmentTransaction.commit()
-        binding.fragmentHolderForMessage.visibility = View.GONE
-        viewModel.messageFragVisible = false
+
 
     }
 
@@ -3050,6 +3074,7 @@ class VCDynamicActivity4 : BaseActivity() {
             jsonObject.put(VCConstants.DISPLAY_NAME, conferenceManager!!.streamId.toString())
             Log.d(TAG, "sendTextMessage: timeTest: ${AndroidUtils.getCurrentTimeInMill()}")
             jsonObject.put(VCConstants.currentTime, AndroidUtils.getCurrentTimeInMill())
+            jsonObject.put(VCConstants.MESSAGEID, messageModel.id) /*extra added to have a process status update locally in OnMessageSent()*/
 
             val messageEvent = jsonObject.toString()
             val buffer = ByteBuffer.wrap(messageEvent.toByteArray(StandardCharsets.UTF_8))
@@ -3076,6 +3101,7 @@ class VCDynamicActivity4 : BaseActivity() {
             jsonObject.put(VCConstants.DISPLAY_NAME, conferenceManager!!.streamId.toString())
             Log.d(TAG, "sendTextMessage: timeTest: ${AndroidUtils.getCurrentTimeInMill()}")
             jsonObject.put(VCConstants.currentTime, AndroidUtils.getCurrentTimeInMill())
+            jsonObject.put(VCConstants.MESSAGEID, messageModel.id) /*extra added to have a process status update locally in OnMessageSent()*/
 
             val messageEvent = jsonObject.toString()
             val buffer = ByteBuffer.wrap(messageEvent.toByteArray(StandardCharsets.UTF_8))
@@ -3092,25 +3118,23 @@ class VCDynamicActivity4 : BaseActivity() {
         eventType: String
     ) {
 
-        val textMessage = json.getString(VCConstants.TEXT_MESSAGE_VALUE)
+        val textMessage = json.getString(VCConstants.TEXT_MESSAGE_VALUE)?:""
 //                var displayName = ""
-        val displayName = json.getString(VCConstants.DISPLAY_NAME)
-        val senttime = json.getLong(VCConstants.currentTime)
+        val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+        val remoteMessageId = AndroidUtils.getCurrentTimeInMill()
         Log.d(TAG, "onMessage: displayName: $displayName")
         val tempRemoteMessage = MessageModel(
             displayName,
             textMessage,
             false,
             TEXT_MESSAGE,
-            senttime,
+            remoteMessageId,
+            "",
             "",
             ""
         )
-        viewModel.newRemoteMessage = tempRemoteMessage
         viewModel.messageListInMVM.add(tempRemoteMessage)
-        viewModel.addNewRemoteMessage.value = true
-        viewModel.addNewRemoteMessage.value =
-            false /*to stop re observing when message fragment obserign it*/
+        viewModel.addNewRemoteMessage.value = remoteMessageId
 
     }
 
@@ -3122,25 +3146,23 @@ class VCDynamicActivity4 : BaseActivity() {
 
         val textMessage = json.getString(VCConstants.TEXT_MESSAGE_VALUE)
 //                var displayName = ""
-        val displayName = json.getString(VCConstants.DISPLAY_NAME)
-        val fileName = json.getString(VCConstants.FILE_NAME)
-        val serverFilePath = json.getString(VCConstants.SERVER_FILE_PATH)
-        val senttime = json.getLong(VCConstants.currentTime)
+        val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+        val fileName = json.getString(VCConstants.FILE_NAME)?:""
+        val serverFilePath = json.getString(VCConstants.SERVER_FILE_PATH)?:""
         Log.d(TAG, "onMessage: displayName: $displayName")
+        val remoteMessageId = AndroidUtils.getCurrentTimeInMill()
         val tempRemoteMessage = MessageModel(
             displayName,
             textMessage,
             false,
             FILE_MESSAGE,
-            senttime,
+            remoteMessageId,
             fileName,
-            serverFilePath
+            serverFilePath,
+            ""
         )
-        viewModel.newRemoteMessage = tempRemoteMessage
         viewModel.messageListInMVM.add(tempRemoteMessage)
-        viewModel.addNewRemoteMessage.value = true
-        viewModel.addNewRemoteMessage.value =
-            false /*to stop re observing when message fragment obserign it*/
+        viewModel.addNewRemoteMessage.value = remoteMessageId
 
     }
 
@@ -3157,10 +3179,60 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     /*file attah message*/
-    private fun processPickFileData(data: Intent?) {
-        viewModel.processNewLocalFileMessage(
-            "file_name", "https://xircular.io"
-        )
+    private fun processPickFileData(intent: Intent?) {
+        if(intent ==null)
+            return
+        if(intent.data==null)
+            return
+        intent.let { i ->
+            val fileUri = i.data
+            var filePath: String? = null
+            try {
+                filePath = fileUri?.let { FileOperations.getPath(this, it) }
+                Log.d(TAG, "processPickFileData: filePath : ${filePath}")
+            } catch (e: Exception) {
+                Log.e(TAG, "processPickFileData: exception caught while parsing file path: ${e.message}")
+                Toast.makeText(this,"Oops, error while parsing file. Please check the file and try again", Toast.LENGTH_SHORT).show()
+                return@let
+            }
+            if (filePath.isNullOrBlank()) {
+                try {
+                    filePath = fileUri?.let {
+                        FileOperations.getImagePathFromInputStreamUri(this,
+                            it
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "processPickFileData:  ${e.message}")
+                    Toast.makeText(this,"Oops, error while parsing file. Please check the file and try again", Toast.LENGTH_SHORT).show()
+                }
+            }
+            if (filePath != null) {
+
+                val file = File(filePath)
+    //                        val specialCharactersRegex = Regex("[^a-zA-Z0-9._ ]")
+    //                        if (specialCharactersRegex.containsMatchIn(file.name)) {
+    //                            vCScreenViewModel.toastString.value = "Invalid File name. File name cannot contain special characters. Please rename."
+    //                            return
+    //                        }
+
+
+                var fileSizeInBytes = file.length()
+                var fileSizeInMB = fileSizeInBytes / (1024 * 1024)
+                if (fileSizeInMB < 25) {
+                    var msgID = AndroidUtils.getCurrentTimeInMill()
+                    /*call API*/
+                    viewModel.processNewLocalFileMessage(file.name,"",msgID,true,filePath)
+                    viewModel.uploadVcFileAPICall(file,roomId,"CUSTOMER","CUSTOMER",msgID,false)     /*07 Nov 2023:: IMP::nahusha help required here::to pass correct data for vc room, who and usertype*/
+                }else {
+                    viewModel.toastMessage.value = "File cannot be more than 25MB"
+                }
+            }else {
+                Toast.makeText(this,"Oops, error while parsing file. Please check the file and try again", Toast.LENGTH_SHORT).show()
+                return@let
+            }
+        }
+
     }
 
     private fun processVCActivityBackPress() {
@@ -3217,7 +3289,7 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun dismissMessageFragment() {
-        closeMessageFragmet()
+        closeMessageFragment()
     }
 
     private fun dismissParticipantsFragment() {
@@ -3238,4 +3310,18 @@ class VCDynamicActivity4 : BaseActivity() {
             }
         }
     }
+    private fun processMessageSentFromChat(jsonObject: JSONObject,successful:Boolean) {
+        try {
+            val eventType =
+                jsonObject.getString(VCConstants.EVENT_TYPE)
+           if(eventType.equals(TEXT_MESSAGE,false)||eventType.equals(FILE_MESSAGE,false)){
+                val messageID = jsonObject.getLong(VCConstants.MESSAGEID)
+                viewModel.updateSendStatusForMessage(messageID,successful)
+            }
+        }catch(e:Exception)
+        {
+            Log.d(TAG, "processMessageSentFromChat: exeception caught!!")
+        }
+    }
+
 }

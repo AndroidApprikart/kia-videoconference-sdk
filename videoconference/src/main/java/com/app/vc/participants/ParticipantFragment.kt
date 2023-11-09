@@ -18,11 +18,9 @@ import com.app.vc.MainViewModel
 import com.app.vc.R
 import com.app.vc.databinding.FragmentParticipantsBinding
 import com.app.vc.models.ParticipantsModel
-import dagger.hilt.android.AndroidEntryPoint
 
 /* created by Naghma 27/09/23*/
 
-@AndroidEntryPoint
 class ParticipantFragment : BottomSheetDialogFragment() {
 
     val TAG= "ParticipantFragment::"

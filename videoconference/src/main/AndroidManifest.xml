@@ -19,6 +19,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <!--    extras from kia kandid-->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -29,7 +30,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
 
     <application
-        android:name=".VCApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -39,6 +39,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VideoConference"
         tools:targetApi="31"
+        android:networkSecurityConfig="@xml/network_security_config_library"
         android:requestLegacyExternalStorage="true"
         android:hardwareAccelerated="true"
         android:enableOnBackInvokedCallback="true"
@@ -46,14 +47,14 @@
 
         <activity
             android:name="com.app.vc.VCDynamicActivity4"
-            android:screenOrientation="portrait"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:exported="true">
-                            <intent-filter>
-                                <action android:name="android.intent.action.MAIN" />
+<!--                            <intent-filter>-->
+<!--                                <action android:name="android.intent.action.MAIN" />-->
 
-                                <category android:name="android.intent.category.LAUNCHER" />
-                            </intent-filter>
+<!--                                <category android:name="android.intent.category.LAUNCHER" />-->
+<!--                            </intent-filter>-->
         </activity>
 <!--        for screen sharing-->
         <service
@@ -63,6 +64,15 @@
             android:stopWithTask="true"
             android:exported="true"
             />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.app.vc.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
     </application>
     <queries>
         <intent android:autoVerify="true">

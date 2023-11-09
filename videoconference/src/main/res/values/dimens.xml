@@ -10,4 +10,12 @@
         <item>5sp</item>
     </array>
 
+    <dimen name="message_user_name_ts">10sp</dimen>
+    <dimen name="file_type_icon_width">35dp</dimen>
+    <dimen name="file_type_icon_height">33dp</dimen>
+    <dimen name="file_type_icon_padding">6dp</dimen>
+
+
+
+
 </resources>

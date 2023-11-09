@@ -49,18 +49,18 @@ android {
 
 dependencies {
 
-    implementation("androidx.core:core-ktx:1.9.0")
+    implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 //    implementation(project(mapOf("path" to ":webrtc-android-framework")))
-    implementation("com.google.firebase:firebase-storage-ktx:20.2.1")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    //Hilt - dependency injection
-    implementation("com.google.dagger:hilt-android:2.44")
-//    kapt("com.google.dagger:hilt-android-compiler:2.44")
+    //Hilt - dependency injection /*06 Nov 2023 - Hilt commented and removed*/
+//    implementation("com.google.dagger:hilt-android:2.48.1")
+//    kapt("com.google.dagger:hilt-android-compiler:2.48.1")
+
     //Gson
     implementation("com.google.code.gson:gson:2.9.0")
     implementation("com.intuit.sdp:sdp-android:1.1.0")
@@ -76,5 +76,13 @@ dependencies {
     testImplementation("org.awaitility:awaitility:4.2.0")
     testImplementation("org.json:json:20210307")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.2.0")
+
+    //Logging Interceptor
+    implementation ("com.squareup.okhttp3:logging-interceptor:4.9.1")
+
+    //retrofit - API calls
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+
 
 }

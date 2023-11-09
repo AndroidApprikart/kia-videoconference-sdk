@@ -13,8 +13,8 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_bottom_sheet"
         android:minHeight="10dp"
+        android:background="@color/color_screen_background"
         android:theme="@style/Base.Theme.VideoConference"
         android:orientation="vertical">
 
@@ -56,10 +56,9 @@
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_data"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginVertical="@dimen/_10sdp"
-            android:padding="@dimen/_5ssp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintBottom_toTopOf="@id/rl_message_layout"

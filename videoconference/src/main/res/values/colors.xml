@@ -12,4 +12,20 @@
 
     <color name="red">#EA0029</color>
     <color name="gray">#373737</color>
+
+    <color name="bg_color_receiver_layout_message_screen">#B3B8BB</color>
+    <color name="green">#5D7D2B</color>
+    <color name="text_color_reject">#EA0029</color>
+    <color name="grey">#E9E9E9</color>
+    <color name="text_colour1">#BB162B</color>
+    <color name="file_doc_layout_bg_color">#F3F3F3</color>
+    <color name="download_upload_img_bg_color">#4D434242</color>
+    <color name="download_upload_btn_color">#515151</color>
+
+    <!--     message screen-->
+    <color name="color_screen_background">#E7E7E7</color>
+    <color name="receiver_layout_background">#B3B8BB</color>
+    <color name="self_layout_header_text_color">#9EA1A2</color>
+
+
 </resources>

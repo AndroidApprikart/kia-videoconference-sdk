@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="5dp">
+
+
+
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:id="@+id/table_row_data"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/tv_part_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.3"
+            android:paddingVertical="10dp"
+            android:paddingHorizontal="5dp"
+
+            android:textColor="@color/color_kia_black"
+
+            android:fontFamily="@font/kia_signature_fix_light"
+            android:text="Part 1" />
+
+        <TextView
+            android:id="@+id/tv_quantity"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.3"
+            android:paddingVertical="10dp"
+            android:paddingHorizontal="5dp"
+            android:gravity="center_horizontal"
+            android:textColor="@color/color_kia_black"
+            android:fontFamily="@font/kia_signature_fix_light"
+            android:text="1" />
+
+        <TextView
+            android:id="@+id/tv_price"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.3"
+            android:fontFamily="@font/kia_signature_fix_light"
+            android:paddingVertical="10dp"
+            android:paddingHorizontal="5dp"
+            android:textColor="@color/color_kia_black"
+            android:gravity="center_horizontal"
+            android:text="1500" />
+
+        <CheckBox
+            android:id="@+id/checkbox_is_selected"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.1"
+            android:paddingVertical="10dp"
+            android:paddingHorizontal="5dp"
+            android:gravity="center"
+            android:checked="false" />
+    </androidx.appcompat.widget.LinearLayoutCompat>
+
+    <!-- Add additional rows here if needed -->
+
+</RelativeLayout>

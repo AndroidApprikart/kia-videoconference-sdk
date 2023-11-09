@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config>
+        <trust-anchors>
+<!--            if required mention the certificate here-->
+<!--            <certificates src="@raw/kiadigi_connect"/>-->
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">kia.apprikart.com</domain>
+        <domain includeSubdomains="true">10.107.11.242</domain>
+    </domain-config>
+</network-security-config>

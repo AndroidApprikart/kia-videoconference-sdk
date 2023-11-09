@@ -16,12 +16,10 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.app.vc.MainViewModel
 import com.app.vc.R
 import com.app.vc.databinding.FragmentScreenShareBinding
-import dagger.hilt.android.AndroidEntryPoint
 
 /* created by Naghma 27/09/23*/
 
 
-@AndroidEntryPoint
 class ScreenShareFragment : BottomSheetDialogFragment() {
 
     val TAG = "ScrnShareFragment::"

@@ -21,4 +21,8 @@
         <item name="android:fontFamily">@font/kia_signature_fix_bold</item>
         <item name="android:textColor">@color/color_kia_black</item>
     </style>
+    <style name="file_image_corner">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">5%</item>
+    </style>
 </resources>

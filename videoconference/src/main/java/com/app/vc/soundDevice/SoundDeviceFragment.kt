@@ -15,12 +15,10 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.app.vc.MainViewModel
 import com.app.vc.R
 import com.app.vc.databinding.FragmentSoundDeviceBinding
-import dagger.hilt.android.AndroidEntryPoint
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager
 
 /* created by Naghma 27/09/23*/
 
-@AndroidEntryPoint
 class SoundDeviceFragment : BottomSheetDialogFragment() {
 
     val TAG= "SoundDeviceFragment::"
