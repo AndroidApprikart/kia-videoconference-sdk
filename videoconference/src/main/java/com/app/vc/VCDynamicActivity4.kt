@@ -24,7 +24,6 @@ import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.DisplayMetrics
 import android.util.Log
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -41,8 +40,6 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.gson.Gson
 import com.app.vc.VCConstants.CAMERA_STATUS
 import com.app.vc.VCConstants.CAM_TURNED_OFF
 import com.app.vc.VCConstants.CAM_TURNED_ON
@@ -62,19 +59,21 @@ import com.app.vc.VCConstants.TEXT_MESSAGE
 import com.app.vc.VCConstants.UPDATE_STATUS
 import com.app.vc.baseui.BaseActivity
 import com.app.vc.customui.RemotePeerView
-import com.app.vc.message.MessageFragment
 import com.app.vc.databinding.ActivityVcDynamic4Binding
 import com.app.vc.databinding.DialogCameraEnableBinding
 import com.app.vc.databinding.DialogEndTrheCallBinding
 import com.app.vc.databinding.PermissionsDialogLayoutBinding
 import com.app.vc.databinding.ReadyToJoinDialogLayoutBinding
 import com.app.vc.databinding.RejoinDialogLayoutBinding
+import com.app.vc.message.MessageFragment
 import com.app.vc.models.MessageModel
 import com.app.vc.models.ParticipantsModel
 import com.app.vc.participants.ParticipantFragment
 import com.app.vc.screenshare.MediaProjectionService
 import com.app.vc.screenshare.ScreenShareFragment
 import com.app.vc.soundDevice.SoundDeviceFragment
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.gson.Gson
 import de.tavendo.autobahn.WebSocket
 import io.antmedia.webrtcandroidframework.IDataChannelObserver
 import io.antmedia.webrtcandroidframework.IWebRTCListener
@@ -292,7 +291,7 @@ class VCDynamicActivity4 : BaseActivity() {
         fragmentManager = this.supportFragmentManager
         fragmentTransaction = fragmentManager.beginTransaction()
         fragmentManager.beginTransaction()
-            .replace(R.id.fragment_holder_for_message, messageFragment, "MESSAGE_FRAG")
+            .add(R.id.fragment_holder_for_message, messageFragment, "MESSAGE_FRAG")
             .commit()
 //        LocalBroadcastManager.getInstance(this).registerReceiver(customSDKBroadcastReceiver, IntentFilter(
 //            SDK_CUSTOM_BROADCAST_ACTION))
@@ -403,6 +402,15 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
 
+        }
+        viewModel.messageUnreadCount.observe(this){
+            it?.let{
+                if(it.isBlank()){
+                    binding.tvMsgCount.visibility = View.GONE
+                }else{
+                    binding.tvMsgCount.visibility = View.VISIBLE
+                }
+            }
         }
     }
 
@@ -571,9 +579,12 @@ class VCDynamicActivity4 : BaseActivity() {
 
         binding.btnChat.setOnClickListener {
 //            openMessageFragment()
-
-            binding.fragmentHolderForMessage.visibility = View.VISIBLE
+            fragmentManager.beginTransaction()
+                .show(messageFragment)
+                .commit()
+           binding.fragmentHolderForMessage.visibility = View.VISIBLE
             viewModel.messageFragVisible = true
+            viewModel.clearMessageBadgeValue()
         }
     }
 
@@ -967,6 +978,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 CallActivity.EXTRA_SCREENCAPTURE,
                 false
             ) //initially for the screen capture to be false
+            viewModel.clearMessageBadgeValue()
             Log.d(TAG, "initConferenceManager: ")
             binding.fContainer.removeAllViews()
             binding.sContainer.removeAllViews()
@@ -2867,12 +2879,14 @@ class VCDynamicActivity4 : BaseActivity() {
 
             override fun onRoomInformation(streams: Array<out String>?) {
                 Log.w(TAG, "onRoomInformation:  streams -> ${Gson().toJson(streams!!)}")
-                if (viewModel.roomInfoStreamsList.isEmpty()) {
-                    viewModel.roomInfoStreamsList.addAll(streams)
-                    udpateStreamsFromRoomInformation(streams, true)
-                } else {
-                    udpateStreamsFromRoomInformation(streams, false)
-                }
+                Thread(Runnable {
+                    if (viewModel.roomInfoStreamsList.isEmpty()) {
+                        viewModel.roomInfoStreamsList.addAll(streams)
+                        udpateStreamsFromRoomInformation(streams, true)
+                    } else {
+                        udpateStreamsFromRoomInformation(streams, false)
+                    }
+                }).start()
 
             }
 
@@ -2961,7 +2975,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
                 val data = buffer?.data
                 val messageText = data?.array()?.let { String(it, StandardCharsets.UTF_8) }
-//                processMessageSentFromChat(JSONObject(messageText),successful)
+                processMessageSentFromChat(JSONObject(messageText),successful)
             }
 
         }
@@ -3133,8 +3147,12 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun closeMessageFragment() {
+        fragmentManager.beginTransaction()
+            .hide(messageFragment)
+            .commit()
         binding.fragmentHolderForMessage.visibility = View.GONE
         viewModel.messageFragVisible = false
+        viewModel.clearMessageBadgeValue()
         Log.d(TAG, "closeMessageFragmet: ")
 //        val f = fragmentManager.findFragmentByTag("MESSAGE_FRAG")
 //        if (f != null) {
@@ -3227,7 +3245,7 @@ class VCDynamicActivity4 : BaseActivity() {
         )
         viewModel.messageListInMVM.add(tempRemoteMessage)
         viewModel.addNewRemoteMessage.value = remoteMessageId
-
+        viewModel.incrementMessageBadgeValue()
     }
 
     private fun processFileMessageFromDataChannel(
@@ -3255,7 +3273,7 @@ class VCDynamicActivity4 : BaseActivity() {
         )
         viewModel.messageListInMVM.add(tempRemoteMessage)
         viewModel.addNewRemoteMessage.value = remoteMessageId
-
+        viewModel.incrementMessageBadgeValue()
     }
 
 

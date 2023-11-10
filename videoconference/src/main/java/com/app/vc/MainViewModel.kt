@@ -355,5 +355,17 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    var messageBadgeValue = 0
+    var messageUnreadCount = MutableLiveData<String>()
 
+    fun incrementMessageBadgeValue(){
+        messageBadgeValue++
+        messageUnreadCount.value = "${messageBadgeValue}"
+        Log.d(TAG, "incrementMessageBadgeValue: "+messageBadgeValue)
+    }
+    fun clearMessageBadgeValue(){
+        messageBadgeValue = 0
+        messageUnreadCount.value = ""
+        Log.d(TAG, "clearMessageBadgeValue: ")
+    }
 }

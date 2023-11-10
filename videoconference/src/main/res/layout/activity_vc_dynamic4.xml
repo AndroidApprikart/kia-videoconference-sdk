@@ -142,7 +142,22 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:srcCompat="@drawable/ic_messages" />
-
+            <TextView
+                android:id="@+id/tv_msg_count"
+                style="@style/text_view_regular"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_participants_background"
+                android:backgroundTint="@color/white"
+                android:gravity="center"
+                android:maxLength="5"
+                android:layout_margin="@dimen/_1sdp"
+                android:textSize="10sp"
+                app:layout_constraintTop_toTopOf="@+id/btn_chat"
+                app:layout_constraintEnd_toEndOf="@id/btn_chat"
+                android:text="@{vm.messageUnreadCount}"
+                android:textColor="@color/color_kia_black"
+                android:visibility="gone" />
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_audio_switch"
                 android:layout_width="wrap_content"

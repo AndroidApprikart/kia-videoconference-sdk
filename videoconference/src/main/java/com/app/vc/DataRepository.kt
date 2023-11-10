@@ -3,7 +3,6 @@ package com.app.vc
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
 import com.app.vc.models.UploadVcFileResponse
 import com.app.vc.network.ApiDetails
 import com.app.vc.network.ApiInterface

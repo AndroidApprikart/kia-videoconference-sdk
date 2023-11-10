@@ -9,7 +9,7 @@ object VCConstants {
     val MANDATORY_PERMISSIONS = arrayOf(
         android.Manifest.permission.MODIFY_AUDIO_SETTINGS,
         android.Manifest.permission.READ_EXTERNAL_STORAGE,
-        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+//        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
         android.Manifest.permission.READ_PHONE_STATE,
         android.Manifest.permission.BLUETOOTH_CONNECT,
         android.Manifest.permission.RECORD_AUDIO,
@@ -41,16 +41,13 @@ object VCConstants {
             android.Manifest.permission.READ_PHONE_STATE,
             android.Manifest.permission.RECORD_AUDIO,
             android.Manifest.permission.INTERNET,
-            android.Manifest.permission.CAMERA,
-            android.Manifest.permission.READ_MEDIA_IMAGES,
-            android.Manifest.permission.READ_MEDIA_AUDIO,
-            android.Manifest.permission.READ_MEDIA_VIDEO
+            android.Manifest.permission.CAMERA
         )
     }else{
         arrayOf(
             android.Manifest.permission.MODIFY_AUDIO_SETTINGS,
             android.Manifest.permission.READ_EXTERNAL_STORAGE,
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+//            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
             android.Manifest.permission.READ_PHONE_STATE,
             android.Manifest.permission.RECORD_AUDIO,
             android.Manifest.permission.INTERNET,
