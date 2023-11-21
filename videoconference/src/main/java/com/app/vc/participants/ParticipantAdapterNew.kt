@@ -30,9 +30,9 @@ class ParticipantAdapterNew(
             if (data.isLocal)
             /*            holder.tvParticipantName.text =
                            participantsList[position].displayName.plus(localParticipant) /*display only You*/*/
-                binding.tvParticipantName.text = localParticipant
+                binding.tvParticipantName.text =  data.displayName +"\n"+localParticipant
             else
-                binding .tvParticipantName.text = data.trackId
+                binding .tvParticipantName.text = data.displayName
 
 
 

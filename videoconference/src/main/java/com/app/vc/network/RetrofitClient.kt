@@ -17,7 +17,7 @@ class RetrofitClient {
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
-        .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC))
+        .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
 //        .addInterceptor { chain ->
 //            val original = chain.request()
 //            val requestBuilder = if(!preferenceProvider.loginToken.isNullOrEmpty()) {
@@ -46,7 +46,7 @@ class RetrofitClient {
             .create(api)
     }
 
-    fun getRetrofitClient(): Retrofit {
+    fun getRetrofitClient(baseURL:String): Retrofit {
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okhttp)

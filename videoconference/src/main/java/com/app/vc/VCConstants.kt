@@ -5,6 +5,7 @@ import android.os.Build
 object VCConstants {
 
     // List of mandatory application permissions to be checked before starting VC conference
+    const val version = "2.8"
 
     val MANDATORY_PERMISSIONS = arrayOf(
         android.Manifest.permission.MODIFY_AUDIO_SETTINGS,
@@ -94,6 +95,9 @@ object VCConstants {
     const val sContainerSizeLandscape = 200
     const val sContainerSizePortrait = 400
 
-
+    enum class UserType(val value: String) {
+        SERVICE_PERSON("SERVICE_PERSON"),
+        CUSTOMER("customer")
+    }
 
 }

@@ -13,5 +13,5 @@ class ParticipantsModel(
     var isCamOn:Boolean,
     var track: VideoTrack?
 ){
-    var localName = "ABC"
+    var displayName = ""
 }

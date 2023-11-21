@@ -1,33 +1,31 @@
 package com.app.vc
 
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import com.app.vc.models.DisplayNameResponse
+import com.app.vc.models.UpdateStreamIdResponse
 import com.app.vc.models.UploadVcFileResponse
+import com.app.vc.models.ValidateVcResponse
+import com.app.vc.models.VcConfigurationResponse
+import com.app.vc.models.login.RequestModelLogin
+import com.app.vc.models.login.ResponseModelLogin
 import com.app.vc.network.ApiDetails
 import com.app.vc.network.ApiInterface
 import com.app.vc.network.RetrofitClient
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
-import retrofit2.HttpException
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.Part
-import retrofit2.http.Query
 
 class DataRepository (
 ){
 
+    //can be deleted!
     private val retrofit =
-        RetrofitClient().getRetrofitClient()
+        RetrofitClient().getRetrofitClient(ApiDetails.BASE_URL)
     private val api: ApiInterface = retrofit.create(ApiInterface::class.java)
 
     val TAG = "DataRepository"
 
-    suspend fun doUploadVCAPICall(
+  /*  suspend fun doUploadVCAPICall(
         file: MultipartBody.Part,
         vc_room: String,
         user_type: String,
@@ -38,5 +36,99 @@ class DataRepository (
         return flow {
             emit(api.uploadVcFile(file, vc_room,user_type,who,appVersion))
         }
+    }*/
+
+
+   /* suspend fun doValidateVCAPICallForServicePerson(
+        roomId:String,passcode:String, userType:String, service_id:String,version:String
+    ): Flow<ValidateVcResponse> {
+        Log.d(TAG, "doValidateVCAPICallForServicePerson: ")
+        return flow{
+            emit(api.validateVcForServicePerson(
+                room = roomId,
+                authPasscode = passcode,
+                userType = userType,
+                servicePersonId = service_id,
+                appVersion = VCConstants.version
+            ))
+        }
+    }*/
+
+ /*   suspend fun doValidateVCAPICallForCustomer(
+        user_type: String,
+        vc_room: String,
+        passcode: String,
+        appVersion: String
+    ): Flow<ValidateVcResponse> {
+        Log.d(TAG, "doValidateVCAPICallForCustomer: ")
+        return flow{
+            emit(api.validateVcForCustomer(
+                room = vc_room,
+                authPasscode = passcode,
+                userType = user_type,
+                appVersion = appVersion
+            ))
+        }
     }
+*/
+  /*  suspend fun doVCConfigurationAPICall(
+        user_type: String,
+        vc_room: String,
+        who: String,
+        appVersion: String
+    ): Flow<VcConfigurationResponse> {
+        Log.d(TAG, "doVCConfigurationAPICall: ")
+        return flow{
+            emit(api.getVcConfiguration(
+                room = vc_room,
+                who = who,
+                userType = user_type,
+                appVersion = appVersion
+            ))
+        }
+    }
+*/
+ /*   suspend fun updateStreamIdInServer(
+        display_name:String,
+        stream_id:String,
+        user_type: String,
+        vc_room: String,
+        appVersion: String
+    ): Flow<UpdateStreamIdResponse> {
+        Log.d(TAG, "updateStreamIdInServer: ")
+        return flow{
+            emit(api.updateStreamIdInServer(
+                displayName = display_name,
+                streamId = stream_id,
+                roomId = vc_room,
+                userType = user_type,
+                appVersion = appVersion
+            ))
+        }
+    }*/
+
+   /* suspend fun getDisplayNameForStream(
+        stream_id:String,
+        vc_room: String,
+        appVersion: String
+    ): Flow<DisplayNameResponse> {
+        Log.d(TAG, "getDisplayNameForStream: ")
+        return flow{
+            emit(api.getDisplayName(
+               vc_room,
+                stream_id,
+                appVersion
+            ))
+        }
+    }*/
+
+
+   /* suspend fun doLoginAPICall(
+        body:RequestModelLogin
+    ): Flow<ResponseModelLogin> {
+        Log.d(TAG, "doLoginAPICall: ")
+        return flow{
+            emit(api.login(body))
+        }
+    }*/
 }
