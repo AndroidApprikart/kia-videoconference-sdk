@@ -3,11 +3,10 @@
     android:shape="rectangle">
 
     <corners
-        android:topLeftRadius="@dimen/_10sdp"
-        android:bottomLeftRadius="@dimen/_10sdp"
-        android:bottomRightRadius="@dimen/_10sdp"/>
+        android:topLeftRadius="@dimen/_5sdp"
+        android:bottomLeftRadius="@dimen/_5sdp"
+        android:bottomRightRadius="@dimen/_5sdp"/>
 
-    <solid
-        android:color="@android:color/holo_orange_light"/>
+    <solid android:color="@color/white" /> <!-- Replace with your desired background color -->
 
 </shape>

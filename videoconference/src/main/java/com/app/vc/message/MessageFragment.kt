@@ -1,14 +1,9 @@
 package com.app.vc.message
 
-import android.app.Activity
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -16,8 +11,6 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
-import androidx.core.content.ContextCompat.getSystemService
-import androidx.core.content.FileProvider
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -25,13 +18,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.app.vc.AndroidUtils
 import com.app.vc.MainViewModel
 import com.app.vc.R
-import com.app.vc.VCConstants
 import com.app.vc.baseui.BaseFragment
 import com.app.vc.databinding.FragmentMessageBinding
 import com.app.vc.models.MessageModel
-import com.app.vc.models.MessageStatusEnum
 import com.app.vc.network.ApiDetails
-import java.io.File
 
 
 /* created by Naghma 27/09/23*/
@@ -47,7 +37,8 @@ class MessageFragment : BaseFragment(), MessageClickListener {
 
 
     private var dataList = ArrayList<MessageModel>()
-    private lateinit var adapter: MessageAdapterNew
+//    private lateinit var adapter: MessageAdapterNew
+    private lateinit var adapter: MessageAdapterMutliple
     private lateinit var mContext: Context
 
 
@@ -106,8 +97,8 @@ class MessageFragment : BaseFragment(), MessageClickListener {
 
     override fun onStart() {
         super.onStart()
-
     }
+
 
     private fun setUpClickListeners(){
         binding.btnSendMessage.setOnClickListener{
@@ -189,43 +180,46 @@ class MessageFragment : BaseFragment(), MessageClickListener {
         Log.d(TAG, "setUpRecyclerView: new DataList ->${dataList.size}")
         /*new setup recycler view for the same */
         binding.rvData.layoutManager = LinearLayoutManager(mContext, LinearLayoutManager.VERTICAL, false)
-        adapter = MessageAdapterNew(dataList,this)
+//        adapter = MessageAdapterNew(dataList,this)
+        adapter = MessageAdapterMutliple(dataList,this)
         binding.rvData.adapter = adapter
     }
 
     private fun processNewRemoteMessage(messages: MessageModel) {
-        Log.d(TAG, "processNewRemoteMessage: ")
-        dataList.add(messages)
-        adapter.notifyItemInserted(dataList.lastIndex)
-                binding.rvData.smoothScrollToPosition(dataList.size - 1)
+           Log.d(TAG, "processNewRemoteMessage: ")
+           dataList.add(messages)
+           adapter.notifyItemInserted(dataList.lastIndex)
+           binding.rvData.smoothScrollToPosition(dataList.lastIndex)
+
+
     }
 
     private fun processNewLocalMessage(messages: MessageModel) {
-        Log.d(TAG, "processNewLocalMessage: ")
-        dataList.add(messages)
-        adapter.notifyItemInserted(dataList.lastIndex)
-        binding.rvData.smoothScrollToPosition(dataList.size - 1)
+          Log.d(TAG, "processNewLocalMessage: ")
+          dataList.add(messages)
+          adapter.notifyItemInserted(dataList.lastIndex)
+          binding.rvData.smoothScrollToPosition(dataList.lastIndex)
     }
 
     private fun processUpdateLocalMessage(oldMessageToUpdate: MessageModel) {
-        Log.d(TAG, "processUpdateLocalMessage: ")
-        /*to update the download and upload status-es and others and update the local list as well*/
-        var foundIndex = -1
-        for(i in dataList.indices)
-        {
-            if(dataList[i].id == oldMessageToUpdate.id)
+            Log.d(TAG, "processUpdateLocalMessage: ")
+            /*to update the download and upload status-es and others and update the local list as well*/
+            var foundIndex = -1
+            for(i in dataList.indices)
             {
-                foundIndex = i
-                break;
+                if(dataList[i].id == oldMessageToUpdate.id)
+                {
+                    foundIndex = i
+                    break;
+                }
             }
-        }
-        if(foundIndex!=-1)
-        {
-            /*replace this message with updated message and update adapter at the position*/
-            Log.d(TAG, "processUpdateLocalMessage: message found foundIndex")
-            dataList[foundIndex] = oldMessageToUpdate
-            adapter.notifyItemChanged(foundIndex)
-        }
+            if(foundIndex!=-1)
+            {
+                /*replace this message with updated message and update adapter at the position*/
+                Log.d(TAG, "processUpdateLocalMessage: message found foundIndex")
+                dataList[foundIndex] = oldMessageToUpdate
+                adapter.notifyItemChanged(foundIndex)
+            }
     }
 
     override fun openURLInWeb(url: String) {
@@ -263,6 +257,9 @@ class MessageFragment : BaseFragment(), MessageClickListener {
         hideSoftKeyboard(binding.edUseRInput)
         setUpRecyclerView()
         viewModelObservers()
+        if(dataList.isNotEmpty()){
+            binding.rvData.smoothScrollToPosition(dataList.lastIndex)
+        }
 //        moveToLastPosition()
     }
 

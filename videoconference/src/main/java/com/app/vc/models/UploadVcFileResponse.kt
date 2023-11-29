@@ -15,5 +15,6 @@ data class UploadVcFileResponse(
     var file:String?,
     @SerializedName("created_date_time")
     var createdDateTime:String?,
+    @SerializedName("apiErrorMessage", alternate = arrayOf("error"))
     var apiErrorMessage: String?
 ):java.io.Serializable

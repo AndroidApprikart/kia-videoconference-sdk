@@ -1,13 +1,27 @@
 package com.app.vc
 
+import android.os.Handler
 import android.os.RemoteException
 import android.util.Log
+import android.widget.Toast
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.app.vc.models.MessageModel
 import com.app.vc.models.ParticipantsModel
 import androidx.lifecycle.viewModelScope
+import com.app.vc.models.DisplayNameResponse
 import com.app.vc.models.MessageStatusEnum
+import com.app.vc.models.UpdateStreamIdResponse
+import com.app.vc.models.UploadVcFileResponse
+import com.app.vc.models.ValidateVcResponse
+import com.app.vc.models.VcConfigurationResponse
+import com.app.vc.models.login.RequestModelLogin
+import com.app.vc.models.login.ResponseModelLogin
+import com.app.vc.network.ApiDetails
+import com.app.vc.network.ApiInterface
+import com.app.vc.network.Resource
+import com.app.vc.network.RetrofitClient
 import com.google.gson.Gson
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager
 import kotlinx.coroutines.flow.catch
@@ -17,6 +31,10 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import org.webrtc.VideoTrack
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.HttpException
+import retrofit2.Response
 import java.io.File
 import java.net.ConnectException
 import java.net.MalformedURLException
@@ -27,10 +45,38 @@ import java.net.UnknownHostException
 class MainViewModel : ViewModel() {
     var repository = DataRepository()
     var TAG = "MAINVM::"
-
+    var serverUrl: String = "ws://vc.apprikart.com:5080/WebRTCAppEE/websocket"
+    var streamId: String? = null
+    var userType = VCConstants.UserType.CUSTOMER.value
     var toastMessage = MutableLiveData<String>()
-//    var isProgressVisible = MutableLiveData<Boolean>() //removed and replaced with normal function call
+    var testUserType: String? = null
+    var roomID: String? = null
+    var serviceAdvisorID: String? = null
+    var customerCode: String? = null
+    var roNo: String? = null
+    var dealerCode: String? = null
+    var userName:String? = null
+    var displayName: String? = null
 
+
+    var userId: String? = null
+    var password: String? =null
+    var deviceToken: String? = null
+    var vcEndTime:String? = null
+    var kecName:String? = null
+
+    var meetingPasscode:String? = null
+
+    var baseURL = ""
+    private fun getRetrofitServiceClient(baseURL:String) = RetrofitClient().getRetrofitClient(baseURL).create(
+        ApiInterface::class.java)
+
+
+    var kiaApprikartRetrofitClient = RetrofitClient().getRetrofitClient(ApiDetails.BASE_URL).create(
+        ApiInterface::class.java)
+
+    var initialConfigurationSucess  = false
+    //    var isProgressVisible = MutableLiveData<Boolean>() //removed and replaced with normal function call
     var isServiceStarted = false//used just for testing
 
 
@@ -48,6 +94,7 @@ class MainViewModel : ViewModel() {
 
 
     var updateParticipants = MutableLiveData<Boolean>()
+    var updateParticipantsNameUI= MutableLiveData<Boolean>() //to update the display name in UI
     var participantCount = MutableLiveData<String>()
 
     var isAudioDeviceUpdated = MutableLiveData<Boolean>()
@@ -94,6 +141,7 @@ class MainViewModel : ViewModel() {
 
     /*message handling functions*/
     fun processNewLocalTextMessage(userInputText: String, id: Long) {
+        Log.d(TAG, "processNewLocalTextMessage: ")
         val tempMessage = MessageModel(
             userName = "Local", //nahusha help
             messageText = userInputText.trim().toString(),
@@ -133,7 +181,8 @@ class MainViewModel : ViewModel() {
             tempMessage.localFilePath = localFilePath
             messageListInMVM.add(tempMessage)
             addNewLocalMessage.value = id
-            sendLocalFileMessageToDataChannel.value = -1//to be careful here -> just update it locally
+            sendLocalFileMessageToDataChannel.value =
+                -1//to be careful here -> just update it locally
         } else {
             Log.d(TAG, "processNewLocalFileMessage: after file upload")
             /*find the file message using message ID and send it to data channel only*/
@@ -149,8 +198,7 @@ class MainViewModel : ViewModel() {
     /*06 Nov 2023 - Upload file API*/
     var TOTAL_RETRIES = 3
 
-    /*07 Nov 2023:: IMP::nahusha help required here::to pass correct data for vc room, who and usertype*/
-    fun uploadVcFileAPICall(
+   fun uploadVcFileAPICallNew(
         file: File,
         vcRoom: String,
         userType: String,
@@ -158,71 +206,101 @@ class MainViewModel : ViewModel() {
         messageId: Long,
         forRetryProcess: Boolean
     ) {
-        Log.d(TAG, "uploadVcFileAPICall:  ")
+        Log.d(TAG, "uploadVcFileAPICallNew:  ")
         val requestFile = RequestBody.create("*/*".toMediaTypeOrNull(), file)
         val fileData = MultipartBody.Part.createFormData("file", file.name, requestFile)
         var retryCount = 0
-
-        viewModelScope.launch {
-            /*set status as UPLOAD_PROGRESS */
-            updateUploadStatusForFileMessage(
-                serverFileURL = "",
-                msgID = messageId,
-                status = MessageStatusEnum.FILE_UPLOAD_PROGRESS.tag
-            )
-
-
-            repository.doUploadVCAPICall(
-                file = fileData,
-                vc_room = vcRoom,
-                user_type = userType,
-                who = who,
-                appVersion = "1.0"
-            ).retry(TOTAL_RETRIES.toLong())
-                .catch { e ->
-                    Log.d(TAG, "uploadVcFileAPICall: failure")
-
-                    /*update the message ID as "UPLOAD_FAILED*/
-                    updateUploadStatusForFileMessage(
-                        serverFileURL = "",
-                        msgID = messageId,
-                        status = MessageStatusEnum.FILE_UPLOAD_FAILURE.tag
-                    )
-                    toastMessage.value = e.cause?.let { getErrorMessage(it) }
-
-                }.collect {
-                    Log.d(TAG, "uploadVcFileAPICall: success")
-                    /*update the message ID as "UPLOAD_SUCCESS*/
-                    updateUploadStatusForFileMessage(
-                        serverFileURL = it.file.toString(),
-                        msgID = messageId,
-                        status = MessageStatusEnum.FILE_UPLOAD_SUCCESS.tag
-                    )
-                    if (forRetryProcess) {
-                        processResendLocalFileMessage(
-                            fileName = file.name,
-                            serverFilePath = it.file.toString(),
+        val call = getRetrofitServiceClient(ApiDetails.BASE_URL).uploadVcFile(
+            file = fileData,
+            vc_room = vcRoom,
+            user_type = userType,
+            who = who,
+            VCConstants.version)
+        /*set status as UPLOAD_PROGRESS */
+        updateUploadStatusForFileMessage(
+            serverFileURL = "",
+            msgID = messageId,
+            status = MessageStatusEnum.FILE_UPLOAD_PROGRESS.tag
+        )
+        call.enqueue(object : retrofit2.Callback<UploadVcFileResponse>{
+            override fun onFailure(call: Call<UploadVcFileResponse>, t: Throwable) {
+                Log.d(TAG, "onFailure: uploadFile: Failure")
+                if (retryCount++ < TOTAL_RETRIES) {
+                    Log.d(TAG, "onFailure: Retrying... $retryCount out of $TOTAL_RETRIES")
+                    retry()
+                } else {
+                    retryCount = 0
+                    try {
+                        /*update the message ID as "UPLOAD_FAILED*/
+                        updateUploadStatusForFileMessage(
+                            serverFileURL = "",
                             msgID = messageId,
-                            isBeforeFileUpload = false
+                            status = MessageStatusEnum.FILE_UPLOAD_FAILURE.tag
                         )
-                    } else {
-                        processNewLocalFileMessage(
-                            fileName = file.name,
-                            serverFilePath = it.file.toString(),
-                            id = messageId,
-                            isBeforeFileUpload = false,
-                            localFilePath = ""
+                        toastMessage.value = t?.let { getErrorMessage(t) }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        //testing purpose, to be commented after testing
+//                        data.value = Resource.error("Server Busy: ${e.toString()}")
+                        //testing purpose, to be uncommented after testing
+                        toastMessage.value = "Something went wrong while sending the file. Please try after some time"
+                        /*update the message ID as "UPLOAD_FAILED*/
+                        updateUploadStatusForFileMessage(
+                            serverFileURL = "",
+                            msgID = messageId,
+                            status = MessageStatusEnum.FILE_UPLOAD_FAILURE.tag
                         )
                     }
-
                 }
+            }
 
-        }
+            override fun onResponse(call: Call<UploadVcFileResponse>, response: Response<UploadVcFileResponse>) {
+                Log.d(TAG, "onResponse: uploadFile: Success: ")
+                response?.body()?.let { it ->
+                    if (response.code() in 200..299) {
+                        /*update the message ID as "UPLOAD_SUCCESS*/
+                        updateUploadStatusForFileMessage(
+                            serverFileURL = it.file.toString(),
+                            msgID = messageId,
+                            status = MessageStatusEnum.FILE_UPLOAD_SUCCESS.tag
+                        )
+                        if (forRetryProcess) {
+                            processResendLocalFileMessage(
+                                fileName = file.name,
+                                serverFilePath = it.file.toString(),
+                                msgID = messageId,
+                                isBeforeFileUpload = false
+                            )
+                        } else {
+                            processNewLocalFileMessage(
+                                fileName = file.name,
+                                serverFilePath = it.file.toString(),
+                                id = messageId,
+                                isBeforeFileUpload = false,
+                                localFilePath = ""
+                            )
+                        }
+                    } else {
+                        /*update the message ID as "UPLOAD_FAILED*/
+                        updateUploadStatusForFileMessage(
+                            serverFileURL = "",
+                            msgID = messageId,
+                            status = MessageStatusEnum.FILE_UPLOAD_FAILURE.tag
+                        )
+                        toastMessage.value = response.errorBody().toString()
+                    }
+                }
+            }
+
+            fun retry() {
+                call.clone().enqueue(this)
+            }
+        })
 
 
     }
-
     private fun getErrorMessage(t: Throwable): String {
+        Log.d(TAG, "getErrorMessage: t-${Gson().toJson(t)}")
         var errorMessage = ""
         errorMessage = when (t) {
             is SocketTimeoutException -> "Timeout, Please try again with proper Internet Connection"
@@ -234,6 +312,7 @@ class MainViewModel : ViewModel() {
             //testing purpose, to be commented after testing
 //            else -> errorMessage = "Network error: $t"
             //testing purpose, to be uncommented after testing
+            is HttpException -> "exception"
             else -> "Server Busyb"
         }
         if (errorMessage.isEmpty()) {
@@ -354,6 +433,339 @@ class MainViewModel : ViewModel() {
             }
         }
     }
+
+    var messageBadgeValue = 0
+    var messageUnreadCount = MutableLiveData<String>()
+
+    fun incrementMessageBadgeValue() {
+        messageBadgeValue++
+        messageUnreadCount.value = "${messageBadgeValue}"
+        Log.d(TAG, "incrementMessageBadgeValue: " + messageBadgeValue)
+    }
+
+    fun clearMessageBadgeValue() {
+        messageBadgeValue = 0
+        messageUnreadCount.value = ""
+        Log.d(TAG, "clearMessageBadgeValue: ")
+    }
+
+    /*validate vc API's*/
+    var validateVCResponse = MutableLiveData<ValidateVcResponse>()
+
+    fun validateVcForCustomer(roomId: String, pass: String, userType: String) {
+        Log.d(TAG, "validateVcForCustomer:  ")
+        val call = kiaApprikartRetrofitClient.validateVcForCustomer(
+                room = roomId,
+                authPasscode = pass,
+                userType = userType,
+                appVersion = VCConstants.version
+        )
+        call.enqueue(object : Callback<ValidateVcResponse> {
+            override fun onFailure(call: Call<ValidateVcResponse>, t: Throwable) {
+                toastMessage.value = getErrorMessage(t)
+                validateVCResponse.value = ValidateVcResponse("failed",getErrorMessage(t))
+            }
+            override fun onResponse(
+                call: Call<ValidateVcResponse>,
+                response: Response<ValidateVcResponse>
+            ) {
+                Log.d(TAG, "onResponse: validateVcForCustomer: ${response.body()}")
+                if (response.code() in 200..299){
+                    if (response.body()!=null) {
+                        validateVCResponse.value = response.body()
+                    } else {
+                        validateVCResponse.value = ValidateVcResponse("failed",
+                        "Something went wrong.")
+                    }
+                } else {
+                    validateVCResponse.value = ValidateVcResponse("failed", "Something went wrong.")
+                }
+            }
+
+        })
+
+    }
+
+    fun validateVcForServicePerson(
+        roomId: String, pass: String, userType: String, service_id: String
+    ) {
+        Log.d(TAG, "validateVcForServicePerson:  ")
+        val call = kiaApprikartRetrofitClient.validateVcForServicePerson(
+            room = roomId, authPasscode = pass,
+            userType = userType,
+            servicePersonId = service_id,
+            appVersion = VCConstants.version
+        )
+        call.enqueue(object : Callback<ValidateVcResponse> {
+            override fun onFailure(call: Call<ValidateVcResponse>, t: Throwable) {
+                toastMessage.value = "Something went wrong"
+                validateVCResponse.value = ValidateVcResponse("failed",getErrorMessage(t))
+            }
+            override fun onResponse(
+                call: Call<ValidateVcResponse>,
+                response: Response<ValidateVcResponse>
+            ) {
+                Log.d(TAG, "onResponse: validateVcForServicePerson: ${response.body()}")
+                if (response.code() in 200..299){
+                    if (response.body()!=null) {
+                        validateVCResponse.value = response.body()
+                    } else {
+                        validateVCResponse.value = ValidateVcResponse("failed", "Something went wrong.")
+                    }
+                } else {
+                    validateVCResponse.value = ValidateVcResponse("failed", "Something went wrong.")
+                }
+            }
+
+        })
+    }
+
+    var vcConfigurationResponse = MutableLiveData<VcConfigurationResponse>()
+
+    fun getVCConfiguration(roomId: String) {
+        Log.d(TAG, "getVCConfiguration:  ")
+        val call = kiaApprikartRetrofitClient.getVcConfiguration(
+            room = roomId,
+            who = "Android",
+            userType = "kec",
+            appVersion = VCConstants.version
+        )
+        call.enqueue(object : Callback<VcConfigurationResponse> {
+            override fun onFailure(call: Call<VcConfigurationResponse>, t: Throwable) {
+                toastMessage.value = getErrorMessage(t)
+                vcConfigurationResponse.value = VcConfigurationResponse(null,"failure",getErrorMessage(t))
+            }
+            override fun onResponse(
+                call: Call<VcConfigurationResponse>,
+                response: Response<VcConfigurationResponse>
+            ) {
+                Log.d(TAG, "onResponse: getVCConfiguration: ${response.body()}")
+                if (response.code() in 200..299){
+                    if (response.body()!=null) {
+                        vcConfigurationResponse.value = response.body()
+                    } else {
+                        vcConfigurationResponse.value = VcConfigurationResponse(null, "failure", "Something went wrong. ")
+                    }
+                } else {
+                    vcConfigurationResponse.value = VcConfigurationResponse(null, "failure", "Something went wrong.")
+                }
+            }
+
+        })
+
+
+    }
+
+    var isLocalStreamIdUpdated = false
+    private var updateStreamIdResponse = MutableLiveData<UpdateStreamIdResponse>()
+
+    fun updateStreamIdInServerAPICall(
+        displayName: String,
+        roomId: String,
+        userType: String,
+        streamId: String,
+        version: String
+    ) {
+        Log.d(TAG, "updateStreamIdInServerAPICall:  ")
+        var retryCount = 0
+        val call = kiaApprikartRetrofitClient.updateStreamIdInServer(
+            displayName = displayName,
+            streamId = streamId,
+            roomId = roomId,
+            userType = userType,
+            appVersion = version
+        )
+        call.enqueue(object : Callback<UpdateStreamIdResponse> {
+            override fun onFailure(call: Call<UpdateStreamIdResponse>, t: Throwable) {
+                if (retryCount++ < TOTAL_RETRIES) {
+                    Log.d(TAG, "onFailure: Retrying... $retryCount out of $TOTAL_RETRIES")
+                    retry()
+                } else {
+                    retryCount = 0
+                    toastMessage.value = "Something went wrong. Failure."
+                }
+            }
+
+            override fun onResponse(
+                call: Call<UpdateStreamIdResponse>,
+                response: Response<UpdateStreamIdResponse>
+            ) {
+                Log.d(TAG, "onResponse: updateStreamIdInServerAPICall: ${response.body()}")
+                if (response.code() in 200..299){
+                    if (response.body()!=null) {
+                        updateStreamIdResponse.value = response.body()
+
+                        updateStreamIdResponse.value?.let{
+                            if (it.status.isNullOrBlank()) {
+                                if (it.apiErrorMessage.isNullOrBlank()) {
+                                   toastMessage.value = "Server busy!"
+                                } else {
+                                    toastMessage.value = it.apiErrorMessage.toString()
+                                }
+                                if (!isLocalStreamIdUpdated) {
+                                    //nahusha help :: be careful here..there will be retrying of the network call done here
+//                                        retry()
+                                }
+                            } else {
+                                if (it.status.equals("success",true)) {
+                                    isLocalStreamIdUpdated = true
+                                    getDisplayNameForStreamId(roomId,streamId,VCConstants.version)
+                                } else if (!isLocalStreamIdUpdated) {
+                                    //nahusha help :: be careful here..there will be retrying of the network call done here
+//                                    retry()
+                                }
+                            }
+                        }
+                    } else {
+                        toastMessage.value = "Something went wrong."
+                    }
+                } else {
+                    toastMessage.value = "Something went wrong."
+                }
+            }
+            fun retry() {
+                call.clone().enqueue(this)
+            }
+        })
+
+    }
+
+    private var getDisplayNameResponse = MutableLiveData<DisplayNameResponse>()
+
+    fun getDisplayNameForStreamId(roomId: String, streamId: String, version: String) {
+        Log.d(TAG, "getDisplayNameForStreamId:  ")
+        val call = kiaApprikartRetrofitClient.getDisplayName(
+            roomId,
+            streamId,
+            version
+        )
+        call.enqueue(object : Callback<DisplayNameResponse> {
+            override fun onFailure(call: Call<DisplayNameResponse>, t: Throwable) {
+                toastMessage.value = "Something went wrong. Failure."
+                getDisplayNameResponse.value = DisplayNameResponse(null, null, null)
+            }
+
+            override fun onResponse(
+                call: Call<DisplayNameResponse>,
+                response: Response<DisplayNameResponse>
+            ) {
+                Log.d(TAG, "onResponse: getDisplayNameForStreamId: ${response.body()}")
+                if (response.code() in 200..299){
+                    if (response.body()!=null) {
+                        getDisplayNameResponse.value = response.body()
+                        getDisplayNameResponse.value?.let {
+                            processGetDisplayNameResponse(roomId,streamId,
+                                it
+                            )
+                        }
+                    } else {
+                        getDisplayNameResponse.value = DisplayNameResponse(null, null, null)
+                    }
+                } else {
+                    getDisplayNameResponse.value = DisplayNameResponse(null, null, null)
+                }
+            }
+
+        })
+    }
+
+    private fun processGetDisplayNameResponse(roomId:String, stream_Id: String,displayData:DisplayNameResponse){
+        Log.d(TAG, "processGetDisplayNameResponse: stream_id ->${stream_Id} :: streamID -> ${streamId} ::displayName -> ${displayData.displayName}")
+        if(stream_Id.equals(streamId)){
+            /*this is local participant*/
+            /*do not update..ignore*/
+            var resultPair = getLocalParticipant()
+            if (resultPair.second != -1) {
+                /*update this participants display name message*/
+                Log.d(TAG, "processGetDisplayNameResponse: localParticipant found found")
+                var foundParticipant = participants[resultPair.second]
+                foundParticipant.displayName = displayData.displayName?:stream_Id
+                participants[resultPair.second] = foundParticipant
+                Log.d(TAG, "processGetDisplayNameResponse: particiapnts -> ${Gson().toJson(participants)}")
+                updateParticipants.value = true
+                updateParticipantsNameUI.value = true
+            }
+            return
+        }
+        Log.d(TAG, "processGetDisplayNameResponse: -> ")
+        /*just extra comparision ..can be commented*/
+        var resultPair = getParticipantForStream(stream_Id)
+        if (resultPair.second != -1) {
+            /*update this participants display name message*/
+            Log.d(TAG, "processGetDisplayNameResponse: participant found")
+            var foundParticipant = participants[resultPair.second]
+            foundParticipant.displayName = displayData.displayName?:stream_Id
+            participants[resultPair.second] = foundParticipant
+            Log.d(TAG, "processGetDisplayNameResponse: particiapnts -> ${Gson().toJson(participants)}")
+            updateParticipants.value = true
+            updateParticipantsNameUI.value = true
+        }
+    }
+
+    private fun getParticipantForStream(stream_Id: String): Pair<ParticipantsModel?, Int>{
+        Log.d(TAG, "getParticipantForStream:")
+        var participantIndex = -1
+        for (i in participants.indices) {
+            Log.d(TAG, "getParticipantForStream: trackID -> ${participants[i].trackId} :;streamId -> ${stream_Id}")
+            if (participants[i].trackId.contains(stream_Id)) {
+                participantIndex = i
+                break;
+            }
+        }
+        return if (participantIndex != -1) {
+            Pair(participants[participantIndex], participantIndex)
+        } else {
+            Pair(null, -1)
+        }
+    }
+
+    private fun getLocalParticipant(): Pair<ParticipantsModel?, Int>{
+        Log.d(TAG, "getLocalParticipant:")
+        var participantIndex = -1
+        for (i in participants.indices) {
+            if (participants[i].isLocal) {
+                participantIndex = i
+                break;
+            }
+        }
+        return if (participantIndex != -1) {
+            Pair(participants[participantIndex], participantIndex)
+        } else {
+            Pair(null, -1)
+        }
+    }
+
+    var loginResponse = MutableLiveData<ResponseModelLogin>()
+
+    fun doLogin(requestObject: RequestModelLogin){
+        val call = kiaApprikartRetrofitClient.login(requestObject)
+        call.enqueue(object : Callback<ResponseModelLogin> {
+            override fun onFailure(call: Call<ResponseModelLogin>, t: Throwable) {
+                toastMessage.value = "Something went wrong. Failure"
+                loginResponse.value = ResponseModelLogin(null,null,null,"failure",false)
+            }
+
+            override fun onResponse(
+                call: Call<ResponseModelLogin>,
+                response: Response<ResponseModelLogin>
+            ) {
+                Log.d(TAG, "onResponse: doLogin: ${response.body()}")
+                if (response.code() in 200..299){
+                    if (response.body()!=null) {
+                        loginResponse.value = response.body()
+                    } else {
+                        toastMessage.value = "Something went wrong."
+                        loginResponse.value = ResponseModelLogin(null,null,null,"failure",false)
+                    }
+                } else {
+                    toastMessage.value = "Something went wrong"
+                    loginResponse.value = ResponseModelLogin(null,null,null,"failure",false)
+                }
+            }
+
+        })
+    }
+
 
 
 }

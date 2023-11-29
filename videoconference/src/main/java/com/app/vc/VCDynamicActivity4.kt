@@ -24,7 +24,6 @@ import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.DisplayMetrics
 import android.util.Log
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -40,9 +39,8 @@ import androidx.core.view.children
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.gson.Gson
 import com.app.vc.VCConstants.CAMERA_STATUS
 import com.app.vc.VCConstants.CAM_TURNED_OFF
 import com.app.vc.VCConstants.CAM_TURNED_ON
@@ -62,19 +60,23 @@ import com.app.vc.VCConstants.TEXT_MESSAGE
 import com.app.vc.VCConstants.UPDATE_STATUS
 import com.app.vc.baseui.BaseActivity
 import com.app.vc.customui.RemotePeerView
-import com.app.vc.message.MessageFragment
 import com.app.vc.databinding.ActivityVcDynamic4Binding
+import com.app.vc.databinding.AlertDialogLayoutBinding
 import com.app.vc.databinding.DialogCameraEnableBinding
 import com.app.vc.databinding.DialogEndTrheCallBinding
 import com.app.vc.databinding.PermissionsDialogLayoutBinding
 import com.app.vc.databinding.ReadyToJoinDialogLayoutBinding
 import com.app.vc.databinding.RejoinDialogLayoutBinding
+import com.app.vc.message.MessageFragment
 import com.app.vc.models.MessageModel
 import com.app.vc.models.ParticipantsModel
+import com.app.vc.models.login.RequestModelLogin
 import com.app.vc.participants.ParticipantFragment
 import com.app.vc.screenshare.MediaProjectionService
 import com.app.vc.screenshare.ScreenShareFragment
 import com.app.vc.soundDevice.SoundDeviceFragment
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.gson.Gson
 import de.tavendo.autobahn.WebSocket
 import io.antmedia.webrtcandroidframework.IDataChannelObserver
 import io.antmedia.webrtcandroidframework.IWebRTCListener
@@ -103,9 +105,7 @@ class VCDynamicActivity4 : BaseActivity() {
     val TAG_PERMISSION = "VCPermission::"
 
 
-    val serverUrl: String = "ws://vc.apprikart.com:5080/WebRTCAppEE/websocket"
-    val roomId = "room3"
-    var streamId: String? = null
+
 
     private var conferenceManager: MultitrackConferenceManager? = null
     var telephonyManager: TelephonyManager? = null
@@ -228,8 +228,8 @@ class VCDynamicActivity4 : BaseActivity() {
 
     private lateinit var noInternetDialog: Dialog
 
-    private lateinit var iWebRTCListener: IWebRTCListener
-    private lateinit var dataChannelObserver: IDataChannelObserver
+    private  var iWebRTCListener: IWebRTCListener? =null
+    private  var dataChannelObserver: IDataChannelObserver? = null
 
     private lateinit var fragmentTransaction: FragmentTransaction
     private lateinit var fragmentManager: FragmentManager
@@ -251,7 +251,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            streamId = intent.getStringExtra("stream_id_in_use")
         }
         Log.d(TAG, "onCreate: intentForReconnect -> $isIntentForReconnect")
-        isLandscape = resources.getBoolean(R.bool.landscape_only)
+        isLandscape = resources.getBoolean(com.app.vc.R.bool.landscape_only)
         // Set window styles for fullscreen-window size. Needs to be done before
         // adding content.
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -269,12 +269,12 @@ class VCDynamicActivity4 : BaseActivity() {
         // adding onbackpressed callback listener.
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
         this.intent.putExtra(CallActivity.EXTRA_CAPTURETOTEXTURE_ENABLED, true)
+        PreferenceManager.init(this)
         init()
         showProgressDialog()
         viewModelObservers()
-        setUpOnClickListeners()
-        checkForMandatoryPermissions()
-
+        initDataChannelListener()
+        setUpVcDetails()
 
     }
 
@@ -292,7 +292,7 @@ class VCDynamicActivity4 : BaseActivity() {
         fragmentManager = this.supportFragmentManager
         fragmentTransaction = fragmentManager.beginTransaction()
         fragmentManager.beginTransaction()
-            .replace(R.id.fragment_holder_for_message, messageFragment, "MESSAGE_FRAG")
+            .add(R.id.fragment_holder_for_message, messageFragment, "MESSAGE_FRAG")
             .commit()
 //        LocalBroadcastManager.getInstance(this).registerReceiver(customSDKBroadcastReceiver, IntentFilter(
 //            SDK_CUSTOM_BROADCAST_ACTION))
@@ -404,6 +404,69 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
         }
+        viewModel.messageUnreadCount.observe(this){
+            it?.let{
+                if(it.isBlank()){
+                    binding.tvMsgCount.visibility = View.GONE
+                }else{
+                    binding.tvMsgCount.visibility = View.VISIBLE
+                }
+            }
+        }
+        /*api observers*/
+        viewModel.loginResponse.observe(this) {
+            viewModel.toastMessage.value = "Login Success"
+//             viewModel.toastString.value = it.loginData.token
+            Log.d(TAG, "viewmodelObservers login:  ${it}")
+            if(it!=null) {
+                if(it.loginData?.token!=null) {
+                    saveEstimateToken(
+                        context = this,
+                        token = it.loginData?.token
+                    )
+                }
+            }
+        }
+        viewModel.validateVCResponse.observe(this) {it ->
+            if (it != null) {
+                Log.d(TAG, "viewModelObservers: validate vc response -> ${Gson().toJson(it)}")
+                if (it.status.equals("success",true)) {
+                    if(AndroidUtils.isNetworkOnLine(this)) {
+                        viewModel.getVCConfiguration(viewModel.roomID!!)
+                    }else{
+                        showValidateVcAlert("No internet connection. Please try after some time","configure")
+
+                    }
+                } else {
+                    showValidateVcAlert(error = it.error!!,"validate")
+                }
+            }
+        }
+
+        viewModel.vcConfigurationResponse.observe(this) {it ->
+            if (it != null) {
+                if(it.mcu_required!=null|| it.status.equals("success",true)){
+                    Log.d(TAG, "viewModelObservers: initialize all the data")
+                    processVCConfigurationSuccessResult()
+                }
+                else {
+                    showValidateVcAlert(error = it.error!!,"configure")
+                }
+            }
+
+        }
+
+        viewModel.updateParticipantsNameUI.observe(this){
+            if(it!=null)
+            {
+                if(it)
+                {
+                    updateParticipantsDisplayNames()
+                    viewModel.updateParticipantsNameUI.value = false
+                }
+            }
+        }
+
     }
 
     private fun setUpOnClickListeners() {
@@ -571,9 +634,12 @@ class VCDynamicActivity4 : BaseActivity() {
 
         binding.btnChat.setOnClickListener {
 //            openMessageFragment()
-
-            binding.fragmentHolderForMessage.visibility = View.VISIBLE
+            fragmentManager.beginTransaction()
+                .show(messageFragment)
+                .commit()
+           binding.fragmentHolderForMessage.visibility = View.VISIBLE
             viewModel.messageFragVisible = true
+            viewModel.clearMessageBadgeValue()
         }
     }
 
@@ -600,12 +666,15 @@ class VCDynamicActivity4 : BaseActivity() {
             Log.d(TAG, "onDestroy: is joined")
             it.leaveFromConference()
         }
+        conferenceManager =null
         if (customSDKBroadcastReceiver != null) {
             unregisterReceiver(customSDKBroadcastReceiver)
         }
         viewModel.isInitialConferenceStarted = false
         clearSendStatusSchedule()
         removeLogInternetSpeedCallbacks()
+        iWebRTCListener = null
+        dataChannelObserver = null
     }
 
     //permission result
@@ -870,7 +939,7 @@ class VCDynamicActivity4 : BaseActivity() {
             settingsDialog.dismiss()
 //            Toast.makeText(this, "Not enough permissions to join", Toast.LENGTH_SHORT).show()
 //            goBack()
-            finish()
+            finishActivity(false)
         }
 
         //dialog alignment and size code.
@@ -893,6 +962,10 @@ class VCDynamicActivity4 : BaseActivity() {
 
 
     private fun checkForMandatoryPermissions() {
+        if(viewModel.initialConfigurationSucess==false)
+        {
+            return
+        }
         if (conferenceManager != null) {
             if (conferenceManager!!.isJoined) {
                 return
@@ -967,21 +1040,23 @@ class VCDynamicActivity4 : BaseActivity() {
                 CallActivity.EXTRA_SCREENCAPTURE,
                 false
             ) //initially for the screen capture to be false
+            viewModel.clearMessageBadgeValue()
             Log.d(TAG, "initConferenceManager: ")
             binding.fContainer.removeAllViews()
             binding.sContainer.removeAllViews()
             initPublishContainerClickListener()
-            initDataChannelListener()
+//            initDataChannelListener()
             initWebRTCListener()
+            viewModel.streamId = null
             conferenceManager = MultitrackConferenceManager(
                 this,
                 iWebRTCListener,
                 intent,
-                serverUrl,
-                roomId,
+                viewModel.serverUrl,
+                viewModel.roomID,
                 publisherContainer!!.surfaceViewRenderer,
                 ArrayList<SurfaceViewRenderer>(),  //new ArrayList<>(),//
-                streamId,
+                viewModel.streamId,
                 dataChannelObserver
             )
             Log.d(TAG, "initConferenceManager: ")
@@ -1000,49 +1075,50 @@ class VCDynamicActivity4 : BaseActivity() {
 //                showJoinVCRoomDialog()
 //            }
             if (isForRejoin) { //if rejoining conference
-//                if(conferenceManager!!.isPublisherVideoOn && viewModel.localVideo)
-//                {
-//                    /**all good*/
-//                }else {
-//                    if(viewModel.localVideo)
-//                    {
-//                        /*true value...so cam must be on*/
-//                        conferenceManager!!.enableVideo()
-//                        viewModel.localVideo = true
-//                        processCameraUIForPublishContainer(VCConstants.CAM_TURNED_ON)
-//                    }else{
-//                        /*false calue...so cam must be off*/
-//                        conferenceManager!!.disableVideo()
-//                        viewModel.localVideo = false
-//                        processCameraUIForPublishContainer(VCConstants.CAM_TURNED_OFF)
-//                    }
-//                }
-//                if(conferenceManager!!.isPublisherAudioOn && viewModel.localAudio)
-//                {
-//                    /**all good*/
-//                }else {
-//                    if(viewModel.localAudio)
-//                    {
-//                        /*true value...so audio must be on*/
-//                        conferenceManager!!.enableAudio()
-//                        viewModel.localAudio = true
-//                        processMicUIForPublishContainer(VCConstants.MIC_UNMUTED)
-//                    }else{
-//                        /*false calue...so cam must be off*/
-//                        conferenceManager!!.disableAudio()
-//                        viewModel.localAudio = false
-//                        processMicUIForPublishContainer(VCConstants.MIC_MUTED)
-//                    }
-//                }
-//                var source = if(viewModel.frontCamera){
-//                    WebRTCClient.SOURCE_FRONT
-//                }else  WebRTCClient.SOURCE_REAR
-//                try {
-////                conferenceManager!!.publishWebRTCClient.changeVideoSource(source)
-//                }catch(e:Exception){
-//                    Log.d(TAG, "initConferenceManager: exception caught!!")
-//                }
+                viewModel.rejoinInProgress = false
                 joinConference()
+                if(conferenceManager!!.isPublisherVideoOn && viewModel.localVideo)
+                {
+                    /**all good*/
+                }else {
+                    if(viewModel.localVideo)
+                    {
+                        /*true value...so cam must be on*/
+                        conferenceManager!!.enableVideo()
+                        viewModel.localVideo = true
+                        processCameraUIForPublishContainer(VCConstants.CAM_TURNED_ON)
+                    }else{
+                        /*false calue...so cam must be off*/
+                        conferenceManager!!.disableVideo()
+                        viewModel.localVideo = false
+                        processCameraUIForPublishContainer(VCConstants.CAM_TURNED_OFF)
+                    }
+                }
+                if(conferenceManager!!.isPublisherAudioOn && viewModel.localAudio)
+                {
+                    /**all good*/
+                }else {
+                    if(viewModel.localAudio)
+                    {
+                        /*true value...so audio must be on*/
+                        conferenceManager!!.enableAudio()
+                        viewModel.localAudio = true
+                        processMicUIForPublishContainer(VCConstants.MIC_UNMUTED)
+                    }else{
+                        /*false calue...so cam must be off*/
+                        conferenceManager!!.disableAudio()
+                        viewModel.localAudio = false
+                        processMicUIForPublishContainer(VCConstants.MIC_MUTED)
+                    }
+                }
+                var source = if(viewModel.frontCamera){
+                    WebRTCClient.SOURCE_FRONT
+                }else  WebRTCClient.SOURCE_REAR
+                try {
+                conferenceManager!!.publishWebRTCClient.changeVideoSource(source)
+                }catch(e:Exception){
+                    Log.d(TAG, "initConferenceManager: exception caught!!")
+                }
             } else {
                 /*this will be fresh UI state*/
                 showJoinVCRoomDialog()
@@ -1096,7 +1172,7 @@ class VCDynamicActivity4 : BaseActivity() {
             joinVCDialog.dismiss()
             dismissProgressDialog()
 //            goBack()
-            finish()
+            finishActivity(false)
         }
         dialogBinding.posBtn.setOnClickListener {
             if (AndroidUtils.isNetworkOnLine(this)) {
@@ -1106,7 +1182,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 showProgressDialog()
             } else {
                 Log.d(TAG, "openJoinVCRoomDialog: internetNotPresent: ")
-//                vCScreenViewModel.noInternetScenario = Constants.NO_INTERNET_JOIN_CONFERENCE
+//                viewModel.noInternetScenario = Constants.NO_INTERNET_JOIN_CONFERENCE
 //                joinVCDialog.dismiss()
 //                showNoInternetDialog()
                 viewModel.toastMessage.value = "No Internet Connection"
@@ -1178,7 +1254,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
         dialogBinding.negBtn.setOnClickListener {
             endVCDialog.dismiss()
-//                vCScreenViewModel.isEndVcEnabled.value = true
+//                viewModel.isEndVcEnabled.value = true
             Log.d(TAG, "showAlertToEndtheUserCall: stopVc: true: can")
 
         }
@@ -1191,7 +1267,7 @@ class VCDynamicActivity4 : BaseActivity() {
                     stoppedStream = true
                 }
             }
-            finish()
+            finishActivity(true)
         }
         //dialog alignment and size code.
 //        val lp = WindowManager.LayoutParams()
@@ -1272,14 +1348,15 @@ class VCDynamicActivity4 : BaseActivity() {
         dialogBinding.negBtn.setOnClickListener {
             reconnectionVCDialog.dismiss()
 //            goBack()
-            if (conferenceManager != null) {
-                if (!conferenceManager!!.isJoined) {
-                    viewModel.endVCByUser = true
-                    conferenceManager!!.leaveFromConference()
-                    stoppedStream = true
-                }
-            }
-            finish()
+//            if (conferenceManager != null) {
+//                if (!conferenceManager!!.isJoined) {
+//                    viewModel.endVCByUser = true
+//                    conferenceManager!!.leaveFromConference()
+//                    stoppedStream = true
+//                }
+//            }
+//            finishActivity(true)
+            showEndVCDialog()
         }
         dialogBinding.posBtn.setOnClickListener {
             if (AndroidUtils.isNetworkOnLine(this)) {
@@ -1291,6 +1368,14 @@ class VCDynamicActivity4 : BaseActivity() {
                 Toast.makeText(this, "No internet connection.", Toast.LENGTH_SHORT).show()
             }
         }
+        if (!conferenceManager!!.isJoined) {
+            Log.d(TAG, "rejoinConference: before leave from conference")
+            conferenceManager!!.leaveFromConference()
+            stoppedStream = true
+
+        }
+
+
 //        val lp = WindowManager.LayoutParams()
 //        lp.copyFrom(reconnectionVCDialog.window?.attributes)
 //        lp.width = WindowManager.LayoutParams.MATCH_PARENT
@@ -1497,6 +1582,7 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun updateStreamNameTextView(container: RemotePeerView, name: String) {
+        Log.d(TAG, "updateStreamNameTextView: name -> ${name}")
         container.streamName.text = name
     }
 
@@ -1738,10 +1824,10 @@ class VCDynamicActivity4 : BaseActivity() {
             transaction.add(participants, PARTICIPANT_FRAG)
             transaction.commit()
 
-//            vCScreenViewModel.showParticipants.value = false
-//            vCScreenViewModel.isParticipantsClickable.value = true
+//            viewModel.showParticipants.value = false
+//            viewModel.isParticipantsClickable.value = true
         } else {
-//            vCScreenViewModel.isParticipantsClickable.value = true
+//            viewModel.isParticipantsClickable.value = true
         }
         viewModel.participantFragVisible = true
     }
@@ -1797,15 +1883,15 @@ class VCDynamicActivity4 : BaseActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         Log.d(TAG, "onConfigurationChanged: new Configuration ->${newConfig} ")
-        if (this::conferenceManager != null && conferenceManager!!.isJoined) {
-            if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                Log.d(TAG, "onConfigurationChanged: ORIENTATION_LANDSCAPE")
-//                conferenceManager.sendOrientationNotification(false)
-            } else {
-                Log.d(TAG, "onConfigurationChanged: ORIENTATION_PORTRAIT")
-//                conferenceManager.sendOrientationNotification(true)
-            }
-        }
+//        if (this::conferenceManager != null && conferenceManager!!.isJoined) {
+//            if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+//                Log.d(TAG, "onConfigurationChanged: ORIENTATION_LANDSCAPE")
+////                conferenceManager.sendOrientationNotification(false)
+//            } else {
+//                Log.d(TAG, "onConfigurationChanged: ORIENTATION_PORTRAIT")
+////                conferenceManager.sendOrientationNotification(true)
+//            }
+//        }
     }
 
     private fun setUpBottomSheetBehaviour() {
@@ -1877,6 +1963,7 @@ class VCDynamicActivity4 : BaseActivity() {
             )
         }
         if (tempParticipant != null) {
+            tempParticipant.displayName = viewModel.displayName?:"Local"
             viewModel.participants.add(tempParticipant)
         }
         Log.d(
@@ -1914,7 +2001,7 @@ class VCDynamicActivity4 : BaseActivity() {
         } else {
             var tempParticipant = conferenceManager?.let {
                 ParticipantsModel(
-                    track.id(), roomId ?: "peer", false,
+                    track.id(), viewModel.roomID ?: "peer", false,
                     isMicOn = true, isCamOn = true, track = track
                 )
             }
@@ -2278,7 +2365,7 @@ class VCDynamicActivity4 : BaseActivity() {
             recreate()
             overridePendingTransition(0, 0)
         } else {
-            finish()
+            finishActivity(true)
 
             overridePendingTransition(0, 0)
             startActivity(intent)
@@ -2448,7 +2535,7 @@ class VCDynamicActivity4 : BaseActivity() {
             recreate();
             overridePendingTransition(0, 0);
         } else {
-            finish();
+            finishActivity(true);
 
             overridePendingTransition(0, 0);
             startActivity(intent);
@@ -2458,6 +2545,7 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun rejoinConferenceRestartConference() {
+        Log.d(TAG, "rejoinConferenceRestartConference: ")
         viewModel.rejoinInProgress = true
         if (conferenceManager != null) {
             Log.d(TAG, "rejoinConference: ")
@@ -2467,12 +2555,14 @@ class VCDynamicActivity4 : BaseActivity() {
                 stoppedStream = true
 
             }
+            Log.d(TAG, "rejoinConferenceRestartConference: ")
             clearSendStatusSchedule()
             removeLogInternetSpeedCallbacks()
             checkForScreenShareProcess()
             Log.d(TAG, "rejoinConference:end ")
 //            reInitializeConference()
             conferenceManager = null
+            Log.d(TAG, "rejoinConferenceRestartConference: ")
             clearRemoteUIs()
             showProgressDialog()
             Handler().postDelayed({
@@ -2536,42 +2626,42 @@ class VCDynamicActivity4 : BaseActivity() {
 
 
     private fun initWebRTCListener() {
+        iWebRTCListener = null
         iWebRTCListener = object : IWebRTCListener {
             override fun onDisconnected(streamId: String?) {
                 viewModel.toastMessage.value = "Disconnected for $streamId"
                 Log.w(TAG, "onDisconnected - $streamId")
-                if (conferenceManager != null) {
-                    if (conferenceManager!!.isJoined) {
-                        showProgressDialog()
-                        binding.broadcastingTextView.text = "Disconnected"
-//            finish()
-//                            if (conferenceManager!!.isJoined == false) {
-//                                viewModel.toastMessage.value = "VC- onDisconnected"
-//                            }
-                        if (!viewModel.endVCByUser) {
-                            showReconnectionVCDialog()
-                        } else {
-                            finish()
-                        }
-
-
-                    } else {
-                        Log.d(
-                            TAG,
-                            "onDisconnected: getting callback before joined -> restart activity"
-                        )
-                        viewModel.toastMessage.value = "Not able to connect to the web socket"
-                        try {
-                            if (joinVCDialog != null) {
-                                if (joinVCDialog.isShowing) {
-                                    joinVCDialog.dismiss()
+                if(!viewModel.rejoinInProgress) {
+                    if (conferenceManager != null) {
+                        if (conferenceManager!!.isJoined) {
+                            if (conferenceManager!!.streamId.equals(streamId)) {
+                                showProgressDialog()
+                                binding.broadcastingTextView.text = "Disconnected"
+                                if (!viewModel.endVCByUser) {
+                                    showReconnectionVCDialog()
+                                } else {
+                                    finishActivity(true)
                                 }
                             }
-                        } catch (e: Exception) {
+                        } else {
+                            //to check
+                            Log.d(
+                                TAG,
+                                "onDisconnected: getting callback before joined -> restart conference"
+                            )
+                            viewModel.toastMessage.value = "Not able to connect to the web socket"
+                            try {
+                                if (joinVCDialog != null) {
+                                    if (joinVCDialog.isShowing) {
+                                        joinVCDialog.dismiss()
+                                    }
+                                }
+                            } catch (e: Exception) {
 
-                        }
-                        showReconnectionVCDialog()
+                            }
+                            showReconnectionVCDialog()
 //                        rejoinConferenceRestartConference()
+                        }
                     }
                 }
 //        audioButton!!.text = "Disable Audio"
@@ -2586,11 +2676,27 @@ class VCDynamicActivity4 : BaseActivity() {
                 Log.w(TAG, "onPublishFinished - $streamId")
                 viewModel.toastMessage.value = "Publish finished for $streamId"
                 binding.broadcastingTextView.visibility = View.GONE
-                if (streamId != null) {
-                    viewModel.streams.remove(streamId)
-//            removeLocalParticipant(streamId) //commented for testing purposes
-//                    if(streamId.equals(conferenceManager!!.streamId,true)){
-//                    }
+                if(streamId!=null) {
+                    Log.d(TAG, "onPublishFinished: ")
+                    if (conferenceManager != null) {
+                        if (viewModel.endVCByUser) {
+                            Log.d(TAG, "onPublishFinished: end by user")
+                            /*ok..user ended the vc and then it was called*/
+                        } else {
+                            /*user did nit end vc...abruptly or due to some case this is called*/
+                            if (viewModel.rejoinInProgress) {
+                                Log.d(TAG, "onPublishFinished: rejoin in progress")
+                                /*called when rejoinin in progress....do not do anything*/
+                            } else {
+                                /*take action here*/
+                                if(conferenceManager!!.streamId == streamId){
+                                    //show rejoin
+                                    Log.d(TAG, "onPublishFinished: ")
+                                    showReconnectionVCDialog()
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -2604,12 +2710,12 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun onPublishStarted(streamId: String?) {
-                viewModel.rejoinInProgress = false
                 viewModel.toastMessage.value = "Publish started for $streamId"
                 Log.w(TAG, "onPublishStarted - $streamId")
                 binding.broadcastingTextView.visibility = View.VISIBLE
                 binding.broadcastingTextView.text = "Publishing"
                 if (streamId != null) {
+                    viewModel.streamId = streamId
                     viewModel.streams.add(streamId)
                     addInitialLocalParticipant(streamId)
                     /*initiallly update the maps*/
@@ -2620,9 +2726,15 @@ class VCDynamicActivity4 : BaseActivity() {
                     dismissProgressDialog()
                     viewModel.reconnectAttemptCount = 0
                     if (streamId.equals(conferenceManager!!.streamId, ignoreCase = true)) {
-
-
                     }
+                    viewModel.updateStreamIdInServerAPICall(
+                        displayName = viewModel.displayName?:viewModel.userType,
+                        roomId = viewModel.roomID?:"",
+                        userType = viewModel.userType,
+                        streamId = viewModel.streamId?:"",
+                        version = VCConstants.version
+                    )
+                    updateStreamNameTextView(publisherContainer!!,viewModel.displayName!!) //until the api call
                 }
             }
 
@@ -2657,24 +2769,40 @@ class VCDynamicActivity4 : BaseActivity() {
 
             override fun streamIdInUse(streamId: String?) {
                 viewModel.toastMessage.value = "Stream id is already in use $streamId"
+                viewModel.streamId = streamId
                 Log.w(TAG, "streamIdInUse - $streamId")
             }
 
             override fun onIceConnected(streamId: String?) {
                 viewModel.toastMessage.value = "Ice connected for $streamId"
                 if (conferenceManager != null) {
-                    if (streamId.equals(conferenceManager!!.streamId)) {
-                        try {
-//                                if (reconnectionVCDialog.isShowing) {
-//                                    reconnectionVCDialog.dismiss()
-//                                    dismissProgressDialog()
-//
-//                                }
-                        } catch (e: Exception) {
-                            Log.d(TAG, "onIceConnected: exception caught!")
+                    if(!viewModel.rejoinInProgress){
+                        if(conferenceManager!!.isJoined) {
+                            if (streamId.equals(conferenceManager!!.streamId)) {
+                                try {
+                                    if (reconnectionVCDialog != null) {
+                                        if (reconnectionVCDialog.isShowing) {
+                                            reconnectionVCDialog.dismiss()
+                                            dismissProgressDialog()
+
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.d(TAG, "onIceConnected: exception caught!")
+                                }
+                            }
+                            Log.w(TAG, "onIceConnected - $streamId")
+                        }else{
+                            showReconnectionVCDialog()
+                        }
+                    }else{
+                        if(reconnectionVCDialog!=null) {
+                            if (reconnectionVCDialog.isShowing) {
+                                reconnectionVCDialog.dismiss()
+                                dismissProgressDialog()
+                            }
                         }
                     }
-                    Log.w(TAG, "onIceConnected - $streamId")
                 }
 
             }
@@ -2791,12 +2919,14 @@ class VCDynamicActivity4 : BaseActivity() {
                         addNewContainer(remotePeerView)
                         updateStreamNameTextView(remotePeerView, track.id()!!)
                         addNewParticipant(track, false)
+                        viewModel.getDisplayNameForStreamId(viewModel.roomID!!,track.id().replace("ARDAMSv",""),VCConstants.version)
                     } else {
                         Log.d(TAG, "onNewVideoTrack: else ")
 //            trackRendererMap.put(binding.publishViewRenderer,track.id())
                         trackRelMap[publisherContainer!!] = track.id()
                         trackObjectRelMap[publisherContainer!!] = track
                         addNewParticipant(track, true)
+                        viewModel.getDisplayNameForStreamId(viewModel.roomID!!,viewModel.streamId!!,VCConstants.version) /*this will call again for updated name--> else can be commented for the local participant*/
                     }
                     displayRendererMap()
                 }
@@ -2808,7 +2938,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 Log.w(TAG, "onVideoTrackEnded - ${Gson().toJson(track)}")
 //        runOnUiThread {
 //            var surfaceViewFound : SurfaceViewRenderer? = null
-//            for (entry in trackRendererMap) {
+//            for (entrou in trackRendererMap) {
 //                if (track.id().equals(entry.value)) {
 //                    //remove this renderer
 //                    surfaceViewFound = entry.key
@@ -2867,12 +2997,14 @@ class VCDynamicActivity4 : BaseActivity() {
 
             override fun onRoomInformation(streams: Array<out String>?) {
                 Log.w(TAG, "onRoomInformation:  streams -> ${Gson().toJson(streams!!)}")
-                if (viewModel.roomInfoStreamsList.isEmpty()) {
-                    viewModel.roomInfoStreamsList.addAll(streams)
-                    udpateStreamsFromRoomInformation(streams, true)
-                } else {
-                    udpateStreamsFromRoomInformation(streams, false)
-                }
+                Thread(Runnable {
+                    if (viewModel.roomInfoStreamsList.isEmpty()) {
+                        viewModel.roomInfoStreamsList.addAll(streams)
+                        udpateStreamsFromRoomInformation(streams, true)
+                    } else {
+                        udpateStreamsFromRoomInformation(streams, false)
+                    }
+                }).start()
 
             }
 
@@ -2922,6 +3054,7 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun initDataChannelListener() {
+        dataChannelObserver = null
         dataChannelObserver = object : IDataChannelObserver {
             /**data channel callbacks**/
             override fun onBufferedAmountChange(previousAmount: Long, dataChannelLabel: String?) {
@@ -2961,7 +3094,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
                 val data = buffer?.data
                 val messageText = data?.array()?.let { String(it, StandardCharsets.UTF_8) }
-//                processMessageSentFromChat(JSONObject(messageText),successful)
+                processMessageSentFromChat(JSONObject(messageText),successful)
             }
 
         }
@@ -2981,7 +3114,7 @@ class VCDynamicActivity4 : BaseActivity() {
         publisherContainer!!.changeVideoActiveStatus(true)
         publisherContainer!!.changeAudioActiveStatus(true)
         binding.fContainer.addView(publisherContainer)
-        publisherContainer!!.streamName.text = "You"
+        publisherContainer!!.streamName.text = viewModel.displayName?:"You"
         publisherContainer!!.surfaceViewRenderer.setOnClickListener {
             Log.d(TAG, "publisherContainer setUpOnClickListeners: ")
             if (conferenceManager != null) {
@@ -3133,8 +3266,12 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun closeMessageFragment() {
+        fragmentManager.beginTransaction()
+            .hide(messageFragment)
+            .commit()
         binding.fragmentHolderForMessage.visibility = View.GONE
         viewModel.messageFragVisible = false
+        viewModel.clearMessageBadgeValue()
         Log.d(TAG, "closeMessageFragmet: ")
 //        val f = fragmentManager.findFragmentByTag("MESSAGE_FRAG")
 //        if (f != null) {
@@ -3162,8 +3299,7 @@ class VCDynamicActivity4 : BaseActivity() {
             jsonObject.put(VCConstants.STREAM_ID, conferenceManager!!.streamId)
             jsonObject.put(VCConstants.EVENT_TYPE, TEXT_MESSAGE)
             jsonObject.put(VCConstants.TEXT_MESSAGE_VALUE, messageModel.messageText)
-//            jsonObject.put(Constants.DISPLAY_NAME, vCScreenViewModel.localDisplayName)
-            jsonObject.put(VCConstants.DISPLAY_NAME, conferenceManager!!.streamId.toString())
+            jsonObject.put(VCConstants.DISPLAY_NAME, viewModel.displayName)
             Log.d(TAG, "sendTextMessage: timeTest: ${AndroidUtils.getCurrentTimeInMill()}")
             jsonObject.put(VCConstants.currentTime, AndroidUtils.getCurrentTimeInMill())
             jsonObject.put(VCConstants.MESSAGEID, messageModel.id) /*extra added to have a process status update locally in OnMessageSent()*/
@@ -3189,7 +3325,7 @@ class VCDynamicActivity4 : BaseActivity() {
             jsonObject.put(VCConstants.FILE_NAME, messageModel.fileName)
             jsonObject.put(VCConstants.SERVER_FILE_PATH, messageModel.serverFilePath)
             jsonObject.put(VCConstants.TEXT_MESSAGE_VALUE, messageModel.messageText)
-//            jsonObject.put(Constants.DISPLAY_NAME, vCScreenViewModel.localDisplayName)
+//            jsonObject.put(Constants.DISPLAY_NAME, viewModel.localDisplayName)
             jsonObject.put(VCConstants.DISPLAY_NAME, conferenceManager!!.streamId.toString())
             Log.d(TAG, "sendTextMessage: timeTest: ${AndroidUtils.getCurrentTimeInMill()}")
             jsonObject.put(VCConstants.currentTime, AndroidUtils.getCurrentTimeInMill())
@@ -3227,7 +3363,7 @@ class VCDynamicActivity4 : BaseActivity() {
         )
         viewModel.messageListInMVM.add(tempRemoteMessage)
         viewModel.addNewRemoteMessage.value = remoteMessageId
-
+        viewModel.incrementMessageBadgeValue()
     }
 
     private fun processFileMessageFromDataChannel(
@@ -3255,7 +3391,7 @@ class VCDynamicActivity4 : BaseActivity() {
         )
         viewModel.messageListInMVM.add(tempRemoteMessage)
         viewModel.addNewRemoteMessage.value = remoteMessageId
-
+        viewModel.incrementMessageBadgeValue()
     }
 
 
@@ -3304,7 +3440,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 val file = File(filePath)
     //                        val specialCharactersRegex = Regex("[^a-zA-Z0-9._ ]")
     //                        if (specialCharactersRegex.containsMatchIn(file.name)) {
-    //                            vCScreenViewModel.toastString.value = "Invalid File name. File name cannot contain special characters. Please rename."
+    //                            viewModel.toastString.value = "Invalid File name. File name cannot contain special characters. Please rename."
     //                            return
     //                        }
 
@@ -3315,7 +3451,7 @@ class VCDynamicActivity4 : BaseActivity() {
                     var msgID = AndroidUtils.getCurrentTimeInMill()
                     /*call API*/
                     viewModel.processNewLocalFileMessage(file.name,"",msgID,true,filePath)
-                    viewModel.uploadVcFileAPICall(file,roomId,"CUSTOMER","CUSTOMER",msgID,false)     /*07 Nov 2023:: IMP::nahusha help required here::to pass correct data for vc room, who and usertype*/
+                    viewModel.uploadVcFileAPICallNew(file,viewModel.roomID?:"","CUSTOMER","CUSTOMER",msgID,false)     /*07 Nov 2023:: IMP::nahusha help required here::to pass correct data for vc room, who and usertype*/
                 }else {
                     viewModel.toastMessage.value = "File cannot be more than 25MB"
                 }
@@ -3474,6 +3610,363 @@ class VCDynamicActivity4 : BaseActivity() {
         {
             Log.d(TAG, "processMessageSentFromChat: exeception caught!!")
         }
+    }
+
+    private fun setUpVcDetails() {
+        // customer or service advisor
+        if (intent != null) {
+//            serverURL = intent.getStringExtra(VcConnector.SERVER_URL)
+//            serverURL = "ws://onvideo.apprikart.com:5080/WebRTCAppEE/websocket"
+//             viewModel.roomID = intent.getStringExtra("room")
+//             viewModel.serviceAdvisorID = intent.getStringExtra("service_person_id")
+//            userType = intent.getStringExtra("user_type")
+//            passcode = intent.getStringExtra("auth_passcode")
+//             viewModel.customerCode = intent.getStringExtra("customerCode")
+//             viewModel.dealerCode = intent.getStringExtra("dealerCode")
+//             viewModel.roNo = intent.getStringExtra("roNo")
+//             viewModel.displayName = intent.getStringExtra("displayName")
+//             viewModel.userName = intent.getStringExtra("userName")
+
+
+
+
+             viewModel.testUserType = intent.getStringExtra("testUserType")
+
+            if ( viewModel.testUserType != null) {
+
+                 viewModel.userId = intent.getStringExtra("userId")
+                 viewModel.password = intent.getStringExtra("password")
+                 viewModel.deviceToken = intent.getStringExtra("deviceToken")
+                Log.d(TAG, "setUpVcDetails: ${ viewModel.userId}")
+                Log.d(TAG, "setUpVcDetails: ${ viewModel.password}")
+                Log.d(TAG, "setUpVcDetails: ${ viewModel.deviceToken}")
+                if((! viewModel.userId.isNullOrEmpty()) &&
+                    (! viewModel.password.isNullOrEmpty()) &&
+                    (! viewModel.deviceToken.isNullOrEmpty())
+                ) {
+                     viewModel.doLogin(
+                        RequestModelLogin(
+                            userName =  viewModel.userId!!,
+                            password =  viewModel.password!!,
+                            deviceToken =  viewModel.deviceToken!!,
+                        )
+                    )
+                }else {
+                     viewModel.toastMessage.value = "Login Credentials. Null or Empty."
+                }
+                //Updating VC End-Time
+                 viewModel.vcEndTime = intent.getStringExtra("vcEndTime")
+
+                when ( viewModel.testUserType) {
+//                    Constants.Companion.UserType.SERVICE_PERSON.value -> {
+//                         viewModel.roomID = "CDF1RC0EEQ"
+//                         viewModel.serviceAdvisorID = "EUP3070025"
+//                        userType = Constants.Companion.UserType.SERVICE_PERSON.value
+//                        passcode = "24992"
+//                         viewModel.customerCode = "2"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = ""
+//                         viewModel.displayName = "Android Service Advisor 2"
+//                    }
+//
+//                    else -> {
+//                         viewModel.roomID = "CDF1RC0EEQ"
+//                         viewModel.serviceAdvisorID = "EUP3070025"
+//                        userType = Constants.Companion.UserType.CUSTOMER.value
+//                        passcode = "24992"
+//                         viewModel.customerCode = "2"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = ""
+//                         viewModel.displayName = "Android Customer"
+//                         viewModel.userName = "9136388890"
+//                    }
+
+
+//                    Constants.Companion.UserType.SERVICE_PERSON.value -> {
+//                         viewModel.roomID = "DWYCQUNC0T"
+//                         viewModel.serviceAdvisorID = "EUP3070025"
+//                        userType = Constants.Companion.UserType.SERVICE_PERSON.value
+//                        passcode = "34232"
+//                         viewModel.customerCode = "C2019070005"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = "R202300212"
+//                         viewModel.displayName = "Android Service Advisor 2"
+//                    }
+//
+//                    else -> {
+//                         viewModel.roomID = "DWYCQUNC0T"
+//                         viewModel.serviceAdvisorID = "EUP3070025"
+//                        userType = Constants.Companion.UserType.CUSTOMER.value
+//                        passcode = "34232"
+//                         viewModel.customerCode = "C2019070005"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = "R202300212"
+//                         viewModel.displayName = "Android Customer"
+//                         viewModel.userName = "9136388890"
+//                    }
+
+
+//                    Constants.Companion.UserType.SERVICE_PERSON.value -> {
+//                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
+//                         viewModel.roomID = "QF2O5ZIVYN"
+//                         viewModel.serviceAdvisorID = "EUP3070025"
+//                        userType = Constants.Companion.UserType.SERVICE_PERSON.value
+//                        passcode = "17498"
+//                         viewModel.customerCode = "C2019070005"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = "R202300212"
+//                         viewModel.displayName = "Android Service Advisor 2"
+//                    }
+//
+//                    else -> {
+//                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
+//                         viewModel.roomID = "QF2O5ZIVYN"
+//                         viewModel.serviceAdvisorID = "EUP3070025"
+//                        userType = Constants.Companion.UserType.CUSTOMER.value
+//                        passcode = "17498"
+//                         viewModel.customerCode = "C2019070005"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = "R202300212"
+//                         viewModel.displayName = "Android Customer"
+//                         viewModel.userName = "9136388890"
+//                    }
+
+
+//                    VCConstants.UserType.SERVICE_PERSON.value -> {
+//                        saveEstimateToken(this,"SA-3dyLZHCR8hJzqGi1oWm3npiIBU1WI4JBRnOuQPZC_EUP3070302")
+//                        PreferenceManager.setBaseUrl("https://kialinkd.kiaindia.net/api/")
+//                         viewModel.roomID = "0LIRTVNQNR"
+//                         viewModel.serviceAdvisorID = "EUP3070302"
+//                         viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+//                         viewModel.meetingPasscode= "67578"
+//                         viewModel.customerCode = "C2023100556"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = "R202314775"
+//                         viewModel.displayName = "Android Service Advisor 2"
+//                    }
+//
+//                    else -> {
+//                        saveEstimateToken(this,"SA-3dyLZHCR8hJzqGi1oWm3npiIBU1WI4JBRnOuQPZC_EUP3070302")
+//                        PreferenceManager.setBaseUrl("https://mykia.kiaindia.net/apimykia/")
+//                         viewModel.roomID = "0LIRTVNQNR"
+//                         viewModel.serviceAdvisorID = "EUP3070302"
+//                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
+//                        viewModel.meetingPasscode = "67578"
+//                         viewModel.customerCode = "C2023100556"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = "R202314775"
+//                         viewModel.displayName = "Android Customer"
+//                         viewModel.userName = "9136388890"
+//                    }
+
+                    VCConstants.UserType.SERVICE_PERSON.value -> {
+                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
+                         viewModel.roomID = "QF2O5ZIVYN"
+                         viewModel.serviceAdvisorID = "EUP3070025"
+                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+                        viewModel.meetingPasscode = "17498"
+                         viewModel.customerCode = "C2019070005"
+                         viewModel.dealerCode = "UP307"
+                         viewModel.roNo = "R202300212"
+                         viewModel.displayName = "Android Service Advisor 2"
+                    }
+
+                    else -> {
+                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
+                         viewModel.roomID = "QF2O5ZIVYN"
+                         viewModel.serviceAdvisorID = "EUP3070025"
+                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
+                        viewModel.meetingPasscode = "17498"
+                         viewModel.customerCode = "C2019070005"
+                         viewModel.dealerCode = "UP307"
+                         viewModel.roNo = "R202300212"
+                         viewModel.displayName = "Android Customer"
+                         viewModel.userName = "9136388890"
+                    }
+                }
+            } else {
+                 viewModel.roomID = intent.getStringExtra("room")
+                 viewModel.serviceAdvisorID = intent.getStringExtra("service_person_id")
+                 viewModel.userType = intent.getStringExtra("user_type").toString()
+                 viewModel.meetingPasscode = intent.getStringExtra("auth_passcode")
+                 viewModel.customerCode = intent.getStringExtra("customerCode")
+                 viewModel.dealerCode = intent.getStringExtra("dealerCode")
+                 viewModel.roNo = intent.getStringExtra("roNo")
+                 viewModel.displayName = intent.getStringExtra("displayName")
+                 viewModel.userName = intent.getStringExtra("userName")
+                 viewModel.vcEndTime = intent.getStringExtra("vcEndTime")
+
+//                 viewModel.userId = intent.getStringExtra("userId")
+//                 viewModel.password = intent.getStringExtra("password")
+//                 viewModel.deviceToken = intent.getStringExtra("deviceToken")
+//
+//                if( viewModel.userId!=null &&  viewModel.password!=null&&  viewModel.deviceToken!=null) {
+//                     viewModel.login(
+//                        RequestModelLogin(
+//                            userName =  viewModel.userId!!,
+//                            password =  viewModel.password!!,
+//                            deviceToken =  viewModel.deviceToken!!,
+//                        )
+//                    )
+//                }
+            }
+
+
+//            :::: Set up VC
+//             viewModel.roomID = "83VPFAV9GF"
+//             viewModel.serviceAdvisorID = "EUP3070025"
+//            userType = "SERVICE_PERSON"
+//            passcode = "26433"
+//             viewModel.customerCode="C2023060010"
+//             viewModel.dealerCode="UP307"
+//             viewModel.roNo="R202300113"
+//             viewModel.displayName="ASB Automobiles Private Limited"
+//
+//             viewModel.roomID = "83VPFAV9GF"
+//             viewModel.serviceAdvisorID = "EUP3070025"
+//            userType = "customer"
+//            passcode = "26433"
+//             viewModel.customerCode="C2023060010"
+//             viewModel.dealerCode="UP307"
+//             viewModel.roNo="R202300113"
+//             viewModel.displayName="Suneel Kumar"
+//             viewModel.userName = "9136388890"
+
+             viewModel.kecName = viewModel.userType!!
+        }
+        PreferenceManager.setUserType(viewModel.userType!!)
+
+        Log.d(TAG, "room ID :: ${ viewModel.roomID}")
+        Log.d(TAG, "server URL :: ${viewModel.serverUrl}")
+        Log.d(TAG, "serviceAdvisorID :: ${ viewModel.serviceAdvisorID}")
+        Log.d(TAG, "userType :: ${viewModel.userType}")
+        Log.d(TAG, "passcode :: ${viewModel.meetingPasscode}")
+        Log.d(TAG, "customerCode :: ${ viewModel.customerCode}")
+        Log.d(TAG, "dealerCode :: ${ viewModel.dealerCode}")
+        Log.d(TAG, "roNo :: ${ viewModel.roNo.toString()}")
+
+        /*saving roomID in viewModel*/
+//         viewModel.roomId =  viewModel.roomID!!
+
+        validateVcBasedOnVcDetails()
+
+    }
+
+    private fun saveEstimateToken(context: Activity, token:String) {
+        PreferenceManager.setEstimateToken(token)
+    }
+
+    private fun validateVcBasedOnVcDetails() {
+        if (AndroidUtils.isNetworkOnLine(this)) {
+            if (viewModel.userType.equals(VCConstants.UserType.SERVICE_PERSON.value)) {
+                viewModel.validateVcForServicePerson(
+                    viewModel.roomID!!,
+                    viewModel.meetingPasscode!!,
+                    viewModel.userType!!,
+                    viewModel.serviceAdvisorID!!
+                )
+            } else if (viewModel.userType.equals(VCConstants.UserType.CUSTOMER.value)) {
+                viewModel.validateVcForCustomer(
+                    viewModel.roomID!!,
+                    viewModel.meetingPasscode!!,
+                    viewModel.userType!!
+                )
+            }
+        } else {
+
+            viewModel.toastMessage.value = "No internet connection try after some time"
+            showValidateVcAlert("No internet connection. Please try after some time","validate")
+        }
+    }
+
+    private fun showValidateVcAlert(error: String,isforAPI:String) {
+
+          var alertDialog = Dialog(this)
+            val dialogBinding = AlertDialogLayoutBinding.inflate(LayoutInflater.from(this))
+        alertDialog.setContentView(dialogBinding.root)
+        alertDialog.setCancelable(false)
+        alertDialog.setCanceledOnTouchOutside(false)
+        alertDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        dialogBinding.messageTv.text = error
+        dialogBinding.posBtn.text = "Retry"
+        dialogBinding.negBtn.text = "Go back"
+        dialogBinding.headerTv.text = when(isforAPI){
+            "validate"->{"VC Validation Error!"}
+            "configure" ->{"VC Configuration Error!"}
+            else -> {""}
+        }
+        dialogBinding.posBtn.setOnClickListener {
+            Log.d(TAG, "showDialogToEnableCamera():posBtn")
+            alertDialog.dismiss()
+            when(isforAPI)
+            {
+                "validate"->{validateVcBasedOnVcDetails()}
+                "configure" ->{viewModel.getVCConfiguration(viewModel.roomID?:"")}
+            }
+
+            }
+        dialogBinding.negBtn.setOnClickListener {
+            Log.d(TAG, "showDialogToEnableCamera(): negBtn")
+            alertDialog.dismiss()
+            finishActivity(false)
+            }
+            //dialog alignment and size code.
+//            val lp = WindowManager.LayoutParams()
+//            lp.copyFrom(cameraDialog.window?.attributes)
+//            lp.width = WindowManager.LayoutParams.MATCH_PARENT
+//            lp.height = WindowManager.LayoutParams.WRAP_CONTENT
+//            lp.gravity = Gravity.CENTER
+//            cameraDialog.window?.attributes = lp
+//            cameraDialog.getWindow()?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
+        alertDialog.show()
+    }
+
+    private fun finishActivity(isResultOK :Boolean){
+        val resultIntent = Intent()
+        resultIntent.putExtra("meeting_id", viewModel.roomID)
+        if(isResultOK) {
+            setResult(Activity.RESULT_OK, resultIntent)
+        }else{
+            setResult(Activity.RESULT_CANCELED, resultIntent)
+        }
+        finish()
+    }
+
+    private fun processVCConfigurationSuccessResult(){
+       viewModel.initialConfigurationSucess= true
+        setUpOnClickListeners()
+        checkForMandatoryPermissions()
+    }
+
+    private fun updateParticipantsDisplayNames(){
+        Log.d(TAG, "updateParticipantsDisplayNames: ")
+        for( participant in viewModel.participants){
+            if(participant.isLocal){
+                /*track ID might not have been updated */
+                Log.d(TAG, "updateParticipantsDisplayNames: for local")
+                updateStreamNameTextView(publisherContainer!!,participant.displayName)
+            }else {
+                var resultRemoteView = getRemoteViewForTrackId(participant.trackId)
+                if (resultRemoteView != null) {
+                    updateStreamNameTextView(resultRemoteView, participant.displayName)
+                }
+            }
+        }
+    }
+
+
+    private fun getRemoteViewForTrackId(trackId:String):RemotePeerView?{
+        Log.d(TAG, "getRemoteViewForTrackId: trackId ->$trackId")
+        for( entry in trackRelMap){
+            if(entry.value.equals(trackId))
+            {
+                return entry.key
+            }
+        }
+        return null
     }
 
 }

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/_5sdp">
+
+        <View
+            android:id="@+id/bg"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/bg_local_message"
+            app:layout_constrainedHeight="true"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintBottom_toBottomOf="@id/tv_local_msg_status"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/local_barrier"
+            app:layout_constraintTop_toTopOf="parent" />
+        <!--            android:layout_below="@id/user_name_tv"-->
+
+
+        <!--        receiver layout components-->
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/local_user_name_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/_5sdp"
+            android:ellipsize="end"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:maxLines="1"
+            android:minLines="1"
+            android:paddingStart="@dimen/_5sdp"
+            android:text="e"
+            android:textColor="@color/color_kia_black"
+            android:textSize="14sp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toStartOf="@id/local_msg_guide_line"
+            app:layout_constraintTop_toTopOf="parent" />
+        <!--       receiver text message-->
+        <View
+            android:id="@+id/bg_file"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/_2sdp"
+            android:layout_marginStart="@dimen/_minus2sdp"
+            android:layout_marginBottom="@dimen/_2sdp"
+            android:layout_marginEnd="@dimen/_5sdp"
+            android:background="@drawable/bg_rounded_rectangle_5dp"
+            android:backgroundTint="@color/white"
+            app:layout_constrainedHeight="true"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintBottom_toTopOf="@id/tv_local_time_stamp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/local_file_type_tv"
+            app:layout_constraintTop_toBottomOf="@id/local_user_name_tv" />
+
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/local_file_type_tv"
+            android:layout_width="@dimen/file_type_icon_width"
+            android:layout_height="@dimen/file_type_icon_height"
+            android:layout_marginEnd="@dimen/_5sdp"
+            android:layout_marginStart="@dimen/_10sdp"
+            android:layout_marginTop="@dimen/_5sdp"
+            android:background="@drawable/file_type_generic"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textAllCaps="true"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/local_user_name_tv"
+            app:layout_constraintEnd_toStartOf="@id/local_file_doc_tv"
+            app:autoSizePresetSizes="@array/auto_size_text_sizes"
+            app:autoSizeTextType="uniform" />
+
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/local_file_doc_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/_5sdp"
+            android:layout_marginEnd="@dimen/_5sdp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:minLines="1"
+            android:paddingHorizontal="@dimen/_2sdp"
+            android:text="fffffffffffffff"
+            android:textColor="@color/black"
+            android:textSize="15sp"
+            android:visibility="visible"
+            app:layout_constraintStart_toEndOf="@id/local_file_type_tv"
+            app:layout_constraintTop_toTopOf="@id/local_file_type_tv"
+            app:layout_constraintStart_toStartOf="@id/local_msg_guide_line"
+            app:layout_constraintTop_toBottomOf="@id/local_user_name_tv"
+            app:layout_constraintBottom_toBottomOf="@id/local_file_type_tv"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constrainedWidth="true" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_local_time_stamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/_5sdp"
+            android:text="10:30"
+            android:textSize="10sp"
+            app:fontFamily="@font/kia_signature_fix_regular"
+            app:layout_constraintStart_toEndOf="@id/local_barrier"
+            app:layout_constraintTop_toBottomOf="@id/local_file_type_tv" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_local_msg_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/_5sdp"
+            android:layout_marginBottom="@dimen/_5sdp"
+            android:text="status"
+            android:textSize="10sp"
+            android:visibility="visible"
+            app:fontFamily="@font/kia_signature_fix_regular"
+            app:layout_constraintStart_toEndOf="@id/local_barrier"
+            app:layout_constraintTop_toBottomOf="@id/tv_local_time_stamp" />
+
+        <androidx.constraintlayout.widget.Barrier
+            android:id="@+id/local_barrier"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:barrierMargin="@dimen/_minus5sdp"
+            app:barrierDirection="start"
+            app:constraint_referenced_ids="local_user_name_tv,local_file_type_tv" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/local_msg_guide_line"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.2" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

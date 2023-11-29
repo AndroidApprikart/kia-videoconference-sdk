@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:padding="@dimen/_5sdp"
+        android:layout_height="wrap_content">
+
+        <View
+            android:id="@+id/bg"
+            android:layout_width="0dp"
+            android:background="@drawable/bg_remote_message"
+            android:layout_height="0dp"
+
+            app:layout_constrainedHeight="true"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="@id/remote_barrier"
+            app:layout_constraintBottom_toBottomOf="@id/tv_remote_msg_status"
+            app:layout_constrainedWidth="true"/>
+        <!--            android:layout_below="@id/user_name_tv"-->
+
+
+        <!--        receiver layout components-->
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/remote_user_name_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingEnd="@dimen/_5sdp"
+            android:layout_margin="@dimen/_5sdp"
+            android:ellipsize="end"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:maxLines="1"
+            android:minLines="1"
+            android:text="sdffffffdddddd"
+            android:textColor="@color/color_kia_black"
+            android:textSize="14sp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintEnd_toEndOf="@id/remote_msg_guide_line"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+        <!--       receiver text message-->
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/remote_message_tv"
+            android:layout_width="wrap_content"
+            android:layout_marginHorizontal="@dimen/_5sdp"
+            android:paddingEnd="@dimen/_5sdp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/black"
+            android:textSize="15sp"
+            android:visibility="visible"
+            android:text="sdkjfffffffffffffffffff"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="@id/remote_msg_guide_line"
+            app:layout_constraintTop_toBottomOf="@id/remote_user_name_tv" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_remote_time_stamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="10sp"
+            android:layout_marginHorizontal="@dimen/_5sdp"
+            android:layout_marginBottom="@dimen/_5sdp"
+            android:text="10:30"
+            app:layout_constraintTop_toBottomOf="@id/remote_message_tv"
+            app:layout_constraintEnd_toStartOf="@id/remote_barrier"
+            app:fontFamily="@font/kia_signature_fix_regular" />
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_remote_msg_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:textSize="10sp"
+            android:layout_marginBottom="@dimen/_5sdp"
+            android:layout_marginHorizontal="@dimen/_5sdp"
+
+            android:text="status"
+            app:layout_constraintEnd_toStartOf="@id/remote_barrier"
+            app:layout_constraintTop_toBottomOf="@id/tv_remote_time_stamp"
+            app:fontFamily="@font/kia_signature_fix_regular" />
+
+        <androidx.constraintlayout.widget.Barrier
+            android:id="@+id/remote_barrier"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:barrierDirection="end"
+            app:constraint_referenced_ids="remote_user_name_tv,remote_message_tv" />
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/remote_msg_guide_line"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.8" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>
