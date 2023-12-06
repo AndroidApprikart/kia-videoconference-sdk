@@ -11,6 +11,7 @@ import com.app.vc.models.login.RequestModelLogin
 import com.app.vc.models.login.ResponseModelLogin
 import com.kia.vc.models.CreateSurvey
 import com.kia.vc.models.ResponseModelGetSurveyQuestionList
+import com.kia.vc.validateDealer.ResponseModelValidateDealerCode
 import okhttp3.MultipartBody
 import retrofit2.Call
 import retrofit2.http.Body
@@ -94,5 +95,10 @@ interface ApiInterface {
 
     @POST(ApiDetails.POST_SURVEY_QUESTIONS_NEW)
     fun postCreateSurveyNew(@Body body:com.kia.vc.feedback.RequestModelCreateSurvey): Call<CreateSurvey>
+    @GET(ApiDetails.VALIDATE_DEALER_CODE)
+    fun validateDealerCode(
+        @Query("dealer_code") dealerCode: String,
+        @Query("app_version") appVersion: String
+    ):Call<ResponseModelValidateDealerCode>
 
 }

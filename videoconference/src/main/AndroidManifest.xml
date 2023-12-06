@@ -63,6 +63,12 @@
             android:exported="true">
 
         </activity>
+        <activity
+            android:name="com.kia.vc.validateDealer.DealerValidationActivity"
+            android:supportsPictureInPicture="false"
+            android:exported="true">
+
+        </activity>
 
 <!--        for screen sharing-->
         <service

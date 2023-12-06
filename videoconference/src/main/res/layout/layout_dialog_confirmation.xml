@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+
+    </data>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="10dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:backgroundTint="@color/white">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_dialog_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="5dp"
+            android:textColor="@color/color_kia_black"
+            android:fontFamily="@font/kia_signature_fix_bold"/>
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_dialog_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/tv_dialog_title"
+            android:layout_centerHorizontal="true"
+            android:lines="2"
+            android:maxLines="2"
+            android:gravity="center"
+            android:textColor="@color/color_kia_black"
+            android:fontFamily="@font/kia_signature_fix_regular"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_below="@id/tv_dialog_message"
+            android:layout_alignParentEnd="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/tv_cancel_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cancel"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:layout_marginRight="5dp"
+                style="@style/OutlinedButtonStyle"
+                android:layout_weight="1" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_update"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:text="OK"
+                android:layout_weight="1" />
+        </LinearLayout>
+    </RelativeLayout>
+</layout>
