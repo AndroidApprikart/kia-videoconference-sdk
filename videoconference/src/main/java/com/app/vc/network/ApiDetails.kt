@@ -41,5 +41,15 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val port = "turn:kiadigi-connect." + "in:3478"
 
 
+        const val GET_ESTIMATION_LIST_NEW = "customerEstimate"
+        const val SAVE_CHAT_DETAILS_NEW = "storeMessage"
+
+        const val GET_SURVEY_QUESTIONS_NEW = "service/vcConference/feedbackQuestions"
+        const val POST_SURVEY_QUESTIONS_NEW = "service/vcConference/createVCSurvey"
+        const val UPDATE_ESTIMATION_STATUS_NEW = "service/vcConference/updateEstimateStatus"
+        const val UPDATE_VC_STATUS_CUSTOMER_NEW = "service/vcConference/updateVcStatus"
+        const val GET_VC_LIST = "kandid_api/v1/get_vc_list/?"
+
+
     }
 }

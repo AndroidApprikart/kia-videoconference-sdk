@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp"
+    android:backgroundTint="@color/white">
+
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Please provide your feedback:(limit: 50 words)"
+        android:fontFamily="@font/kia_signature_fix_regular"
+        android:textAppearance="?android:textAppearanceMedium"
+        android:layout_marginBottom="10dp"/>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tv_question"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:fontFamily="@font/kia_signature_fix_light"
+        android:text=""
+        android:visibility="gone"/>
+
+    <EditText
+        android:id="@+id/edit_text_comment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter your feedback."
+        android:maxLines="4"
+        android:minLines="3"
+        android:padding="5dp"
+        android:background="@drawable/bg_comment_box"
+        android:fontFamily="@font/kia_signature_fix_regular"
+        android:inputType="textMultiLine"
+        android:layout_marginBottom="10dp"
+        android:visibility="visible"/>
+
+    <Button
+        android:id="@+id/button_submit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:backgroundTint="@color/black"
+        android:textColor="@color/white"
+        android:textAllCaps="false"
+        android:fontFamily="@font/kia_signature_fix_bold"
+        android:text="Submit" />
+</LinearLayout>

@@ -56,6 +56,14 @@
 <!--                                <category android:name="android.intent.category.LAUNCHER" />-->
 <!--                            </intent-filter>-->
         </activity>
+
+        <activity
+            android:name="com.kia.vc.feedback.FeedbackActivity"
+            android:supportsPictureInPicture="false"
+            android:exported="true">
+
+        </activity>
+
 <!--        for screen sharing-->
         <service
             android:name=".screenshare.MediaProjectionService"

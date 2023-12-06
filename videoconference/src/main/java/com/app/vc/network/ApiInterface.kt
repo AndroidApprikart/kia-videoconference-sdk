@@ -1,12 +1,16 @@
 package com.app.vc.network
 
 import com.app.vc.models.DisplayNameResponse
+import com.app.vc.models.RequestModelUpdateVcStatusCustomer
+import com.app.vc.models.ResponseModelUpdateVideoStatus
 import com.app.vc.models.UpdateStreamIdResponse
 import com.app.vc.models.UploadVcFileResponse
 import com.app.vc.models.ValidateVcResponse
 import com.app.vc.models.VcConfigurationResponse
 import com.app.vc.models.login.RequestModelLogin
 import com.app.vc.models.login.ResponseModelLogin
+import com.kia.vc.models.CreateSurvey
+import com.kia.vc.models.ResponseModelGetSurveyQuestionList
 import okhttp3.MultipartBody
 import retrofit2.Call
 import retrofit2.http.Body
@@ -78,4 +82,17 @@ interface ApiInterface {
     fun login(
         @Body body: RequestModelLogin
     ):Call<ResponseModelLogin>
+
+    @POST(ApiDetails.UPDATE_VC_STATUS_CUSTOMER_NEW)
+    fun updateVcStatusForCustomerNew(
+        @Body body: RequestModelUpdateVcStatusCustomer
+    ):Call<ResponseModelUpdateVideoStatus>
+    @GET(ApiDetails.GET_SURVEY_QUESTIONS_NEW)
+    fun getVcServeyQuestionsNew(
+
+    ): Call<ResponseModelGetSurveyQuestionList>
+
+    @POST(ApiDetails.POST_SURVEY_QUESTIONS_NEW)
+    fun postCreateSurveyNew(@Body body:com.kia.vc.feedback.RequestModelCreateSurvey): Call<CreateSurvey>
+
 }

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <variable
+            name="feedbackVM"
+            type="com.kia.vc.feedback.FeedbackViewModel" />
+    </data>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:theme="@style/Base.Theme.VideoConference"
+        android:gravity="center_vertical"
+        tools:context=".vc.feedback.FeedbackActivity">
+
+        <ProgressBar
+            android:id="@+id/pb_feed_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:visibility="gone"
+            android:elevation="20dp"/>
+
+        <RelativeLayout
+            android:id="@+id/rl_rate_us_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_rounded_recangle"
+            android:elevation="10dp"
+            android:layout_centerVertical="true"
+            android:gravity="center_vertical"
+            android:layout_margin="10dp"
+            android:padding="10dp"
+            android:visibility="gone">
+
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_title_feedback"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:text="Add Rating and comment"
+                android:textColor="@color/color_kia_black"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:textSize="16dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_rating_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/tv_title_feedback"
+                tools:itemCount="2"
+                tools:listitem="@layout/layout_feedback_item" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_below="@id/rv_rating_list"
+                android:weightSum="2">
+                <Button
+                    android:id="@+id/btn_cancel_feed_back"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:strokeColor="@color/color_kia_black"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/color_kia_black"
+                    android:backgroundTint="@color/white"
+                    android:layout_marginRight="3dp"
+                    android:text="Cancel"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textAllCaps="false" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_submit_feed_back"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="3dp"
+                    android:textColor="@color/white"
+                    android:text="Submit"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+
+
+
+        </RelativeLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_api_failure"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            app:cardElevation="@dimen/_5sdp"
+            android:visibility="gone">
+            <RelativeLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/_10sdp">
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/tv_failure_message"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Unable to fetch the questions\n from the server"
+                    android:textSize="14sp"
+                    android:gravity="center_horizontal"
+                    android:layout_marginBottom="@dimen/_10sdp"
+                    app:fontFamily="@font/kia_signature_fix_regular"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_go_back"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/tv_failure_message"
+                    android:layout_centerHorizontal="true"
+                    android:paddingHorizontal="@dimen/_5sdp"
+                    android:paddingVertical="@dimen/_5sdp"
+                    android:text="Ok"/>
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </RelativeLayout>
+</layout>

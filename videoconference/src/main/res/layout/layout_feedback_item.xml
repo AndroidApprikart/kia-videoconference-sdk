@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:padding="10dp">
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tv_question"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="How was the video quality of the video"
+        android:fontFamily="@font/kia_signature_fix_regular"
+        android:textColor="@color/color_kia_black"
+        android:textSize="12dp"/>
+
+    <RatingBar
+        android:id="@+id/rating_feedback"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:numStars="5"
+        android:stepSize="1"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:layout_below="@id/tv_question"
+        android:layout_centerHorizontal="true"
+        android:progressTint="@color/kia_after_noon_yellow" />
+
+    <EditText
+        android:id="@+id/edit_text_comment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Add your comment here"
+        android:textColorHint="#8A8888"
+        android:maxLines="2"
+        android:minLines="3"
+        android:textSize="12sp"
+        android:layout_below="@id/rating_feedback"
+        android:padding="5dp"
+        android:background="@drawable/bg_comment_box"
+        android:fontFamily="@font/kia_signature_fix_regular"
+        android:inputType="textMultiLine"
+        android:layout_marginBottom="10dp"
+        android:gravity="top|start"
+        android:visibility="gone"/>
+
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:id="@+id/ll_comments"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_below="@id/rating_feedback"
+        android:layout_centerHorizontal="true"
+        android:gravity="center_horizontal"
+        android:visibility="gone">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_comments_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/kia_signature_fix_regular"
+            android:textSize="14sp"
+            app:fontFamily="@font/kia_signature_fix_light"
+            android:text="What went wrong?"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_comments"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/kia_signature_fix_regular"
+            android:textSize="14dp"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center_horizontal" />
+    </androidx.appcompat.widget.LinearLayoutCompat>
+
+</RelativeLayout>

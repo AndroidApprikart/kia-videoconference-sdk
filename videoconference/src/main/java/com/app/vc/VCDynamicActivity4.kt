@@ -31,6 +31,7 @@ import android.view.Window
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
@@ -70,6 +71,7 @@ import com.app.vc.databinding.RejoinDialogLayoutBinding
 import com.app.vc.message.MessageFragment
 import com.app.vc.models.MessageModel
 import com.app.vc.models.ParticipantsModel
+import com.app.vc.models.RequestModelUpdateVcStatusCustomer
 import com.app.vc.models.login.RequestModelLogin
 import com.app.vc.participants.ParticipantFragment
 import com.app.vc.screenshare.MediaProjectionService
@@ -77,6 +79,7 @@ import com.app.vc.screenshare.ScreenShareFragment
 import com.app.vc.soundDevice.SoundDeviceFragment
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.gson.Gson
+import com.kia.vc.feedback.FeedbackActivity
 import de.tavendo.autobahn.WebSocket
 import io.antmedia.webrtcandroidframework.IDataChannelObserver
 import io.antmedia.webrtcandroidframework.IWebRTCListener
@@ -136,6 +139,7 @@ class VCDynamicActivity4 : BaseActivity() {
     private lateinit var messageFragment: MessageFragment
 
     private var isLandscape: Boolean = false
+    private lateinit var rateUSDialog: Dialog
 
 
     /*any customized local broadcasts made exclusively in SDK will be reveived here*/
@@ -467,6 +471,78 @@ class VCDynamicActivity4 : BaseActivity() {
             }
         }
 
+        viewModel.isProgressBarVisible.observe(this) {
+            if(it!=null) {
+                if(it) {
+                    showProgressDialog()
+                }else {
+                    dismissProgressDialog()
+                }
+            }
+        }
+
+        viewModel.updateVcStatusResponse.observe(this) {
+
+            Log.d(TAG, "initializeObservers: updateVCStatusResponse:  ${it}")
+            if(it.apiResponseStatus) {
+                when(it.responseData?.status) {
+                    "I"-> {
+                        if(it.responseData!!.data.success) {
+                            viewModel.isProgressBarVisible.value = false
+                            Log.d(TAG, "initializeObservers: updateVC Success: ")
+                        }else {
+                            viewModel.isProgressBarVisible.value = false
+                            viewModel.toastMessage.value = it.responseData.message.toString()
+                        }
+                    }
+                    "E"-> {
+
+                        viewModel.isProgressBarVisible.value = false
+                        viewModel.toastMessage.value = it.responseData.message.toString()
+                    }
+                    else -> {
+
+                        viewModel.isProgressBarVisible.value = false
+                        viewModel.toastMessage.value = it.responseData?.message.toString()
+                    }
+                }
+            }else {
+                viewModel.isProgressBarVisible.value = false
+                Log.d(TAG, "initializeObservers: updateVC Failure: ")
+
+            }
+
+            openRateUs()
+
+        }
+
+    }
+
+    private fun openRateUs() {
+        Log.d(TAG, "openRateUsDialog")
+        rateUSDialog = Dialog(this)
+        rateUSDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        rateUSDialog.setContentView(R.layout.rateus_dialog_layout)
+        rateUSDialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        rateUSDialog.setCancelable(false)
+        val rateus = rateUSDialog.findViewById(R.id.rateus) as TextView
+        rateus.setOnClickListener {
+            rateUSDialog.dismiss()
+            Log.d(TAG, "openRateUs:  rateUsClicked")
+            var intent = Intent(this, FeedbackActivity::class.java)
+            intent.putExtra("customerCode", viewModel.customerCode)
+            intent.putExtra("dealerCode", viewModel.dealerCode)
+            intent.putExtra("roNumber", viewModel.roNo)
+            intent.putExtra("meetingCode", viewModel.roomID)
+            intent.putExtra("userName",viewModel.userName)
+            startActivity(intent)
+            finish()
+        }
+
+        rateUSDialog.show()
     }
 
     private fun setUpOnClickListeners() {
@@ -1226,12 +1302,18 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun leaveConference() {
-        showEndVCDialog()
+        if(::endVCDialog.isInitialized) {
+            if(endVCDialog.isShowing) {
 
+            }else {
+                showEndVCDialog()
+            }
+        }else {
+            showEndVCDialog()
+        }
     }
 
     private fun showEndVCDialog() {
-
         Log.d(TAG, "showAlertToEndtheUserCall: ")
         endVCDialog = Dialog(this)
         endVCDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -1260,14 +1342,21 @@ class VCDynamicActivity4 : BaseActivity() {
         }
         dialogBinding.posBtn.setOnClickListener {
             endVCDialog.dismiss()
-            if (conferenceManager != null) {
-                if (!conferenceManager!!.isJoined) {
-                    viewModel.endVCByUser = true
-                    conferenceManager!!.leaveFromConference()
-                    stoppedStream = true
-                }
+            //show progress dialog
+            // check if the userType is customer if yes , then make api call to update vc status else endVC
+            // based on the response if success show rate us dialog if failed then, show show errorr message with okay button
+            // on click of okay button, open feedback screen
+
+            showProgressDialog()
+
+            if(viewModel.userType == VCConstants.UserType.CUSTOMER.value) {
+                //updateVcStatusForCustomer
+                makeApiCallToUpdateVcStatus()
+            }else {
+                executeEndVc()
             }
-            finishActivity(true)
+
+
         }
         //dialog alignment and size code.
 //        val lp = WindowManager.LayoutParams()
@@ -1281,6 +1370,35 @@ class VCDynamicActivity4 : BaseActivity() {
         endVCDialog.show()
     }
 
+    private fun makeApiCallToUpdateVcStatus() {
+        if (AndroidUtils.isNetworkAvailable(this)) {
+            viewModel.updateVCStatusForCustomerNew(PreferenceManager.getBaseUrl()!!,getVideoStatusObjectCustomer())
+        } else {
+            dismissProgressDialog()
+            viewModel.toastMessage.value = "No Internet Connection"
+        }
+    }
+    private fun getVideoStatusObjectCustomer(): RequestModelUpdateVcStatusCustomer {
+        return RequestModelUpdateVcStatusCustomer(
+            userName = viewModel.userName.toString(),
+            meetingCode = viewModel.roomID.toString(),
+            vcStatus = "D",
+            dealerNumber = viewModel.dealerCode.toString(),
+        )
+    }
+
+    private fun executeEndVc() {
+        if (conferenceManager != null) {
+            if (conferenceManager!!.isJoined) {
+                viewModel.endVCByUser = true
+                conferenceManager!!.leaveFromConference()
+                stoppedStream = true
+            }
+        }
+        dismissProgressDialog()
+        finishActivity(true)
+
+    }
 
     private fun displayRendererMap() {
         Log.d(TAG, "displayRendererMap: ---- Renderer Map Start----")
@@ -1652,7 +1770,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 TAG,
                 "processIncomingDataChannelMessage: exception during processing of the message"
             )
-            throw java.lang.RuntimeException(e) //just comment out for if no exception to be thrown
+//            throw java.lang.RuntimeException(e) //just comment out for if no exception to be thrown
         }
 
     }

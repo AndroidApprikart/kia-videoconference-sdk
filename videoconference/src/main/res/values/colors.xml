@@ -27,5 +27,7 @@
     <color name="receiver_layout_background">#B3B8BB</color>
     <color name="self_layout_header_text_color">#9EA1A2</color>
 
+    <color name="kia_after_noon_yellow">#F3c300</color>
+
 
 </resources>

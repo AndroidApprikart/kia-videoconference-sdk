@@ -12,6 +12,9 @@ import com.app.vc.models.ParticipantsModel
 import androidx.lifecycle.viewModelScope
 import com.app.vc.models.DisplayNameResponse
 import com.app.vc.models.MessageStatusEnum
+import com.app.vc.models.ModifiedResponseUpdateVcStatus
+import com.app.vc.models.RequestModelUpdateVcStatusCustomer
+import com.app.vc.models.ResponseModelUpdateVideoStatus
 import com.app.vc.models.UpdateStreamIdResponse
 import com.app.vc.models.UploadVcFileResponse
 import com.app.vc.models.ValidateVcResponse
@@ -23,24 +26,30 @@ import com.app.vc.network.ApiInterface
 import com.app.vc.network.Resource
 import com.app.vc.network.RetrofitClient
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
 import okhttp3.RequestBody
+import okhttp3.logging.HttpLoggingInterceptor
 import org.webrtc.VideoTrack
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.HttpException
 import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
 import java.net.ConnectException
 import java.net.MalformedURLException
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.TimeUnit
 
 class MainViewModel : ViewModel() {
     var repository = DataRepository()
@@ -55,27 +64,31 @@ class MainViewModel : ViewModel() {
     var customerCode: String? = null
     var roNo: String? = null
     var dealerCode: String? = null
-    var userName:String? = null
+    var userName: String? = null
     var displayName: String? = null
 
 
     var userId: String? = null
-    var password: String? =null
+    var password: String? = null
     var deviceToken: String? = null
-    var vcEndTime:String? = null
-    var kecName:String? = null
+    var vcEndTime: String? = null
+    var kecName: String? = null
 
-    var meetingPasscode:String? = null
+    var meetingPasscode: String? = null
 
     var baseURL = ""
-    private fun getRetrofitServiceClient(baseURL:String) = RetrofitClient().getRetrofitClient(baseURL).create(
-        ApiInterface::class.java)
+    private fun getRetrofitServiceClient(baseURL: String) =
+        RetrofitClient().getRetrofitClient(baseURL).create(
+            ApiInterface::class.java
+        )
 
 
     var kiaApprikartRetrofitClient = RetrofitClient().getRetrofitClient(ApiDetails.BASE_URL).create(
-        ApiInterface::class.java)
+        ApiInterface::class.java
+    )
 
-    var initialConfigurationSucess  = false
+    var initialConfigurationSucess = false
+
     //    var isProgressVisible = MutableLiveData<Boolean>() //removed and replaced with normal function call
     var isServiceStarted = false//used just for testing
 
@@ -94,7 +107,7 @@ class MainViewModel : ViewModel() {
 
 
     var updateParticipants = MutableLiveData<Boolean>()
-    var updateParticipantsNameUI= MutableLiveData<Boolean>() //to update the display name in UI
+    var updateParticipantsNameUI = MutableLiveData<Boolean>() //to update the display name in UI
     var participantCount = MutableLiveData<String>()
 
     var isAudioDeviceUpdated = MutableLiveData<Boolean>()
@@ -139,6 +152,8 @@ class MainViewModel : ViewModel() {
     var soundDeviceFragVisible = false
     var screenShareFragVisible = false
 
+    var isProgressBarVisible = MutableLiveData<Boolean>()
+
     /*message handling functions*/
     fun processNewLocalTextMessage(userInputText: String, id: Long) {
         Log.d(TAG, "processNewLocalTextMessage: ")
@@ -155,6 +170,8 @@ class MainViewModel : ViewModel() {
         messageListInMVM.add(tempMessage)
         addNewLocalMessage.value = id
         sendLocalTextMessageToDataChannel.value = id
+
+
     }
 
     fun processNewLocalFileMessage(
@@ -198,7 +215,7 @@ class MainViewModel : ViewModel() {
     /*06 Nov 2023 - Upload file API*/
     var TOTAL_RETRIES = 3
 
-   fun uploadVcFileAPICallNew(
+    fun uploadVcFileAPICallNew(
         file: File,
         vcRoom: String,
         userType: String,
@@ -215,14 +232,15 @@ class MainViewModel : ViewModel() {
             vc_room = vcRoom,
             user_type = userType,
             who = who,
-            VCConstants.version)
+            VCConstants.version
+        )
         /*set status as UPLOAD_PROGRESS */
         updateUploadStatusForFileMessage(
             serverFileURL = "",
             msgID = messageId,
             status = MessageStatusEnum.FILE_UPLOAD_PROGRESS.tag
         )
-        call.enqueue(object : retrofit2.Callback<UploadVcFileResponse>{
+        call.enqueue(object : retrofit2.Callback<UploadVcFileResponse> {
             override fun onFailure(call: Call<UploadVcFileResponse>, t: Throwable) {
                 Log.d(TAG, "onFailure: uploadFile: Failure")
                 if (retryCount++ < TOTAL_RETRIES) {
@@ -243,7 +261,8 @@ class MainViewModel : ViewModel() {
                         //testing purpose, to be commented after testing
 //                        data.value = Resource.error("Server Busy: ${e.toString()}")
                         //testing purpose, to be uncommented after testing
-                        toastMessage.value = "Something went wrong while sending the file. Please try after some time"
+                        toastMessage.value =
+                            "Something went wrong while sending the file. Please try after some time"
                         /*update the message ID as "UPLOAD_FAILED*/
                         updateUploadStatusForFileMessage(
                             serverFileURL = "",
@@ -254,7 +273,10 @@ class MainViewModel : ViewModel() {
                 }
             }
 
-            override fun onResponse(call: Call<UploadVcFileResponse>, response: Response<UploadVcFileResponse>) {
+            override fun onResponse(
+                call: Call<UploadVcFileResponse>,
+                response: Response<UploadVcFileResponse>
+            ) {
                 Log.d(TAG, "onResponse: uploadFile: Success: ")
                 response?.body()?.let { it ->
                     if (response.code() in 200..299) {
@@ -299,6 +321,7 @@ class MainViewModel : ViewModel() {
 
 
     }
+
     private fun getErrorMessage(t: Throwable): String {
         Log.d(TAG, "getErrorMessage: t-${Gson().toJson(t)}")
         var errorMessage = ""
@@ -455,27 +478,30 @@ class MainViewModel : ViewModel() {
     fun validateVcForCustomer(roomId: String, pass: String, userType: String) {
         Log.d(TAG, "validateVcForCustomer:  ")
         val call = kiaApprikartRetrofitClient.validateVcForCustomer(
-                room = roomId,
-                authPasscode = pass,
-                userType = userType,
-                appVersion = VCConstants.version
+            room = roomId,
+            authPasscode = pass,
+            userType = userType,
+            appVersion = VCConstants.version
         )
         call.enqueue(object : Callback<ValidateVcResponse> {
             override fun onFailure(call: Call<ValidateVcResponse>, t: Throwable) {
                 toastMessage.value = getErrorMessage(t)
-                validateVCResponse.value = ValidateVcResponse("failed",getErrorMessage(t))
+                validateVCResponse.value = ValidateVcResponse("failed", getErrorMessage(t))
             }
+
             override fun onResponse(
                 call: Call<ValidateVcResponse>,
                 response: Response<ValidateVcResponse>
             ) {
                 Log.d(TAG, "onResponse: validateVcForCustomer: ${response.body()}")
-                if (response.code() in 200..299){
-                    if (response.body()!=null) {
+                if (response.code() in 200..299) {
+                    if (response.body() != null) {
                         validateVCResponse.value = response.body()
                     } else {
-                        validateVCResponse.value = ValidateVcResponse("failed",
-                        "Something went wrong.")
+                        validateVCResponse.value = ValidateVcResponse(
+                            "failed",
+                            "Something went wrong."
+                        )
                     }
                 } else {
                     validateVCResponse.value = ValidateVcResponse("failed", "Something went wrong.")
@@ -499,18 +525,20 @@ class MainViewModel : ViewModel() {
         call.enqueue(object : Callback<ValidateVcResponse> {
             override fun onFailure(call: Call<ValidateVcResponse>, t: Throwable) {
                 toastMessage.value = "Something went wrong"
-                validateVCResponse.value = ValidateVcResponse("failed",getErrorMessage(t))
+                validateVCResponse.value = ValidateVcResponse("failed", getErrorMessage(t))
             }
+
             override fun onResponse(
                 call: Call<ValidateVcResponse>,
                 response: Response<ValidateVcResponse>
             ) {
                 Log.d(TAG, "onResponse: validateVcForServicePerson: ${response.body()}")
-                if (response.code() in 200..299){
-                    if (response.body()!=null) {
+                if (response.code() in 200..299) {
+                    if (response.body() != null) {
                         validateVCResponse.value = response.body()
                     } else {
-                        validateVCResponse.value = ValidateVcResponse("failed", "Something went wrong.")
+                        validateVCResponse.value =
+                            ValidateVcResponse("failed", "Something went wrong.")
                     }
                 } else {
                     validateVCResponse.value = ValidateVcResponse("failed", "Something went wrong.")
@@ -533,21 +561,25 @@ class MainViewModel : ViewModel() {
         call.enqueue(object : Callback<VcConfigurationResponse> {
             override fun onFailure(call: Call<VcConfigurationResponse>, t: Throwable) {
                 toastMessage.value = getErrorMessage(t)
-                vcConfigurationResponse.value = VcConfigurationResponse(null,"failure",getErrorMessage(t))
+                vcConfigurationResponse.value =
+                    VcConfigurationResponse(null, "failure", getErrorMessage(t))
             }
+
             override fun onResponse(
                 call: Call<VcConfigurationResponse>,
                 response: Response<VcConfigurationResponse>
             ) {
                 Log.d(TAG, "onResponse: getVCConfiguration: ${response.body()}")
-                if (response.code() in 200..299){
-                    if (response.body()!=null) {
+                if (response.code() in 200..299) {
+                    if (response.body() != null) {
                         vcConfigurationResponse.value = response.body()
                     } else {
-                        vcConfigurationResponse.value = VcConfigurationResponse(null, "failure", "Something went wrong. ")
+                        vcConfigurationResponse.value =
+                            VcConfigurationResponse(null, "failure", "Something went wrong. ")
                     }
                 } else {
-                    vcConfigurationResponse.value = VcConfigurationResponse(null, "failure", "Something went wrong.")
+                    vcConfigurationResponse.value =
+                        VcConfigurationResponse(null, "failure", "Something went wrong.")
                 }
             }
 
@@ -591,14 +623,14 @@ class MainViewModel : ViewModel() {
                 response: Response<UpdateStreamIdResponse>
             ) {
                 Log.d(TAG, "onResponse: updateStreamIdInServerAPICall: ${response.body()}")
-                if (response.code() in 200..299){
-                    if (response.body()!=null) {
+                if (response.code() in 200..299) {
+                    if (response.body() != null) {
                         updateStreamIdResponse.value = response.body()
 
-                        updateStreamIdResponse.value?.let{
+                        updateStreamIdResponse.value?.let {
                             if (it.status.isNullOrBlank()) {
                                 if (it.apiErrorMessage.isNullOrBlank()) {
-                                   toastMessage.value = "Server busy!"
+                                    toastMessage.value = "Server busy!"
                                 } else {
                                     toastMessage.value = it.apiErrorMessage.toString()
                                 }
@@ -607,9 +639,9 @@ class MainViewModel : ViewModel() {
 //                                        retry()
                                 }
                             } else {
-                                if (it.status.equals("success",true)) {
+                                if (it.status.equals("success", true)) {
                                     isLocalStreamIdUpdated = true
-                                    getDisplayNameForStreamId(roomId,streamId,VCConstants.version)
+                                    getDisplayNameForStreamId(roomId, streamId, VCConstants.version)
                                 } else if (!isLocalStreamIdUpdated) {
                                     //nahusha help :: be careful here..there will be retrying of the network call done here
 //                                    retry()
@@ -623,6 +655,7 @@ class MainViewModel : ViewModel() {
                     toastMessage.value = "Something went wrong."
                 }
             }
+
             fun retry() {
                 call.clone().enqueue(this)
             }
@@ -650,11 +683,12 @@ class MainViewModel : ViewModel() {
                 response: Response<DisplayNameResponse>
             ) {
                 Log.d(TAG, "onResponse: getDisplayNameForStreamId: ${response.body()}")
-                if (response.code() in 200..299){
-                    if (response.body()!=null) {
+                if (response.code() in 200..299) {
+                    if (response.body() != null) {
                         getDisplayNameResponse.value = response.body()
                         getDisplayNameResponse.value?.let {
-                            processGetDisplayNameResponse(roomId,streamId,
+                            processGetDisplayNameResponse(
+                                roomId, streamId,
                                 it
                             )
                         }
@@ -669,9 +703,16 @@ class MainViewModel : ViewModel() {
         })
     }
 
-    private fun processGetDisplayNameResponse(roomId:String, stream_Id: String,displayData:DisplayNameResponse){
-        Log.d(TAG, "processGetDisplayNameResponse: stream_id ->${stream_Id} :: streamID -> ${streamId} ::displayName -> ${displayData.displayName}")
-        if(stream_Id.equals(streamId)){
+    private fun processGetDisplayNameResponse(
+        roomId: String,
+        stream_Id: String,
+        displayData: DisplayNameResponse
+    ) {
+        Log.d(
+            TAG,
+            "processGetDisplayNameResponse: stream_id ->${stream_Id} :: streamID -> ${streamId} ::displayName -> ${displayData.displayName}"
+        )
+        if (stream_Id.equals(streamId)) {
             /*this is local participant*/
             /*do not update..ignore*/
             var resultPair = getLocalParticipant()
@@ -679,9 +720,12 @@ class MainViewModel : ViewModel() {
                 /*update this participants display name message*/
                 Log.d(TAG, "processGetDisplayNameResponse: localParticipant found found")
                 var foundParticipant = participants[resultPair.second]
-                foundParticipant.displayName = displayData.displayName?:stream_Id
+                foundParticipant.displayName = displayData.displayName ?: stream_Id
                 participants[resultPair.second] = foundParticipant
-                Log.d(TAG, "processGetDisplayNameResponse: particiapnts -> ${Gson().toJson(participants)}")
+                Log.d(
+                    TAG,
+                    "processGetDisplayNameResponse: particiapnts -> ${Gson().toJson(participants)}"
+                )
                 updateParticipants.value = true
                 updateParticipantsNameUI.value = true
             }
@@ -694,19 +738,25 @@ class MainViewModel : ViewModel() {
             /*update this participants display name message*/
             Log.d(TAG, "processGetDisplayNameResponse: participant found")
             var foundParticipant = participants[resultPair.second]
-            foundParticipant.displayName = displayData.displayName?:stream_Id
+            foundParticipant.displayName = displayData.displayName ?: stream_Id
             participants[resultPair.second] = foundParticipant
-            Log.d(TAG, "processGetDisplayNameResponse: particiapnts -> ${Gson().toJson(participants)}")
+            Log.d(
+                TAG,
+                "processGetDisplayNameResponse: particiapnts -> ${Gson().toJson(participants)}"
+            )
             updateParticipants.value = true
             updateParticipantsNameUI.value = true
         }
     }
 
-    private fun getParticipantForStream(stream_Id: String): Pair<ParticipantsModel?, Int>{
+    private fun getParticipantForStream(stream_Id: String): Pair<ParticipantsModel?, Int> {
         Log.d(TAG, "getParticipantForStream:")
         var participantIndex = -1
         for (i in participants.indices) {
-            Log.d(TAG, "getParticipantForStream: trackID -> ${participants[i].trackId} :;streamId -> ${stream_Id}")
+            Log.d(
+                TAG,
+                "getParticipantForStream: trackID -> ${participants[i].trackId} :;streamId -> ${stream_Id}"
+            )
             if (participants[i].trackId.contains(stream_Id)) {
                 participantIndex = i
                 break;
@@ -719,7 +769,7 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    private fun getLocalParticipant(): Pair<ParticipantsModel?, Int>{
+    private fun getLocalParticipant(): Pair<ParticipantsModel?, Int> {
         Log.d(TAG, "getLocalParticipant:")
         var participantIndex = -1
         for (i in participants.indices) {
@@ -737,12 +787,12 @@ class MainViewModel : ViewModel() {
 
     var loginResponse = MutableLiveData<ResponseModelLogin>()
 
-    fun doLogin(requestObject: RequestModelLogin){
+    fun doLogin(requestObject: RequestModelLogin) {
         val call = kiaApprikartRetrofitClient.login(requestObject)
         call.enqueue(object : Callback<ResponseModelLogin> {
             override fun onFailure(call: Call<ResponseModelLogin>, t: Throwable) {
                 toastMessage.value = "Something went wrong. Failure"
-                loginResponse.value = ResponseModelLogin(null,null,null,"failure",false)
+                loginResponse.value = ResponseModelLogin(null, null, null, "failure", false)
             }
 
             override fun onResponse(
@@ -750,22 +800,94 @@ class MainViewModel : ViewModel() {
                 response: Response<ResponseModelLogin>
             ) {
                 Log.d(TAG, "onResponse: doLogin: ${response.body()}")
-                if (response.code() in 200..299){
-                    if (response.body()!=null) {
+                if (response.code() in 200..299) {
+                    if (response.body() != null) {
                         loginResponse.value = response.body()
                     } else {
                         toastMessage.value = "Something went wrong."
-                        loginResponse.value = ResponseModelLogin(null,null,null,"failure",false)
+                        loginResponse.value = ResponseModelLogin(null, null, null, "failure", false)
                     }
                 } else {
                     toastMessage.value = "Something went wrong"
-                    loginResponse.value = ResponseModelLogin(null,null,null,"failure",false)
+                    loginResponse.value = ResponseModelLogin(null, null, null, "failure", false)
                 }
             }
 
         })
     }
 
+    var updateVcStatusResponse = MutableLiveData<ModifiedResponseUpdateVcStatus>()
+    fun updateVCStatusForCustomerNew(
+        baseUrl: String,
+        requestObject: RequestModelUpdateVcStatusCustomer
+    ) {
+        Log.d(TAG, "updateVCStatusForCustomer: requestObject: ${requestObject}")
+        val call = getServiceObject(baseUrl).updateVcStatusForCustomerNew(requestObject)
+        call.enqueue(object : Callback<ResponseModelUpdateVideoStatus?> {
+            override fun onResponse(
+                call: Call<ResponseModelUpdateVideoStatus?>,
+                response: Response<ResponseModelUpdateVideoStatus?>
+            ) {
+                if (response.body() != null) {
+                    if (response.code() in 200..299) {
+                        updateVcStatusResponse.value = ModifiedResponseUpdateVcStatus(
+                            response.body()!!,
+                            true
+                        )
+                        Log.d(TAG, "updateVCStatusForCustomer: onResponse: ${response.body()}")
+                    } else {
+                        Log.d(TAG, "onResponse: updateVCStatusForCustomer: else: !200.299")
+                        isProgressBarVisible.value = false
+                        updateVcStatusResponse.value = ModifiedResponseUpdateVcStatus(
+                            response.body(),
+                            false
+                        )
+                        toastMessage.value = "Something went wrong.responseCode.UpdateVcStatus"
+                    }
+                } else {
+                    isProgressBarVisible.value = false
+                    toastMessage.value = "Null Response.UpdateVCStatus"
+                }
 
+            }
+
+            override fun onFailure(call: Call<ResponseModelUpdateVideoStatus?>, t: Throwable) {
+                Log.d(TAG, "onFailure: updateVCStatusForCustomer: ")
+                toastMessage.value = "Something went wrong.Failure.UpdateVcStatus"
+                isProgressBarVisible.value = false
+                updateVcStatusResponse.value = ModifiedResponseUpdateVcStatus(
+                    null,
+                    false
+                )
+                Log.d(TAG, "onFailure: updateVCStatusForCustomer: message: ${t.message}")
+                Log.d(TAG, "onFailure: updateVCStatusForCustomer: message: ${t.localizedMessage}")
+                Log.d(TAG, "onFailure: updateVCStatusForCustomer: message: ${t.cause}")
+                Log.d(TAG, "onFailure: updateVCStatusForCustomer: message: ${t.printStackTrace()}")
+            }
+        })
+    }
+
+
+    var gson = GsonBuilder()
+        .setLenient()
+        .create()
+
+    val okhttp = OkHttpClient().newBuilder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+        .build()
+    fun getServiceObject(baseUrl: String):ApiInterface{
+        var service: ApiInterface =
+            Retrofit.Builder()
+                .baseUrl(baseUrl)
+//            .client(okhttp)
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .build()
+                .create(ApiInterface::class.java)
+
+        return service
+    }
 
 }
