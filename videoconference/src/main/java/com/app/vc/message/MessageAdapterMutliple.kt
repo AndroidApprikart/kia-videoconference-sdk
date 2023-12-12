@@ -7,8 +7,10 @@ import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.FileOperations
+import com.app.vc.PreferenceManager
 import com.app.vc.R
 import com.app.vc.VCConstants
+import com.app.vc.databinding.LayoutEstimationMessageSelfBinding
 import com.app.vc.databinding.LayoutLocalFileMessageBinding
 import com.app.vc.databinding.LayoutLocalTextMessageBinding
 import com.app.vc.databinding.LayoutRemoteFileMessageBinding
@@ -16,15 +18,33 @@ import com.app.vc.databinding.LayoutRemoteTextMessageBinding
 import com.app.vc.databinding.MessageItemLayoutNewBinding
 import com.app.vc.models.MessageModel
 import com.app.vc.models.MessageStatusEnum
+import com.kia.vc.message.Labour
+import com.kia.vc.message.LabourListAdapter
+import com.kia.vc.message.Part
+import com.kia.vc.message.PartListAdapter
 import java.text.SimpleDateFormat
 import java.util.Date
+import android.content.Context
+import android.widget.Toast
+
+import com.app.vc.databinding.LayoutEstimationMessageRemoteBinding
 
 class MessageAdapterMutliple (
     private val dataList: ArrayList<MessageModel>,
-    private val listener: MessageClickListener
+    private val listener: MessageClickListener,
+    private var mContext: Context,
+    private var messageScreenContext:MessageFragment
 ) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     val TAG = "MSG_ADAPTER"
+
+    var onAcceptClickListener: MessageAdapterMutliple.OnAcceptClickListener ?=null
+    var onRejectClickListener: MessageAdapterMutliple.OnRejectClickListener? = null
+    var selectAllListener: MessageAdapterMutliple.SelectAllItemsClickListener? = null
+
+    var isClickable = true
+    var lastClickTime = System.currentTimeMillis()
+    var clickTimeInterval = 2000
 
     private fun updateLocalMessageStatusUI(
         tvSelfMsgStatus: AppCompatTextView,
@@ -125,8 +145,8 @@ class MessageAdapterMutliple (
             }
 
             3 -> { /*local estimate*/
-//                val binding=  LayoutLocalE.inflate(LayoutInflater.from(parent.context), parent, false)
-//                LocalFileHolder(binding)
+                val binding=  LayoutEstimationMessageSelfBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                return LocalEstimateHolder(binding)
             }
 
             4 -> { /*remote text*/
@@ -149,6 +169,8 @@ class MessageAdapterMutliple (
 
             6 -> { /*remote estimate*/
 //                (holder as RemoteEstimateHolder).bind(dataList[position]).also{ }
+                val binding=  LayoutEstimationMessageRemoteBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                return RemoteEstimateHolder(binding)
             }
         }
         return RemoteFileHolder( LayoutRemoteFileMessageBinding.inflate(
@@ -172,14 +194,14 @@ class MessageAdapterMutliple (
             {
                 VCConstants.TEXT_MESSAGE->{ return 1}
                 VCConstants.FILE_MESSAGE->{ return 2}
-               // VCConstants.ESTIMATE_MESSAGE->{ return 3}
+                VCConstants.ESTIMATION_MESSAGE->{ return 3}
             }
         }else{
             when(dataList[position].messageType)
             {
                 VCConstants.TEXT_MESSAGE->{return 4}
                 VCConstants.FILE_MESSAGE->{return 5}
-                //VCConstants.ESTIMATE_MESSAGE->{return 6}
+                VCConstants.ESTIMATION_MESSAGE->{return 6}
             }
         }
         return if (dataList[position].isLocalMessage) 1 else 0
@@ -298,9 +320,56 @@ class MessageAdapterMutliple (
 
     /*local estimate*/
     inner class LocalEstimateHolder(
-        private val binding: MessageItemLayoutNewBinding
+        private val binding: LayoutEstimationMessageSelfBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(data: MessageModel) {
+            binding.userNameTv.text = data.userName
+            binding.tvTimeStampSelf.visibility = View.VISIBLE
+            updateLocalMessageStatusUI(binding.tvLocalMsgStatus,data.status,data.messageType)
+
+
+
+            if(PreferenceManager.getuserType() == VCConstants.UserType.SERVICE_PERSON.value) {
+                binding.tvCheckboxTitle.visibility = View.GONE
+            }
+
+            var partListAdapter = PartListAdapter(
+                mContext  = mContext ,
+                dataList = dataList[position].estimationDetails!!.part_list as ArrayList<Part>,
+                parentPosition = position,
+                messageScreenContext as MessageFragment,
+                isCheckboxVisible = PreferenceManager.getuserType() != VCConstants.UserType.SERVICE_PERSON.value,
+                isCheckboxSelectable = dataList[position].estimationDetails?.estimationApprovalStatus.isNullOrEmpty()
+            )
+            binding.rvEstimationPartList.adapter = partListAdapter
+            partListAdapter.notifyDataSetChanged()
+
+            var labourListAdapter  = LabourListAdapter(
+                mContext = mContext,
+                dataList = dataList[position].estimationDetails!!.labour_list as ArrayList<Labour>,
+                parentPosition = position,
+                messageScreenContext as MessageFragment,
+                isCheckBoxVisible = PreferenceManager.getuserType() != VCConstants.UserType.SERVICE_PERSON.value,
+                isCheckboxSelectable = dataList[position].estimationDetails?.estimationApprovalStatus.isNullOrEmpty()
+            )
+            binding.rvEstimationLabourList.adapter = labourListAdapter
+            labourListAdapter.notifyDataSetChanged()
+
+            Log.d(TAG, "estimateStatus: local: bind:  ${dataList[position].estimationDetails?.estimationApprovalStatus}")
+
+            if(dataList[position].estimationDetails?.estimationApprovalStatus!=null) {
+                binding.tvEstimateStatus.visibility = View.VISIBLE
+                if(dataList[position].estimationDetails?.estimationApprovalStatus == "Y") {
+                    binding.tvEstimateStatus.text = "Approved"
+                    binding.tvEstimateStatus.setTextColor(mContext.resources.getColor(R.color.green))
+                }else {
+                    binding.tvEstimateStatus.text = "Rejected"
+                    binding.tvEstimateStatus.setTextColor(mContext.resources.getColor(R.color.text_colour1))
+                }
+            }else {
+                binding.tvEstimateStatus.visibility = View.GONE
+            }
+
         }
     }
 
@@ -331,13 +400,173 @@ class MessageAdapterMutliple (
 
     /*local estimate*/
     inner class RemoteEstimateHolder(
-        private val binding: LayoutLocalTextMessageBinding
+        private val binding: LayoutEstimationMessageRemoteBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(data: MessageModel) {
+            binding.remoteUserNameTv.text = data.userName
+            binding.tvRemoteTimeStamp.text = getLocalHoursAndMinutesFromMilliseconds(data.id!!).first.toString() + ":"+
+                    getLocalHoursAndMinutesFromMilliseconds(data.id!!).second.toString()
+
+            Log.d(TAG, "bind: test partList ${dataList[position].estimationDetails!!}")
+//            if(dataList[position].estimationDetails!=null) {
+//                binding.checkboxSelectAll.isChecked = dataList[position].estimationDetails!!.areAllItemsSelected
+//            }
+
+            binding.checkboxSelectAll.post {
+                if (dataList[position].estimationDetails != null) {
+                    binding.checkboxSelectAll.isChecked = dataList[position].estimationDetails!!.areAllItemsSelected
+                }
+            }
+
+
+            if(dataList[position].estimationDetails?.estimationApprovalStatus!=null) {
+                binding.btnRejectEstimation.visibility = View.GONE
+                binding.btnApproveEstimation.visibility = View.GONE
+            }else {
+                binding.btnRejectEstimation.visibility = View.VISIBLE
+                binding.btnApproveEstimation.visibility = View.VISIBLE
+            }
+
+            if(PreferenceManager.getuserType() == VCConstants.UserType.CUSTOMER.value && dataList[position].estimationDetails?.estimationApprovalStatus!="Y") {
+
+                // Check for selected parts
+                val selectedParts = dataList[position].estimationDetails?.part_list?.filter { part -> part.isSelected == "Y" }
+
+                // Check for selected labor items
+                val selectedLabors = dataList[position].estimationDetails?.labour_list?.filter { labor -> labor.isSelected == "Y" }
+
+                // Update the UI based on the selected parts and labor items
+                if (selectedParts!!.isNotEmpty() || selectedLabors!!.isNotEmpty()) {
+                    // At least one part or labor item is selected
+                    // Update the UI accordingly
+                    binding.btnRejectEstimation.visibility = View.GONE
+                } else {
+                    if(dataList[position].estimationDetails!!.estimationApprovalStatus == null) {
+                        binding.btnRejectEstimation.visibility = View.VISIBLE
+                    }
+
+                    // No part or labor item is selected
+                    // Update the UI accordingly
+                }
+            }
+
+
+
+            var partListAdapter = PartListAdapter(
+                mContext  = mContext ,
+                dataList = dataList[position].estimationDetails!!.part_list as ArrayList<Part>,
+                position,
+                messageScreenContext as MessageFragment,
+                isCheckboxVisible = null,
+                isCheckboxSelectable = dataList[position].estimationDetails?.estimationApprovalStatus.isNullOrEmpty()
+            )
+            binding.rvReceiverEstimationPartList.adapter = partListAdapter
+            partListAdapter.notifyDataSetChanged()
+
+
+            var labourListAdapter  = LabourListAdapter(
+                mContext = mContext,
+                dataList = dataList[position].estimationDetails!!.labour_list as ArrayList<Labour>,
+                parentPosition = position,
+                messageScreenContext as MessageFragment,
+                isCheckBoxVisible = null,
+                isCheckboxSelectable = dataList[position].estimationDetails?.estimationApprovalStatus.isNullOrEmpty()
+            )
+            binding.rvReceiverEstimationLabourList.adapter = labourListAdapter
+            labourListAdapter.notifyDataSetChanged()
+
+
+            binding.tvGrandTotalValue.text = dataList[position].estimationDetails!!.selectedItemsTotal.toString()
+
+            if(PreferenceManager.getuserType().equals(VCConstants.UserType.CUSTOMER.value)){
+                binding.rvEstimationApprovalLayout.visibility= View.VISIBLE
+                binding.checkboxSelectAll.isClickable =
+                    dataList[position].estimationDetails?.estimationApprovalStatus == null
+            }else {
+                binding.checkboxSelectAll.visibility = View.GONE
+                binding.rvEstimationApprovalLayout.visibility= View.GONE
+                if(dataList[position].estimationDetails?.estimationApprovalStatus!=null) {
+                    Log.d(TAG, "onBindViewHolder: estimationStatus: ${dataList[position].estimationDetails?.estimationApprovalStatus}")
+                    if(dataList[position].estimationDetails?.estimationApprovalStatus == "Y") {
+                        binding.tvEstimateStatusReceiver.visibility = View.VISIBLE
+                        binding.tvEstimateStatusReceiver.text = "Approved"
+                        binding.tvEstimateStatusReceiver.setTextColor(mContext.resources.getColor(R.color.green))
+                    }else {
+                        binding.tvEstimateStatusReceiver.visibility = View.VISIBLE
+                        binding.tvEstimateStatusReceiver.text = "Rejected"
+                        binding.tvEstimateStatusReceiver.setTextColor(mContext.resources.getColor(R.color.text_colour1))
+                    }
+                }else {
+                    binding.tvEstimateStatusReceiver.visibility = View.GONE
+                }
+            }
+
+            binding.checkboxSelectAll.setOnCheckedChangeListener { _, isChecked ->
+                selectAllListener?.onSelectAllClicked(
+                    parentPosition = position,
+                    isSelected = isChecked,
+                    estimateDetails =dataList[position].estimationDetails!!
+                )
+            }
+
+            binding.btnApproveEstimation.setOnClickListener {
+                var now = System.currentTimeMillis()
+                if (now - lastClickTime < clickTimeInterval) {
+                    return@setOnClickListener
+                }
+                lastClickTime = now
+                if (!isClickable) {
+                    return@setOnClickListener
+                } else {
+                    val selectedParts = dataList[position].estimationDetails?.part_list?.filter { part -> part.isSelected == "Y" }
+
+                    // Check for selected labor items
+                    val selectedLabors = dataList[position].estimationDetails?.labour_list?.filter { labor -> labor.isSelected == "Y" }
+
+                    // Update the UI based on the selected parts and labor items
+                    if (selectedParts!!.isNotEmpty() || selectedLabors!!.isNotEmpty()) {
+                        onAcceptClickListener?.onAcceptClicked(position,dataList[position].estimationDetails!!)
+                    } else {
+                        if(dataList[position].estimationDetails!!.estimationApprovalStatus == null) {
+                            Toast.makeText(mContext,"Please select labours and parts", Toast.LENGTH_SHORT).show()
+                        }
+                        // No part or labor item is selected
+                        // Update the UI accordingly
+                    }
+                }
+            }
+
+            binding.btnRejectEstimation.setOnClickListener {
+                var now = System.currentTimeMillis()
+                if (now - lastClickTime < clickTimeInterval) {
+                    return@setOnClickListener
+                }
+                lastClickTime = now
+                if (!isClickable) {
+                    return@setOnClickListener
+                } else {
+                    onRejectClickListener?.onRejectClicked(position,dataList[position].estimationDetails!!)
+                }
+            }
 
         }
     }
 
+    interface OnAcceptClickListener {
+        fun onAcceptClicked(parentPosition: Int, estimateDetails: ResponseModelEstimateData)
+    }
+
+    interface OnRejectClickListener {
+        fun onRejectClicked(parentPosition: Int, estimateDetails: ResponseModelEstimateData)
+    }
+
+    interface MessagesAdapterListener {
+        fun onMessageSelectionChanged(message: MessageModel, isSelected: Boolean)
+    }
+
+    interface SelectAllItemsClickListener {
+        fun onSelectAllClicked(parentPosition: Int, isSelected: Boolean, estimateDetails: ResponseModelEstimateData)
+    }
 }
 
 

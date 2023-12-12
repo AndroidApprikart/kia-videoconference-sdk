@@ -10,6 +10,11 @@ import androidx.lifecycle.ViewModel
 import com.app.vc.models.MessageModel
 import com.app.vc.models.ParticipantsModel
 import androidx.lifecycle.viewModelScope
+import com.app.vc.message.EstimateModel
+import com.app.vc.message.RequestModelOpenEstimate
+import com.app.vc.message.RequestModelUpdateEstimationStatus
+import com.app.vc.message.ResponseModelEstimateData
+import com.app.vc.message.ResponseModelUpdateEstimateStatus
 import com.app.vc.models.DisplayNameResponse
 import com.app.vc.models.MessageStatusEnum
 import com.app.vc.models.ModifiedResponseUpdateVcStatus
@@ -135,6 +140,7 @@ class MainViewModel : ViewModel() {
 
     var sendLocalTextMessageToDataChannel = MutableLiveData<Long>()
     var sendLocalFileMessageToDataChannel = MutableLiveData<Long>()
+    var sendLocalEstimationMessageToDataChannel = MutableLiveData<Long>()
 
     var messageFragmentClose = MutableLiveData<Boolean>()
     var openFileManager = MutableLiveData<Boolean>()
@@ -154,23 +160,54 @@ class MainViewModel : ViewModel() {
 
     var isProgressBarVisible = MutableLiveData<Boolean>()
 
+    var getEstimationDetails = MutableLiveData<Boolean>()
+    var tempEstimateModel:ResponseModelEstimateData? = null
+    var estimateDetailsResponse = MutableLiveData<ResponseModelEstimateData>()
+
+    var estimateDetailsAfterApproval: ResponseModelEstimateData? =null
+    var tempMessageModelAfterApprovalOrReject: MessageModel? = null
+    var tempParentPosition: Int? = null
+    var updateEstimateStatus = MutableLiveData<Boolean>()
+    var selectedPartList:String? = ""
+    var selectedLabourList: String?  = ""
+    var isSuccessEstimationResponse = MutableLiveData<Boolean>()
+
+
+
     /*message handling functions*/
     fun processNewLocalTextMessage(userInputText: String, id: Long) {
         Log.d(TAG, "processNewLocalTextMessage: ")
         val tempMessage = MessageModel(
-            userName = "Local", //nahusha help
+            userName = displayName!!, //nahusha help
             messageText = userInputText.trim().toString(),
             isLocalMessage = true,
             messageType = VCConstants.TEXT_MESSAGE,
             id = id,
             fileName = "",
             serverFilePath = "",
-            status = MessageStatusEnum.MSG_SENDING_IN_PROGRESS.tag
+            status = MessageStatusEnum.MSG_SENDING_IN_PROGRESS.tag,
+            estimationDetails = null
         )
         messageListInMVM.add(tempMessage)
         addNewLocalMessage.value = id
         sendLocalTextMessageToDataChannel.value = id
+    }
 
+    fun processLocalEstimationMessage(estimationDetails: ResponseModelEstimateData, id:Long) {
+        val tempEstimation = MessageModel(
+            userName = displayName!!, //nahusha help
+            messageText = "",
+            isLocalMessage = true,
+            messageType = VCConstants.ESTIMATION_MESSAGE,
+            id = id,
+            fileName = "",
+            serverFilePath = "",
+            status = MessageStatusEnum.MSG_SENDING_IN_PROGRESS.tag,
+            estimationDetails = estimationDetails
+        )
+        messageListInMVM.add(tempEstimation)
+        addNewLocalMessage.value = id
+        sendLocalEstimationMessageToDataChannel.value = id
 
     }
 
@@ -186,14 +223,15 @@ class MainViewModel : ViewModel() {
             Log.d(TAG, "processNewLocalFileMessage: is before file upload")
             /*before file upload create and have it in the local..do not send to data channel */
             var tempMessage = MessageModel(
-                userName = "Local",
+                userName = displayName!!, //nahusha help,
                 messageText = "",
                 isLocalMessage = true,
                 messageType = VCConstants.FILE_MESSAGE,
                 id = id,
                 fileName = fileName,
                 serverFilePath = serverFilePath,
-                status = MessageStatusEnum.MSG_SENDING_IN_PROGRESS.tag
+                status = MessageStatusEnum.MSG_SENDING_IN_PROGRESS.tag,
+                estimationDetails = null
             )
             tempMessage.localFilePath = localFilePath
             messageListInMVM.add(tempMessage)
@@ -211,6 +249,8 @@ class MainViewModel : ViewModel() {
             }
         }
     }
+
+
 
     /*06 Nov 2023 - Upload file API*/
     var TOTAL_RETRIES = 3
@@ -867,6 +907,137 @@ class MainViewModel : ViewModel() {
         })
     }
 
+
+    fun getEstimationDetailsNew(baseUrl:String,id:Long) {
+        Log.d(TAG, "getEstimationDetails: ")
+//        var requestObject = RequestModelOpenEstimate("R202300090")
+        var requestObject = RequestModelOpenEstimate(roNo.toString())
+
+        val call = getServiceObject(baseUrl).getEstimationListNew(PreferenceManager.getEstimateToken()!!,requestObject)
+//        val call = service.sendEstimation(staticEstimationToken,requestObject)
+        Log.d(TAG,"Estimation call"+call.request())
+
+        call.enqueue(object : Callback<EstimateModel> {
+            override fun onFailure(call: Call<EstimateModel>, t: Throwable) {
+                Log.d(TAG, "testEstimation: onFailure: Estimation ${t.message.toString()}")
+                toastMessage.value = "Something went wrong.Failure.EstimationDetails"
+                toastMessage.value = t.message.toString()
+                isProgressBarVisible.value= false
+
+//                val validateVcResponse = ValidateVcResponse("error","Server error...")
+//                mValidateVcResponse.value = validateVcResponse
+            }
+
+            override fun onResponse(
+                call: Call<EstimateModel>,
+                response: Response<EstimateModel>
+            ) {
+                Log.d(TAG, "testEstimation: onResponse: Estimation : ${response.body()}")
+                Log.d(TAG, "testEstimation: onResponse: $response.code ")
+
+                if(response.code() in 200..299) {
+                    if(response.body()!=null) {
+                        //EstimateResponse
+//                        var estimateModel = MessageModel(
+//                            messageText.value.toString(),
+//                            kecName,
+//                            true,
+//                            isTextMessage = false,
+//                            fileName = "",
+//                            serverFilePath = null,
+//                            fileLocal = null,
+//                            downloadStatus = "",
+//                            uploadStatus = "",
+//                            downloadRefId = null,
+//                            messageId = AndroidUtils.getCurrentTimeInMill(),
+//                            estimateDetails = response.body()!!.data
+//                        )
+
+                        if((response.body()!!.data!=null)) {
+//                            var estimateModel = MessageModel(
+//                                messageText.value.toString(),
+//                                displayName.toString(),
+//                                true,
+//                                isTextMessage = false,
+//                                fileName = "",
+//                                serverFilePath = null,
+//                                fileLocal = null,
+//                                downloadStatus = "",
+//                                uploadStatus = "",
+//                                downloadRefId = null,
+//                                messageId = AndroidUtils.getCurrentTimeInMill(),
+//                                estimateDetails = response.body()!!.data
+//                            )
+
+
+                            tempEstimateModel = response.body()!!.data
+                            estimateDetailsResponse.value = response.body()!!.data
+                        }else {
+                            toastMessage.value = "Part list and labour list is empty."
+                            isProgressBarVisible.value= false
+                        }
+                    }else {
+                        isProgressBarVisible.value= false
+                        toastMessage.value = "Null response from the api.EstimationDetails"
+                    }
+                }else {
+                    isProgressBarVisible.value= false
+                    toastMessage.value = "Something went wrong.responseCode.EstimationDetails"
+                }
+            }
+
+        })
+    }
+
+    var updateEstimationStatusResponse = MutableLiveData<ResponseModelUpdateEstimateStatus>()
+    fun updateEstimationStatusNew(
+        customerCode: String,
+        estimationStatus: String,
+        employeeNumber: String,
+        partListCodes: String,
+        labourListCodes: String,
+        roNumber:String,
+        dealerCode:String,
+        baseUrl: String
+    ) {
+        var requestObject = RequestModelUpdateEstimationStatus(
+            customerCode =customerCode ,
+            employeeNumber =employeeNumber ,
+            estimationStatus = estimationStatus,
+            labourListCodes = labourListCodes,
+            partListCodes = partListCodes,
+            roNo = roNumber,
+            dealerNumber = dealerCode
+        )
+
+        Log.d(TAG, "updateEstimationStatus: requestObject: ${requestObject}")
+//        val call = service.updateEstimationStatus(staticEstimationToken,requestObject)
+        val call = getServiceObject(baseUrl).updateEstimationStatusNew(
+            PreferenceManager.getEstimateToken()!!,
+            requestObject
+        )
+
+        call.enqueue(object : Callback<ResponseModelUpdateEstimateStatus?> {
+            override fun onResponse(
+                call: Call<ResponseModelUpdateEstimateStatus?>,
+                response: Response<ResponseModelUpdateEstimateStatus?>
+            ) {
+                if(response.code() in 200 .. 299) {
+                    if(response.body()!=null) {
+                        Log.d(TAG, "updateStatusResponse: onResponse: ")
+                        updateEstimationStatusResponse.value = response.body()
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<ResponseModelUpdateEstimateStatus?>, t: Throwable) {
+                toastMessage.value = "Failure. Update Estimation Status."
+                isProgressBarVisible.value = false
+                Log.d(TAG, "updateEstimationStatus: ")
+                Log.d(TAG, "updateStatusResponse: onFailure: ")
+            }
+        })
+    }
 
     var gson = GsonBuilder()
         .setLenient()

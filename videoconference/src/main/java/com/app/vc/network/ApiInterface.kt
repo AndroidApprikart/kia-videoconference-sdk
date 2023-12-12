@@ -1,5 +1,9 @@
 package com.app.vc.network
 
+import com.app.vc.message.EstimateModel
+import com.app.vc.message.RequestModelOpenEstimate
+import com.app.vc.message.RequestModelUpdateEstimationStatus
+import com.app.vc.message.ResponseModelUpdateEstimateStatus
 import com.app.vc.models.DisplayNameResponse
 import com.app.vc.models.RequestModelUpdateVcStatusCustomer
 import com.app.vc.models.ResponseModelUpdateVideoStatus
@@ -16,6 +20,7 @@ import okhttp3.MultipartBody
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
@@ -100,5 +105,14 @@ interface ApiInterface {
         @Query("dealer_code") dealerCode: String,
         @Query("app_version") appVersion: String
     ):Call<ResponseModelValidateDealerCode>
+
+    @POST(ApiDetails.GET_ESTIMATION_LIST_NEW)
+    fun getEstimationListNew(@Header("Authorization") bearerToken: String, @Body body: RequestModelOpenEstimate):Call<EstimateModel>
+
+    @POST(ApiDetails.UPDATE_ESTIMATION_STATUS_NEW)
+    fun updateEstimationStatusNew(
+        @Header("Authorization") bearerToken: String,
+        @Body body: RequestModelUpdateEstimationStatus
+    ):Call<ResponseModelUpdateEstimateStatus>
 
 }

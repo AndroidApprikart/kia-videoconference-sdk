@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+    </data>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_remote_message"
+        android:padding="@dimen/_2sdp"
+        android:layout_marginEnd="@dimen/_10sdp"
+        android:layout_marginVertical="@dimen/_5sdp"
+        android:layout_marginStart="@dimen/_5sdp"
+        >
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/remote_user_name_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingEnd="@dimen/_5sdp"
+            android:layout_margin="@dimen/_2sdp"
+            android:ellipsize="end"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:maxLines="1"
+            android:minLines="1"
+            android:text="sdffffffdddddd"
+            android:textColor="@color/color_kia_black"
+            android:textSize="14sp" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_remote_time_stamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="10sp"
+            android:layout_marginHorizontal="@dimen/_5sdp"
+            android:layout_marginBottom="@dimen/_5sdp"
+            android:text="10:30"
+            android:layout_below="@id/rv_receiver_estimation_layout"
+            android:layout_alignParentEnd="true"
+            app:fontFamily="@font/kia_signature_fix_regular" />
+
+
+        <RelativeLayout
+            android:id="@+id/rv_receiver_estimation_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="visible"
+            android:layout_margin="5dp"
+            android:paddingHorizontal="5dp"
+            android:layout_below="@id/remote_user_name_tv"
+            android:layout_marginBottom="@dimen/_15sdp"
+
+            android:background="@color/white">
+
+            <TextView
+                android:id="@+id/sender_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:textColor="@color/black"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:id="@+id/ll_receiver_table_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/white"
+                android:backgroundTint="@color/white"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:gravity="center"
+                    android:paddingHorizontal="5dp"
+                    android:paddingVertical="10dp"
+                    android:textColor="@color/color_kia_black"
+                    android:text="Name" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:gravity="center"
+                    android:paddingHorizontal="5dp"
+                    android:paddingVertical="10dp"
+                    android:textColor="@color/color_kia_black"
+                    android:text="Quantity" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:gravity="center"
+                    android:paddingHorizontal="5dp"
+                    android:paddingVertical="10dp"
+                    android:textColor="@color/color_kia_black"
+                    android:text="Price" />
+
+                <CheckBox
+                    android:id="@+id/checkbox_select_all"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.1"
+                    android:layout_marginStart="0dp"
+                    android:gravity="center"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_receiver_estimation_part_list_header"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/kia_signature_fix_regular"
+                android:textColor="@color/color_kia_black"
+                android:paddingVertical="10dp"
+                android:text="@string/header_part_list"
+                android:layout_below="@id/ll_receiver_table_header"
+                android:paddingHorizontal="5dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_receiver_estimation_part_list"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/tv_receiver_estimation_part_list_header"
+                android:layout_marginBottom="10dp"
+                android:background="@color/white"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:itemCount="1"
+                tools:listitem="@layout/message_estimation_list_item" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_receiver_estimation_labour_list_header"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/kia_signature_fix_regular"
+                android:textColor="@color/color_kia_black"
+                android:paddingVertical="10dp"
+                android:text="@string/header_labour_list"
+                android:layout_below="@id/rv_receiver_estimation_part_list"
+                android:paddingHorizontal="5dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_receiver_estimation_labour_list"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/tv_receiver_estimation_labour_list_header"
+                android:layout_marginBottom="10dp"
+                android:background="@color/white"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:itemCount="1"
+                tools:listitem="@layout/message_estimation_list_item" />
+
+            <RelativeLayout
+                android:id="@+id/rv_approval_status_receiver"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/rv_receiver_estimation_labour_list"
+                android:layout_centerHorizontal="true"
+                android:gravity="center"
+                android:padding="10dp">
+
+                <TextView
+                    android:id="@+id/tv_estimate_status_receiver"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:foregroundGravity="center"
+                    android:paddingStart="5dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="5dp"
+                    android:text="Approved"
+                    android:textColor="@color/green"
+                    android:visibility="gone" />
+
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/rv_estimation_approval_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/rv_receiver_estimation_labour_list">
+
+                <LinearLayout
+                    android:id="@+id/ll_estimation_total"
+                    android:layout_width="180dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="10dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_grand_total"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/kia_signature_fix_bold"
+                        android:paddingStart="5dp"
+                        android:paddingTop="2dp"
+                        android:paddingEnd="5dp"
+                        android:text="Grand total : "
+                        android:textColor="@color/black" />
+
+                    <TextView
+                        android:id="@+id/tv_grand_total_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:paddingStart="5dp"
+                        android:paddingTop="2dp"
+                        android:paddingEnd="5dp"
+                        android:singleLine="true"
+                        android:textColor="@color/black"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/ll_estimation_submit_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@id/ll_estimation_total"
+                    android:layout_margin="10dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="horizontal">
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        android:id="@+id/btn_reject_estimation"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginRight="5dp"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/kia_signature_fix_bold"
+                        android:gravity="center"
+                        android:text="Reject"
+                        android:textColor="@color/text_color_reject"
+                        android:textSize="16sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_approve_estimation"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:backgroundTint="@color/black"
+                        android:fontFamily="@font/kia_signature_fix_bold"
+                        android:text="Approve"
+                        android:textColor="@color/white"
+                        android:textSize="16sp" />
+                </LinearLayout>
+            </RelativeLayout>
+
+
+            <!--<androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/other_persons_image"
+                android:layout_width="180dp"
+                android:layout_height="180dp"
+                android:padding="10dp"
+                android:scaleType="fitCenter"/>-->
+
+        </RelativeLayout>
+    </RelativeLayout>
+</layout>

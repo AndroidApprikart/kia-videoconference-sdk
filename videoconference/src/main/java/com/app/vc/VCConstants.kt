@@ -79,10 +79,12 @@ object VCConstants {
 
     const val TEXT_MESSAGE = "TEXT_MESSAGE"
     const val FILE_MESSAGE = "FILE_MESSAGE"
+    const val ESTIMATION_MESSAGE = "ESTIMATION_MESSAGE"
     const val FILE_NAME = "fileName"
     const val SERVER_FILE_PATH = "serverFilePath"
     const val DISPLAY_NAME = "display_names"
     const val TEXT_MESSAGE_VALUE = "TEXT_MESSAGE_VALUE"
+    const val ESTIMATION_MESSAGE_VALUE = "ESTIMATION_MESSAGE_VALUE"
 
     const val currentTime = "CURRENT_TIME"
     const val MESSAGEID = "message_id"

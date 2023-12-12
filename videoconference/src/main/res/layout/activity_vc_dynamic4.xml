@@ -331,38 +331,6 @@
 
                 </RelativeLayout>
 
-                <!--        sound device-->
-                <RelativeLayout
-                    android:id="@+id/sound_device_option_layout"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="0dp"
-                    >
-
-                    <ImageView
-                        android:id="@+id/img_sound_device_option_icon"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:scaleType="fitXY"
-                        android:src="@drawable/ic_audio_output_devices"
-                        app:tint="@color/color_kia_black" />
-
-                    <TextView
-                        android:id="@+id/tv_sound_device_option"
-                        style="@style/text_view_regular"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_centerVertical="true"
-                        android:layout_marginHorizontal="@dimen/_10sdp"
-                        android:fontFamily="@font/kia_signature_fix_regular"
-                        android:layout_toEndOf="@id/img_sound_device_option_icon"
-                        android:text="Sound devices"
-                        android:textAlignment="viewStart"
-                        android:textColor="@color/color_kia_black"
-                        android:textSize="@dimen/_12ssp" />
-                </RelativeLayout>
 
                 <!--            Participants-->
                 <RelativeLayout
@@ -410,6 +378,41 @@
                         android:textColor="@color/color_kia_black"
                         android:textSize="@dimen/_12ssp" />
                 </RelativeLayout>
+
+                <!--        sound device-->
+                <RelativeLayout
+                    android:id="@+id/sound_device_option_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="0dp"
+                    >
+
+                    <ImageView
+                        android:id="@+id/img_sound_device_option_icon"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:scaleType="fitXY"
+                        android:src="@drawable/ic_audio_output_devices"
+                        app:tint="@color/color_kia_black" />
+
+                    <TextView
+                        android:id="@+id/tv_sound_device_option"
+                        style="@style/text_view_regular"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:layout_marginHorizontal="@dimen/_10sdp"
+                        android:fontFamily="@font/kia_signature_fix_regular"
+                        android:layout_toEndOf="@id/img_sound_device_option_icon"
+                        android:text="Sound devices"
+                        android:textAlignment="viewStart"
+                        android:textColor="@color/color_kia_black"
+                        android:textSize="@dimen/_12ssp" />
+                </RelativeLayout>
+
+
             </LinearLayout>
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>

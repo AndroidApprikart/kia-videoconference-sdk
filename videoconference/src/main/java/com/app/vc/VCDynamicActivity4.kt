@@ -10,6 +10,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.MediaPlayer
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -59,16 +62,21 @@ import com.app.vc.VCConstants.SDK_CUSTOM_BROADCAST_ACTION
 import com.app.vc.VCConstants.SOUND_DEVICE_FRAG
 import com.app.vc.VCConstants.TEXT_MESSAGE
 import com.app.vc.VCConstants.UPDATE_STATUS
+import com.app.vc.VCConstants.ESTIMATION_MESSAGE
+import com.app.vc.VCConstants.ESTIMATION_MESSAGE_VALUE
+
 import com.app.vc.baseui.BaseActivity
 import com.app.vc.customui.RemotePeerView
 import com.app.vc.databinding.ActivityVcDynamic4Binding
 import com.app.vc.databinding.AlertDialogLayoutBinding
 import com.app.vc.databinding.DialogCameraEnableBinding
 import com.app.vc.databinding.DialogEndTrheCallBinding
+import com.app.vc.databinding.LayoutDialogConfirmationBinding
 import com.app.vc.databinding.PermissionsDialogLayoutBinding
 import com.app.vc.databinding.ReadyToJoinDialogLayoutBinding
 import com.app.vc.databinding.RejoinDialogLayoutBinding
 import com.app.vc.message.MessageFragment
+import com.app.vc.message.ResponseModelEstimateData
 import com.app.vc.models.MessageModel
 import com.app.vc.models.ParticipantsModel
 import com.app.vc.models.RequestModelUpdateVcStatusCustomer
@@ -78,6 +86,7 @@ import com.app.vc.screenshare.MediaProjectionService
 import com.app.vc.screenshare.ScreenShareFragment
 import com.app.vc.soundDevice.SoundDeviceFragment
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.kia.vc.feedback.FeedbackActivity
 import de.tavendo.autobahn.WebSocket
@@ -140,6 +149,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
     private var isLandscape: Boolean = false
     private lateinit var rateUSDialog: Dialog
+    private lateinit var estimationConfirmationDialog: Dialog
 
 
     /*any customized local broadcasts made exclusively in SDK will be reveived here*/
@@ -408,6 +418,21 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
         }
+
+        viewModel.sendLocalEstimationMessageToDataChannel.observe(this) {
+            it?.let {
+                if(it!=-1L) {
+                    viewModel.getMessageFromId(it)?.let {messageAndIndexPair->
+                        if(messageAndIndexPair.first!=null) {
+                            //send EstimationMessage
+                            sendEstimationMessage(messageAndIndexPair.first!!)
+
+                        }
+                    }
+                    viewModel.sendLocalFileMessageToDataChannel.value = -1L
+                }
+            }
+        }
         viewModel.messageUnreadCount.observe(this){
             it?.let{
                 if(it.isBlank()){
@@ -516,6 +541,92 @@ class VCDynamicActivity4 : BaseActivity() {
 
         }
 
+        viewModel.getEstimationDetails.observe(this) {
+            viewModel.getEstimationDetailsNew(
+                baseUrl = PreferenceManager.getBaseUrl()!!,
+                id = AndroidUtils.getCurrentTimeInMill()
+            )
+        }
+
+        viewModel.estimateDetailsResponse.observe(this) {
+            if (it != null) {
+                dismissProgressDialog()
+                showDialogToConfirmEstimation(it)
+            }
+        }
+
+        viewModel.updateEstimateStatus.observe(this) {
+            if (it != null) {
+                updateEstimateStatus(it)
+                viewModel.updateEstimateStatus.value = null
+            }
+        }
+
+        viewModel.updateEstimationStatusResponse.observe(this) {
+            if (it != null) {
+                if (it.status == "I") {
+//                    viewModel.messageModelFromVC.value = viewModel.tempMessageModelAfterApprovalOrReject
+//                    sendEstimateMessage(viewModel.estimateDetailsAfterApproval!!)
+
+                    //process local message and send vid datachannel
+                    viewModel.processLocalEstimationMessage(
+                        estimationDetails = viewModel.estimateDetailsAfterApproval!!,
+                        id = AndroidUtils.getCurrentTimeInMill()
+                    )
+
+                    updateAdapterPosition()
+                    viewModel.tempMessageModelAfterApprovalOrReject = null
+                } else if (it.status == "N") {
+                    Log.d(TAG, "initializeObservers: estimateRejectionStatus: ")
+                    viewModel.toastMessage.value = it.data.message.toString()
+                    viewModel.isProgressBarVisible.value = false
+//                    showDialogToConfirmEstimationRejection(vCScreenViewModel.estimateDetailsAfterApproval!!)
+                } else if (it.status == "E") {
+                    viewModel.toastMessage.value = it.data.message.toString()
+                    viewModel.isProgressBarVisible.value = false
+                } else {
+                    viewModel.toastMessage.value = it.message.toString()
+                    viewModel.isProgressBarVisible.value = false
+                }
+            }
+        }
+
+    }
+
+    private fun updateAdapterPosition() {
+        Log.d(TAG, "updateAdapterPosition: updateAdapterPosistion: ")
+        viewModel.isSuccessEstimationResponse.value = true
+    }
+
+    private fun showDialogToConfirmEstimation(estimationDetails: ResponseModelEstimateData) {
+        estimationConfirmationDialog = Dialog(this)
+        estimationConfirmationDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        var dialogBinding = LayoutDialogConfirmationBinding.inflate(LayoutInflater.from(this))
+        estimationConfirmationDialog.setContentView(dialogBinding.root)
+        dialogBinding.tvDialogMessage.text =  "Do you want to send the \n estimation details."
+        estimationConfirmationDialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        estimationConfirmationDialog.setCancelable(false)
+//        val cancel = estimationConfirmationDialog.findViewById(R.id.neg_btn) as TextView
+//        val ok = estimationConfirmationDialog.findViewById(R.id.pos_btn) as TextView
+
+
+        dialogBinding.tvCancelButton.setOnClickListener {
+            estimationConfirmationDialog.dismiss()
+        }
+        dialogBinding.btnUpdate.setOnClickListener {
+            estimationConfirmationDialog.dismiss()
+//            vCScreenViewModel.messageModelFromVC.value = viewModel.tempEstimateModel
+//            sendEstimateMessage(estimationDetails)
+            viewModel.processLocalEstimationMessage(
+                estimationDetails = estimationDetails,
+                id = AndroidUtils.getCurrentTimeInMill())
+        }
+
+        estimationConfirmationDialog.show()
     }
 
     private fun openRateUs() {
@@ -1763,6 +1874,17 @@ class VCDynamicActivity4 : BaseActivity() {
                     processFileMessageFromDataChannel(jsonObject, sId, eventType)
 
                 }
+                ESTIMATION_MESSAGE-> {
+                    Log.d(TAG, "processIncomingDataChannelMessage: testRemoteEstimate:  estimationMessageRecieved: True")
+
+                    playNotificationSound(this)
+                    val rootView = findViewById<View>(android.R.id.content)
+                    val snackbar = Snackbar.make(rootView, "Estimation Received", Snackbar.LENGTH_SHORT)
+                    snackbar.show()
+
+                    processEstimationMessageFromDataChannel(jsonObject,sId,eventType)
+                }
+
             }
 
         } catch (e: JSONException) {
@@ -3458,12 +3580,37 @@ class VCDynamicActivity4 : BaseActivity() {
         }
     }
 
+    private fun sendEstimationMessage(messageModel: MessageModel) {
+        /*sending json object as a string
+        * Event name is TEXT_MESSAGE
+        * TEXT_MESSAGE_VALUE is the text message value*/
+        val jsonObject = JSONObject()
+        try {
+            jsonObject.put(VCConstants.STREAM_ID, conferenceManager!!.streamId)
+            jsonObject.put(VCConstants.EVENT_TYPE, VCConstants.ESTIMATION_MESSAGE)
+            jsonObject.put(VCConstants.ESTIMATION_MESSAGE_VALUE,Gson().toJson(messageModel.estimationDetails))
+            jsonObject.put(VCConstants.DISPLAY_NAME, conferenceManager!!.streamId.toString())
+            Log.d(TAG, "sendTextMessage: timeTest: ${AndroidUtils.getCurrentTimeInMill()}")
+            jsonObject.put(VCConstants.currentTime, AndroidUtils.getCurrentTimeInMill())
+            jsonObject.put(VCConstants.MESSAGEID, messageModel.id) /*extra added to have a process status update locally in OnMessageSent()*/
+
+            val messageEvent = jsonObject.toString()
+            val buffer = ByteBuffer.wrap(messageEvent.toByteArray(StandardCharsets.UTF_8))
+            val buf = DataChannel.Buffer(buffer, false)
+            conferenceManager!!.sendMessageViaDataChannel(buf)
+        } catch (e: JSONException) {
+            Log.d(TAG, "sendFileMessage: exception caught!! -> while sending data")
+        }
+    }
+
     private fun processTextMessageFromDataChannel(
         json: JSONObject,
         streamId: String?,
         eventType: String
     ) {
-
+        if(!viewModel.messageFragVisible) {
+            viewModel.incrementMessageBadgeValue()
+        }
         val textMessage = json.getString(VCConstants.TEXT_MESSAGE_VALUE)?:""
 //                var displayName = ""
         val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
@@ -3477,11 +3624,12 @@ class VCDynamicActivity4 : BaseActivity() {
             remoteMessageId,
             "",
             "",
-            ""
+            "",
+            estimationDetails = null
         )
         viewModel.messageListInMVM.add(tempRemoteMessage)
         viewModel.addNewRemoteMessage.value = remoteMessageId
-        viewModel.incrementMessageBadgeValue()
+
     }
 
     private fun processFileMessageFromDataChannel(
@@ -3505,11 +3653,53 @@ class VCDynamicActivity4 : BaseActivity() {
             remoteMessageId,
             fileName,
             serverFilePath,
-            ""
+            "",
+            estimationDetails = null
         )
         viewModel.messageListInMVM.add(tempRemoteMessage)
         viewModel.addNewRemoteMessage.value = remoteMessageId
-        viewModel.incrementMessageBadgeValue()
+        if(!viewModel.messageFragVisible) {
+            viewModel.incrementMessageBadgeValue()
+        }
+    }
+
+    private fun processEstimationMessageFromDataChannel(
+        json: JSONObject,
+        streamId: String?,
+        eventType: String
+    ) {
+        Log.d(TAG, "processEstimationMessageFromDataChannel: testRemoteEstimate: ")
+        try {
+            Log.d(TAG, "processEstimationMessageFromDataChannel:testRemoteEstimate: json:  ${Gson().toJson(json)}")
+            val estimateDetailsString = json.getString(VCConstants.ESTIMATION_MESSAGE_VALUE)
+            val estimateDetails =
+                Gson().fromJson(estimateDetailsString, ResponseModelEstimateData::class.java)
+
+// Use Gson to parse the JSON string into ResponseModelEstimateData
+
+
+            val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+            val remoteMessageId = AndroidUtils.getCurrentTimeInMill()
+            val tempRemoteMessage = MessageModel(
+                displayName,
+                "",
+                false,
+                ESTIMATION_MESSAGE,
+                remoteMessageId,
+                "",
+                "",
+                "",
+                estimationDetails = estimateDetails
+            )
+            viewModel.messageListInMVM.add(tempRemoteMessage)
+            viewModel.addNewRemoteMessage.value = remoteMessageId
+            if(!viewModel.messageFragVisible) {
+                viewModel.incrementMessageBadgeValue()
+            }
+        }catch (e:Exception) {
+            Log.d(TAG, "processEstimationMessageFromDataChannel: testRemoteEstimate: ${e.message}")
+        }
+        
     }
 
 
@@ -3720,7 +3910,7 @@ class VCDynamicActivity4 : BaseActivity() {
         try {
             val eventType =
                 jsonObject.getString(VCConstants.EVENT_TYPE)
-           if(eventType.equals(TEXT_MESSAGE,false)||eventType.equals(FILE_MESSAGE,false)){
+           if(eventType.equals(TEXT_MESSAGE,false)||eventType.equals(FILE_MESSAGE,false)||eventType.equals(VCConstants.ESTIMATION_MESSAGE,false) ){
                 val messageID = jsonObject.getLong(VCConstants.MESSAGEID)
                 viewModel.updateSendStatusForMessage(messageID,successful)
             }
@@ -3824,12 +4014,12 @@ class VCDynamicActivity4 : BaseActivity() {
 //                    }
 
 
-//                    Constants.Companion.UserType.SERVICE_PERSON.value -> {
+//                    VCConstants.UserType.SERVICE_PERSON.value-> {
 //                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
 //                         viewModel.roomID = "QF2O5ZIVYN"
 //                         viewModel.serviceAdvisorID = "EUP3070025"
-//                        userType = Constants.Companion.UserType.SERVICE_PERSON.value
-//                        passcode = "17498"
+//                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+//                        viewModel.meetingPasscode = "17498"
 //                         viewModel.customerCode = "C2019070005"
 //                         viewModel.dealerCode = "UP307"
 //                         viewModel.roNo = "R202300212"
@@ -3840,8 +4030,8 @@ class VCDynamicActivity4 : BaseActivity() {
 //                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
 //                         viewModel.roomID = "QF2O5ZIVYN"
 //                         viewModel.serviceAdvisorID = "EUP3070025"
-//                        userType = Constants.Companion.UserType.CUSTOMER.value
-//                        passcode = "17498"
+//                        viewModel.userType  = VCConstants.UserType.CUSTOMER.value
+//                        viewModel.meetingPasscode= "17498"
 //                         viewModel.customerCode = "C2019070005"
 //                         viewModel.dealerCode = "UP307"
 //                         viewModel.roNo = "R202300212"
@@ -3901,6 +4091,32 @@ class VCDynamicActivity4 : BaseActivity() {
                          viewModel.displayName = "Android Customer"
                          viewModel.userName = "9136388890"
                     }
+
+
+//                    VCConstants.UserType.SERVICE_PERSON.value -> {
+//                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
+//                        viewModel.roomID = "D8WRJKU1VT"
+//                        viewModel.serviceAdvisorID = "EUP3070025"
+//                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+//                        viewModel.meetingPasscode = "44147"
+//                        viewModel.customerCode = "C2019070005"
+//                        viewModel.dealerCode = "UP307"
+//                        viewModel.roNo = "R202300212"
+//                        viewModel.displayName = "Android Service Advisor 2"
+//                    }
+//
+//                    else -> {
+//                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
+//                        viewModel.roomID = "D8WRJKU1VT"
+//                        viewModel.serviceAdvisorID = "EUP3070025"
+//                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
+//                        viewModel.meetingPasscode = "44147"
+//                        viewModel.customerCode = "C2019070005"
+//                        viewModel.dealerCode = "UP307"
+//                        viewModel.roNo = "R202300212"
+//                        viewModel.displayName = "Android Customer"
+//                        viewModel.userName = "9136388890"
+//                    }
                 }
             } else {
                  viewModel.roomID = intent.getStringExtra("room")
@@ -4085,6 +4301,103 @@ class VCDynamicActivity4 : BaseActivity() {
             }
         }
         return null
+    }
+
+    fun playNotificationSound(context: Context) {
+        val mediaPlayer = MediaPlayer.create(context, R.raw.audio_nokia_beep_once)
+
+        // Set audio attributes for Android 8.0 (Oreo) and above
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            mediaPlayer.setAudioAttributes(audioAttributes)
+        } else {
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_NOTIFICATION)
+        }
+
+        mediaPlayer.setOnCompletionListener { mp: MediaPlayer ->
+            // Release the media player resources after playback completes
+            mp.release()
+        }
+
+        mediaPlayer.start()
+    }
+
+    private fun updateEstimateStatus(estimationStatus: Boolean) {
+        if(estimationStatus) {
+            when(viewModel.estimateDetailsAfterApproval?.estimationApprovalStatus) {
+                "Y" -> {
+//                    newImplementation_20Sep2023
+//                    vCScreenViewModel.updateEstimationStatus(
+//                        customerCode = vCScreenViewModel.customerCode!!,
+//                        estimationStatus = "Y",
+//                        employeeNumber = vCScreenViewModel.serviceAdvisorID.toString(),
+//                        labourListCodes = vCScreenViewModel.selectedLabourList!!,
+//                        partListCodes = vCScreenViewModel.selectedPartList!!,
+//                        roNumber = vCScreenViewModel.roNo!!,
+//                        dealerCode = vCScreenViewModel.dealerCode!!
+//                    )
+
+                    viewModel.updateEstimationStatusNew(
+                        customerCode = viewModel.customerCode!!,
+                        estimationStatus = "Y",
+                        employeeNumber = viewModel.serviceAdvisorID.toString(),
+                        labourListCodes = viewModel.selectedLabourList!!,
+                        partListCodes = viewModel.selectedPartList!!,
+                        roNumber = viewModel.roNo!!,
+                        dealerCode = viewModel.dealerCode!!,
+                        baseUrl = PreferenceManager.getBaseUrl()!!
+                    )
+                }
+                "N"-> {
+
+//                    vCScreenViewModel.updateEstimationStatus(
+//                        customerCode = vCScreenViewModel.customerCode!!,
+//                        estimationStatus = "N",
+//                        employeeNumber = vCScreenViewModel.serviceAdvisorID.toString(),
+//                        labourListCodes = vCScreenViewModel.selectedLabourList!!,
+//                        partListCodes = vCScreenViewModel.selectedPartList!!,
+//                        roNumber = vCScreenViewModel.roNo!!,
+//                        dealerCode = vCScreenViewModel.dealerCode!!
+//                    )
+                    viewModel.updateEstimationStatusNew(
+                        customerCode = viewModel.customerCode!!,
+                        estimationStatus = "N",
+                        employeeNumber = viewModel.serviceAdvisorID.toString(),
+                        labourListCodes = viewModel.selectedLabourList!!,
+                        partListCodes = viewModel.selectedPartList!!,
+                        roNumber = viewModel.roNo!!,
+                        dealerCode = viewModel.dealerCode!!,
+                        baseUrl = PreferenceManager.getBaseUrl()!!
+                    )
+
+                }
+            }
+        }
+//        if (estimationStatus) {
+//            vCScreenViewModel.updateEstimationStatus(
+//                customerCode = vCScreenViewModel.customerCode!!,
+//                estimationStatus = "Y",
+//                employeeNumber = vCScreenViewModel.serviceAdvisorID.toString(),
+//                labourListCodes = vCScreenViewModel.selectedLabourList!!,
+//                partListCodes = vCScreenViewModel.selectedPartList!!,
+//                roNumber = vCScreenViewModel.roNo!!,
+//                dealerCode = vCScreenViewModel.dealerCode!!
+//            )
+//        } else {
+//            vCScreenViewModel.updateEstimationStatus(
+//                customerCode = vCScreenViewModel.customerCode!!,
+//                estimationStatus = "N",
+//                employeeNumber = vCScreenViewModel.serviceAdvisorID.toString(),
+//                labourListCodes = vCScreenViewModel.selectedLabourList!!,
+//                partListCodes = vCScreenViewModel.selectedPartList!!,
+//                roNumber = vCScreenViewModel.roNo!!,
+//                dealerCode = vCScreenViewModel.dealerCode!!
+//            )
+//        }
     }
 
 }
