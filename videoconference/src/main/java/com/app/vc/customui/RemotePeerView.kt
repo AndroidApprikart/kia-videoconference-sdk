@@ -54,6 +54,13 @@ class RemotePeerView @JvmOverloads constructor(
         streamName  = view.findViewById(R.id.stream_name)
         streamName.text = displayText
 
+        var layoutParams  = LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT)
+        surfaceViewRenderer.layoutParams = layoutParams
+
         surfaceViewRenderer.setOnClickListener {
 
         }

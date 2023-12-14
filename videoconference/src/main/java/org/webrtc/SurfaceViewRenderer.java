@@ -189,36 +189,36 @@ public class SurfaceViewRenderer extends SurfaceView
   @Override
   protected void onMeasure(int widthSpec, int heightSpec) {
     ThreadUtils.checkIsOnMainThread();
-//    Point size =
-//        videoLayoutMeasure.measure(widthSpec, heightSpec, rotatedFrameWidth, rotatedFrameHeight);
-//    setMeasuredDimension(size.x, size.y);
-//    logD("onMeasure(). New size: " + size.x + "x" + size.y);
+    Point size =
+        videoLayoutMeasure.measure(widthSpec, heightSpec, rotatedFrameWidth, rotatedFrameHeight);
+    setMeasuredDimension(size.x, size.y);
+    logD("onMeasure(). New size: " + size.x + "x" + size.y);
       // nbg_7Nov2023_Added logic to maintain aspect ratio.
-      int parentWidth = MeasureSpec.getSize(widthSpec);
-      int parentHeight = MeasureSpec.getSize(heightSpec);
-
-      int width = parentWidth;
-      int height = parentHeight;
-//    Log.d(TAG, "onMeasure: width: before: "+ width);
-//    Log.d(TAG, "onMeasure: height: before: "+ height);
-
-      if (rotatedFrameWidth > 0 && rotatedFrameHeight > 0) {
-          float frameAspectRatio = (float) rotatedFrameWidth / rotatedFrameHeight;
-          float viewAspectRatio = (float) parentWidth / parentHeight;
-
-          if (frameAspectRatio > viewAspectRatio) {
-              // Video frame is wider than the view, adjust height to maintain aspect ratio
-              height = (int) (parentWidth / frameAspectRatio);
-          } else {
-              // Video frame is narrower than the view, adjust width to maintain aspect ratio
-              width = (int) (parentHeight * frameAspectRatio);
-          }
-      }
-
-//    Log.d(TAG, "onMeasure: width: after: "+ width);
-//    Log.d(TAG, "onMeasure: height: after: "+ height);
-
-      setMeasuredDimension(width, height);
+//      int parentWidth = MeasureSpec.getSize(widthSpec);
+//      int parentHeight = MeasureSpec.getSize(heightSpec);
+//
+//      int width = parentWidth;
+//      int height = parentHeight;
+////    Log.d(TAG, "onMeasure: width: before: "+ width);
+////    Log.d(TAG, "onMeasure: height: before: "+ height);
+//
+//      if (rotatedFrameWidth > 0 && rotatedFrameHeight > 0) {
+//          float frameAspectRatio = (float) rotatedFrameWidth / rotatedFrameHeight;
+//          float viewAspectRatio = (float) parentWidth / parentHeight;
+//
+//          if (frameAspectRatio > viewAspectRatio) {
+//              // Video frame is wider than the view, adjust height to maintain aspect ratio
+//              height = (int) (parentWidth / frameAspectRatio);
+//          } else {
+//              // Video frame is narrower than the view, adjust width to maintain aspect ratio
+//              width = (int) (parentHeight * frameAspectRatio);
+//          }
+//      }
+//
+////    Log.d(TAG, "onMeasure: width: after: "+ width);
+////    Log.d(TAG, "onMeasure: height: after: "+ height);
+//
+//      setMeasuredDimension(width, height);
   }
 
   @Override

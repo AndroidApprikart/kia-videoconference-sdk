@@ -2,6 +2,7 @@ package com.app.vc.participants
 
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.view.ViewCompat
@@ -25,6 +26,7 @@ class ParticipantAdapterNew(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(data: ParticipantsModel) {
+            Log.d("test444", "bind: s: ${data.streamId} t: ${data.track} mic: ${data.isMicOn} ")
             val blackTint = ColorStateList.valueOf(Color.BLACK)
             ViewCompat.setBackgroundTintList(binding.imgParticipantMic, blackTint)
             if (data.isLocal)

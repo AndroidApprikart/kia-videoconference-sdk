@@ -2,6 +2,7 @@ package com.app.vc
 
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Dialog
 import android.content.BroadcastReceiver
@@ -102,6 +103,7 @@ import io.antmedia.webrtcandroidframework.apprtc.CallActivity
 import org.json.JSONException
 import org.json.JSONObject
 import org.webrtc.DataChannel
+import org.webrtc.RendererCommon
 import org.webrtc.SurfaceViewRenderer
 import org.webrtc.VideoTrack
 import java.io.File
@@ -2271,9 +2273,17 @@ class VCDynamicActivity4 : BaseActivity() {
                 /*do nothing*/
             }
         } else {
+            Log.d(TAG, "addNewParticipant: trackId:  ${track.id()}")
+
+
+            val pattern = Regex("""v(stream\d+)""")
+            val matchResult = pattern.find(track.id())
+
+            val streamId = matchResult?.groupValues?.get(1)
+            Log.d(TAG, "addNewParticipant: test22: StreamId: ${streamId}")
             var tempParticipant = conferenceManager?.let {
                 ParticipantsModel(
-                    track.id(), viewModel.roomID ?: "peer", false,
+                    track.id(), streamId ?: "peer", false,
                     isMicOn = true, isCamOn = true, track = track
                 )
             }
@@ -2310,17 +2320,24 @@ class VCDynamicActivity4 : BaseActivity() {
         eventType: String,
         isForLocal: Boolean
     ) {
+        Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244: streamId: ${streamID} eventType : ${eventType}")
         var isAudioOn = if (eventType.equals(VCConstants.MIC_MUTED)) {
             false
         } else eventType.equals(VCConstants.MIC_UNMUTED)
+
+        Log.d(TAG, "updateMicrophoneStatusForParticipant: streamId: ${streamID} ")
         for (participant in viewModel.participants) {
+            Log.d(TAG, "updateMicrophoneStatusForParticipant: pStreamId: ${participant.streamId} uStreamId : ${streamID}")
             if (participant.isLocal == isForLocal) {
                 participant.isMicOn = isAudioOn
                 break
             } else {
                 if (participant.trackId.contains(streamID)) {
+                    Log.d(TAG, "updateMicrophoneStatusForParticipant: test234: doesContain:  ")
                     participant.isMicOn = isAudioOn
                     break
+                }else {
+                    Log.d(TAG, "updateMicrophoneStatusForParticipant: test234: doesnotContain:  ")
                 }
             }
         }
@@ -2986,6 +3003,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 Log.w(TAG, "onPublishStarted - $streamId")
                 binding.broadcastingTextView.visibility = View.VISIBLE
                 binding.broadcastingTextView.text = "Publishing"
+                conferenceManager?.publishWebRTCClient?.switchVideoScaling(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
                 if (streamId != null) {
                     viewModel.streamId = streamId
                     viewModel.streams.add(streamId)
@@ -3114,28 +3132,30 @@ class VCDynamicActivity4 : BaseActivity() {
                 Log.d(TAG, "onNewVideoTrack: already in vm ${Gson().toJson(viewModel.tracks)}")
                 runOnUiThread { viewModel.toastMessage.value = "New video track received" }
                 Log.w(TAG, "onNewVideoTrack id-Object -${track!!.id()} -${Gson().toJson(track)}")
-                if (viewModel.roomInfoStreamsList.isNotEmpty()) {
-                    if (!track!!.id().contains(conferenceManager!!.streamId)) {
-                        if (initTRackListHasStreamForTrack(track.id())) {
-                            Log.d(
-                                TAG,
-                                "onNewVideoTrack: initTrack list contains track -> ${track.id()}"
-                            )
-                        } else {
-                            Log.d(
-                                TAG,
-                                "onNewVideoTrack: initTrack list does not contain track -> ${track.id()}"
-                            )
-                            return
-                        }
-                    }
-                }
-                if (viewModel.tracks.contains(track))
-                    Log.d(TAG, "onNewVideoTrack: viewModel.Track.containsTrack: True: and return")
-                    return
-                if (track != null) {
-                    viewModel.tracks.add(track)
-                }
+
+                //(working logic) commented out for testing as the (logic for syncing streams) uncomment if required
+//                if (viewModel.roomInfoStreamsList.isNotEmpty()) {
+//                    if (!track!!.id().contains(conferenceManager!!.streamId)) {
+//                        if (initTRackListHasStreamForTrack(track.id())) {
+//                            Log.d(
+//                                TAG,
+//                                "onNewVideoTrack: initTrack list contains track -> ${track.id()}"
+//                            )
+//                        } else {
+//                            Log.d(
+//                                TAG,
+//                                "onNewVideoTrack: initTrack list does not contain track -> ${track.id()}"
+//                            )
+//                            return
+//                        }
+//                    }
+//                }
+//                if (viewModel.tracks.contains(track))
+//                    Log.d(TAG, "onNewVideoTrack: viewModel.Track.containsTrack: True: and return")
+//                    return
+//                if (track != null) {
+//                    viewModel.tracks.add(track)
+//                }
 
 
                 //cc
@@ -3268,14 +3288,15 @@ class VCDynamicActivity4 : BaseActivity() {
 
             override fun onRoomInformation(streams: Array<out String>?) {
                 Log.w(TAG, "onRoomInformation:  streams -> ${Gson().toJson(streams!!)}")
-                Thread(Runnable {
-                    if (viewModel.roomInfoStreamsList.isEmpty()) {
-                        viewModel.roomInfoStreamsList.addAll(streams)
-                        udpateStreamsFromRoomInformation(streams, true)
-                    } else {
-                        udpateStreamsFromRoomInformation(streams, false)
-                    }
-                }).start()
+                //Commented synncing logic for removing unwanted (streams with black screen)
+//                Thread(Runnable {
+//                    if (viewModel.roomInfoStreamsList.isEmpty()) {
+//                        viewModel.roomInfoStreamsList.addAll(streams)
+//                        udpateStreamsFromRoomInformation(streams, true)
+//                    } else {
+//                        udpateStreamsFromRoomInformation(streams, false)
+//                    }
+//                }).start()
 
             }
 
@@ -4169,7 +4190,7 @@ class VCDynamicActivity4 : BaseActivity() {
                         viewModel.customerCode = "C2019070005"
                         viewModel.dealerCode = "UP307"
                         viewModel.roNo = "R202300212"
-                        viewModel.displayName = "Android Customer 2"
+                        viewModel.displayName = "Android Customer 1"
                         viewModel.userName = "9136388890"
                     }
                 }

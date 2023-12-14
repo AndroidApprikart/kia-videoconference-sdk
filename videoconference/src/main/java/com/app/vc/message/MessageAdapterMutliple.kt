@@ -325,6 +325,8 @@ class MessageAdapterMutliple (
         fun bind(data: MessageModel) {
             binding.userNameTv.text = data.userName
             binding.tvTimeStampSelf.visibility = View.VISIBLE
+            binding.tvTimeStampSelf.text = getLocalHoursAndMinutesFromMilliseconds(data.id!!).first.toString() + ":"+
+                    getLocalHoursAndMinutesFromMilliseconds(data.id!!).second.toString()
             updateLocalMessageStatusUI(binding.tvLocalMsgStatus,data.status,data.messageType)
 
 
