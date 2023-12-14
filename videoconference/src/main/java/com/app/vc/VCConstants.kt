@@ -102,4 +102,10 @@ object VCConstants {
         CUSTOMER("customer")
     }
 
+    enum class SaveChatMessageType(val value: String) {
+        TEXT("Text"),
+        ESTIMATION("Estimation"),
+        FILE("File")
+    }
+
 }

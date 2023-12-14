@@ -1,9 +1,11 @@
 package com.app.vc.network
 
+import com.app.vc.message.ChatModelItem
 import com.app.vc.message.EstimateModel
 import com.app.vc.message.RequestModelOpenEstimate
 import com.app.vc.message.RequestModelUpdateEstimationStatus
 import com.app.vc.message.ResponseModelUpdateEstimateStatus
+import com.app.vc.message.ResponseModelUpdateEstimationStatus
 import com.app.vc.models.DisplayNameResponse
 import com.app.vc.models.RequestModelUpdateVcStatusCustomer
 import com.app.vc.models.ResponseModelUpdateVideoStatus
@@ -114,5 +116,12 @@ interface ApiInterface {
         @Header("Authorization") bearerToken: String,
         @Body body: RequestModelUpdateEstimationStatus
     ):Call<ResponseModelUpdateEstimateStatus>
+
+
+    @POST(ApiDetails.SAVE_CHAT_DETAILS_NEW)
+    fun saveChatListNew(
+        @Header("Authorization") bearerToken: String,
+        @Body body: ArrayList<ChatModelItem>
+    ):Call<ResponseModelUpdateEstimationStatus>
 
 }

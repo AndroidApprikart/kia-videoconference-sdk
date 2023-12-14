@@ -10,11 +10,13 @@ import androidx.lifecycle.ViewModel
 import com.app.vc.models.MessageModel
 import com.app.vc.models.ParticipantsModel
 import androidx.lifecycle.viewModelScope
+import com.app.vc.message.ChatModelItem
 import com.app.vc.message.EstimateModel
 import com.app.vc.message.RequestModelOpenEstimate
 import com.app.vc.message.RequestModelUpdateEstimationStatus
 import com.app.vc.message.ResponseModelEstimateData
 import com.app.vc.message.ResponseModelUpdateEstimateStatus
+import com.app.vc.message.ResponseModelUpdateEstimationStatus
 import com.app.vc.models.DisplayNameResponse
 import com.app.vc.models.MessageStatusEnum
 import com.app.vc.models.ModifiedResponseUpdateVcStatus
@@ -108,7 +110,7 @@ class MainViewModel : ViewModel() {
     var localAudio = true
     var localVideo = true
     var grid = true
-    var bottomSheet = false
+    var bottomSheet = true
 
 
     var updateParticipants = MutableLiveData<Boolean>()
@@ -171,6 +173,9 @@ class MainViewModel : ViewModel() {
     var selectedPartList:String? = ""
     var selectedLabourList: String?  = ""
     var isSuccessEstimationResponse = MutableLiveData<Boolean>()
+
+
+    var saveMessageList  =  MutableLiveData<kotlin.collections.ArrayList<ChatModelItem>>()
 
 
 
@@ -1035,6 +1040,47 @@ class MainViewModel : ViewModel() {
                 isProgressBarVisible.value = false
                 Log.d(TAG, "updateEstimationStatus: ")
                 Log.d(TAG, "updateStatusResponse: onFailure: ")
+            }
+        })
+    }
+
+
+    var saveChatResponse = MutableLiveData<ResponseModelUpdateEstimationStatus>()
+    fun saveChatListNew(baseUrl: String,chatList: kotlin.collections.ArrayList<ChatModelItem>) {
+        Log.d(TAG, "saveChatList: ${chatList}")
+        var call = getServiceObject(baseUrl).saveChatListNew(
+            PreferenceManager.getEstimateToken()!!,
+            chatList
+        )
+//        var call = service.saveChatList(
+//            staticEstimationToken,
+//            chatList
+//        )
+
+
+        call.enqueue(object : Callback<ResponseModelUpdateEstimationStatus?> {
+            override fun onResponse(
+                call: Call<ResponseModelUpdateEstimationStatus?>,
+                response: Response<ResponseModelUpdateEstimationStatus?>
+            ) {
+                Log.d(TAG, "chatListResponse: success: SaveChatList: ${response.body()} ")
+                if(response.code() in 200 .. 299) {
+                    if(response.body()!=null) {
+                        if(response.body()!!.success) {
+                            saveChatResponse.value = response.body()!!
+                        }
+                    }
+                }else {
+                    isProgressBarVisible.value = false
+                    Log.d(TAG, "chatListResponse: success: SaveChatList: response code ")
+                }
+
+            }
+
+            override fun onFailure(call: Call<ResponseModelUpdateEstimationStatus?>, t: Throwable) {
+                isProgressBarVisible.value = false
+                Log.d(TAG, "chatListResponse: onFailure: SaveChatList ${t.message.toString()}")
+
             }
         })
     }

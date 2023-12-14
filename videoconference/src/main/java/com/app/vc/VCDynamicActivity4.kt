@@ -40,6 +40,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.view.children
+import androidx.core.view.size
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.Lifecycle
@@ -580,13 +581,35 @@ class VCDynamicActivity4 : BaseActivity() {
                     Log.d(TAG, "initializeObservers: estimateRejectionStatus: ")
                     viewModel.toastMessage.value = it.data.message.toString()
                     viewModel.isProgressBarVisible.value = false
-//                    showDialogToConfirmEstimationRejection(vCScreenViewModel.estimateDetailsAfterApproval!!)
+//                    showDialogToConfirmEstimationRejection(sharedViewModel.estimateDetailsAfterApproval!!)
                 } else if (it.status == "E") {
                     viewModel.toastMessage.value = it.data.message.toString()
                     viewModel.isProgressBarVisible.value = false
                 } else {
                     viewModel.toastMessage.value = it.message.toString()
                     viewModel.isProgressBarVisible.value = false
+                }
+            }
+        }
+
+        viewModel.saveMessageList.observe(this) {
+            if (it != null) {
+//                newImplementation_20Sep2023
+//                vCScreenViewModel.saveChatList(it)
+                viewModel.saveChatListNew(PreferenceManager.getBaseUrl()!!,it)
+                viewModel.saveMessageList.value = null
+            }
+        }
+
+        viewModel.saveChatResponse.observe(this) {
+            if (it != null) {
+                if (it.success) {
+                    viewModel.isProgressBarVisible.value = false
+                    Toast.makeText(this, "Chat Saved", Toast.LENGTH_SHORT).show()
+                } else {
+                    viewModel.isProgressBarVisible.value = false
+                    Toast.makeText(this, "Something went wrong: Save Chat", Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
         }
@@ -729,10 +752,11 @@ class VCDynamicActivity4 : BaseActivity() {
 
 
         binding.btnMoreMenu?.setOnClickListener {
+            Log.d(TAG, "setUpOnClickListeners: moreOptionsClicked: ")
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
                     showMoreOptions(viewModel.bottomSheet)
-                    viewModel.bottomSheet = !viewModel.bottomSheet
+//                    viewModel.bottomSheet = !viewModel.bottomSheet
                 }
             }
         }
@@ -1746,7 +1770,14 @@ class VCDynamicActivity4 : BaseActivity() {
         val containerMargin = resources.getDimension(com.intuit.sdp.R.dimen._10sdp).toInt()
         /*add to F::remove first from F and add to S*/
         if (clickedContainer.parent == binding.sContainer) {
-            Log.d(TAG, "swapContainer: SWAP in the S")
+
+            Log.d(TAG, "swapContainer: position : clickedPosition:  ${binding.sContainer.indexOfChild(clickedContainer)}")
+            Log.d(TAG, "swapContainer: position: childCount : ${binding.sContainer.childCount}")
+            Log.d(TAG, "swapContainer: position: childCount+1 : ${binding.sContainer.indexOfChild(clickedContainer)+1}")
+
+            var clickedIndex = binding.sContainer.indexOfChild(clickedContainer)
+
+
             binding.sContainer.removeView(clickedContainer)
             val fContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -1779,7 +1810,7 @@ class VCDynamicActivity4 : BaseActivity() {
             k.layoutParams = sContainerLayoutParams
 
 
-            binding.sContainer.addView(k, binding.sContainer.childCount)
+
             for (i in binding.sContainer.children) {
                 i.visibility = View.VISIBLE
                 val k = i
@@ -1787,6 +1818,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 binding.sContainer.addView(k)
                 k.layoutParams = sContainerLayoutParams
             }
+            binding.sContainer.addView(k, clickedIndex)
         } else {
             Log.d(TAG, "swapContainer: SWAP already in F")
         }
@@ -2712,7 +2744,7 @@ class VCDynamicActivity4 : BaseActivity() {
             // Log the internet speed in Mbps
             val speedLogInMbps = "D: $downSpeedMbps Mbps, U: $upSpeedMbps Mbps"
             println(speedLogInMbps) // You can use Log.d() for Android logging
-            Log.d(TAG, "logInternetSpeed: $speedLogInMbps")
+//            Log.d(TAG, "logInternetSpeed: $speedLogInMbps")
 
             if (downSpeedMbps < 4.0) {
                 Toast.makeText(
@@ -2748,7 +2780,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
         } else {
             viewModel.internetSpeed.value = "-"
-            Log.d(TAG, "logInternetSpeed:-")
+//            Log.d(TAG, "logInternetSpeed:-")
         }
 
         // Schedule the next logging after 1 second
@@ -3081,7 +3113,7 @@ class VCDynamicActivity4 : BaseActivity() {
             override fun onNewVideoTrack(track: VideoTrack?) {
                 Log.d(TAG, "onNewVideoTrack: already in vm ${Gson().toJson(viewModel.tracks)}")
                 runOnUiThread { viewModel.toastMessage.value = "New video track received" }
-                Log.w(TAG, "onNewVideoTrack -${track!!.id()} -${Gson().toJson(track)}")
+                Log.w(TAG, "onNewVideoTrack id-Object -${track!!.id()} -${Gson().toJson(track)}")
                 if (viewModel.roomInfoStreamsList.isNotEmpty()) {
                     if (!track!!.id().contains(conferenceManager!!.streamId)) {
                         if (initTRackListHasStreamForTrack(track.id())) {
@@ -3099,6 +3131,7 @@ class VCDynamicActivity4 : BaseActivity() {
                     }
                 }
                 if (viewModel.tracks.contains(track))
+                    Log.d(TAG, "onNewVideoTrack: viewModel.Track.containsTrack: True: and return")
                     return
                 if (track != null) {
                     viewModel.tracks.add(track)
@@ -3109,8 +3142,6 @@ class VCDynamicActivity4 : BaseActivity() {
                 Log.d(TAG, "onNewVideoTrack: my stream ->${conferenceManager!!.streamId}")
                 Log.d(TAG, "onNewVideoTrack: incoming track id ->${track!!.id()}")
                 runOnUiThread {
-
-
                     if (!track!!.id().contains(conferenceManager!!.streamId)) {
                         Log.d(TAG, "onNewVideoTrack: if")
                         var remotePeerView = RemotePeerView(applicationContext)
@@ -3566,7 +3597,7 @@ class VCDynamicActivity4 : BaseActivity() {
             jsonObject.put(VCConstants.SERVER_FILE_PATH, messageModel.serverFilePath)
             jsonObject.put(VCConstants.TEXT_MESSAGE_VALUE, messageModel.messageText)
 //            jsonObject.put(Constants.DISPLAY_NAME, viewModel.localDisplayName)
-            jsonObject.put(VCConstants.DISPLAY_NAME, conferenceManager!!.streamId.toString())
+            jsonObject.put(VCConstants.DISPLAY_NAME, viewModel.displayName)
             Log.d(TAG, "sendTextMessage: timeTest: ${AndroidUtils.getCurrentTimeInMill()}")
             jsonObject.put(VCConstants.currentTime, AndroidUtils.getCurrentTimeInMill())
             jsonObject.put(VCConstants.MESSAGEID, messageModel.id) /*extra added to have a process status update locally in OnMessageSent()*/
@@ -3589,7 +3620,7 @@ class VCDynamicActivity4 : BaseActivity() {
             jsonObject.put(VCConstants.STREAM_ID, conferenceManager!!.streamId)
             jsonObject.put(VCConstants.EVENT_TYPE, VCConstants.ESTIMATION_MESSAGE)
             jsonObject.put(VCConstants.ESTIMATION_MESSAGE_VALUE,Gson().toJson(messageModel.estimationDetails))
-            jsonObject.put(VCConstants.DISPLAY_NAME, conferenceManager!!.streamId.toString())
+            jsonObject.put(VCConstants.DISPLAY_NAME, viewModel.displayName)
             Log.d(TAG, "sendTextMessage: timeTest: ${AndroidUtils.getCurrentTimeInMill()}")
             jsonObject.put(VCConstants.currentTime, AndroidUtils.getCurrentTimeInMill())
             jsonObject.put(VCConstants.MESSAGEID, messageModel.id) /*extra added to have a process status update locally in OnMessageSent()*/
@@ -4067,30 +4098,30 @@ class VCDynamicActivity4 : BaseActivity() {
 //                         viewModel.userName = "9136388890"
 //                    }
 
-                    VCConstants.UserType.SERVICE_PERSON.value -> {
-                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
-                         viewModel.roomID = "QF2O5ZIVYN"
-                         viewModel.serviceAdvisorID = "EUP3070025"
-                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
-                        viewModel.meetingPasscode = "17498"
-                         viewModel.customerCode = "C2019070005"
-                         viewModel.dealerCode = "UP307"
-                         viewModel.roNo = "R202300212"
-                         viewModel.displayName = "Android Service Advisor 2"
-                    }
-
-                    else -> {
-                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
-                         viewModel.roomID = "QF2O5ZIVYN"
-                         viewModel.serviceAdvisorID = "EUP3070025"
-                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
-                        viewModel.meetingPasscode = "17498"
-                         viewModel.customerCode = "C2019070005"
-                         viewModel.dealerCode = "UP307"
-                         viewModel.roNo = "R202300212"
-                         viewModel.displayName = "Android Customer"
-                         viewModel.userName = "9136388890"
-                    }
+//                    VCConstants.UserType.SERVICE_PERSON.value -> {
+//                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
+//                         viewModel.roomID = "QF2O5ZIVYN"
+//                         viewModel.serviceAdvisorID = "EUP3070025"
+//                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+//                        viewModel.meetingPasscode = "17498"
+//                         viewModel.customerCode = "C2019070005"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = "R202300212"
+//                         viewModel.displayName = "Android Service Advisor 2"
+//                    }
+//
+//                    else -> {
+//                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
+//                         viewModel.roomID = "QF2O5ZIVYN"
+//                         viewModel.serviceAdvisorID = "EUP3070025"
+//                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
+//                        viewModel.meetingPasscode = "17498"
+//                         viewModel.customerCode = "C2019070005"
+//                         viewModel.dealerCode = "UP307"
+//                         viewModel.roNo = "R202300212"
+//                         viewModel.displayName = "Android Customer"
+//                         viewModel.userName = "9136388890"
+//                    }
 
 
 //                    VCConstants.UserType.SERVICE_PERSON.value -> {
@@ -4117,6 +4148,30 @@ class VCDynamicActivity4 : BaseActivity() {
 //                        viewModel.displayName = "Android Customer"
 //                        viewModel.userName = "9136388890"
 //                    }
+                    VCConstants.UserType.SERVICE_PERSON.value -> {
+                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
+                        viewModel.roomID = "DWYCQUNC0T"
+                        viewModel.serviceAdvisorID = "EUP3070025"
+                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+                        viewModel.meetingPasscode = "34232"
+                        viewModel.customerCode = "C2019070005"
+                        viewModel.dealerCode = "UP307"
+                        viewModel.roNo = "R202300212"
+                        viewModel.displayName = "Android Service Advisor 2"
+                    }
+
+                    else -> {
+                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
+                        viewModel.roomID = "DWYCQUNC0T"
+                        viewModel.serviceAdvisorID = "EUP3070025"
+                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
+                        viewModel.meetingPasscode = "34232"
+                        viewModel.customerCode = "C2019070005"
+                        viewModel.dealerCode = "UP307"
+                        viewModel.roNo = "R202300212"
+                        viewModel.displayName = "Android Customer 2"
+                        viewModel.userName = "9136388890"
+                    }
                 }
             } else {
                  viewModel.roomID = intent.getStringExtra("room")

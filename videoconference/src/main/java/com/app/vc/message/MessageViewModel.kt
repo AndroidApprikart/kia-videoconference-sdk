@@ -9,7 +9,7 @@ import androidx.lifecycle.ViewModel
 class MessageViewModel:ViewModel() {
 
     var userMessageInput = MutableLiveData<String>()
-
+    var saveMessageList = MutableLiveData<Boolean>(false)
     fun validateUserInputMessage():Boolean{
         if(userMessageInput.value!=null)
         {
@@ -20,4 +20,9 @@ class MessageViewModel:ViewModel() {
         }
         return false
     }
+
+    fun saveMessageList() {
+        saveMessageList.value = true
+    }
+
 }

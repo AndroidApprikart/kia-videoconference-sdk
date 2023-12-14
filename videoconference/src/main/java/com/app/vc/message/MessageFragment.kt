@@ -21,7 +21,9 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.app.vc.AndroidUtils
 import com.app.vc.MainViewModel
+import com.app.vc.PreferenceManager
 import com.app.vc.R
+import com.app.vc.VCConstants
 import com.app.vc.baseui.BaseFragment
 import com.app.vc.databinding.FragmentMessageBinding
 import com.app.vc.databinding.LayoutDialogConfirmationBinding
@@ -108,6 +110,16 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
         dataList.clear()
         dataList.addAll(sharedViewModel.messageListInMVM)
 
+
+        if(PreferenceManager.getuserType() == VCConstants.UserType.CUSTOMER.value) {
+            binding.btnSaveChat?.visibility = View.GONE
+            binding.es.visibility = View.GONE
+        }else if(PreferenceManager.getuserType() == "SERVICE_PERSON") {
+            if(sharedViewModel.roNo.isNullOrEmpty()) {
+                binding.es.visibility = View.GONE
+            }
+        }
+
     }
 
     override fun onStart() {
@@ -182,6 +194,16 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
             }else {
                 //Estimation is not shared at all
                 sharedViewModel.getEstimationDetails.value = true
+            }
+        }
+
+        binding.btnSaveChat?.setOnClickListener {
+            sharedViewModel.isProgressBarVisible.value = true
+            if(AndroidUtils.isNetworkAvailable(mContext)) {
+                viewModel.saveMessageList()
+            }else {
+                sharedViewModel.toastMessage.value  = "No Internet connection."
+                sharedViewModel.isProgressBarVisible.value = false
             }
         }
     }
@@ -316,6 +338,100 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
 
             }
         }
+
+        viewModel.saveMessageList.observe(viewLifecycleOwner) {
+            if(it!=null) {
+                if(it) {
+                    //get message list and update thhe message list and save it.
+                    sharedViewModel.saveMessageList.value = getChatList()
+                }
+            }
+        }
+    }
+
+    private fun getChatList(): kotlin.collections.ArrayList<ChatModelItem>{
+        var chatList = kotlin.collections.ArrayList<ChatModelItem>()
+
+        if(dataList.isNotEmpty()) {
+            for(message in dataList) {
+                if(message.messageType == VCConstants.TEXT_MESSAGE) {
+                    chatList.add(
+                        when(PreferenceManager.getuserType()) {
+                            "SERVICE_PERSON" -> {
+                                ChatModelItem(
+                                    chat_box =message.messageText ,
+                                    mes_from_id = sharedViewModel.serviceAdvisorID.toString(),
+                                    mes_to_id = sharedViewModel.customerCode.toString(),
+                                    message_type = VCConstants.SaveChatMessageType.TEXT.value,
+                                    vc_id =sharedViewModel.roomID!!
+                                )
+                            }
+                            else -> {
+                                ChatModelItem(
+                                    chat_box =message.messageText ,
+                                    mes_from_id = sharedViewModel.customerCode.toString(),
+                                    mes_to_id =sharedViewModel.serviceAdvisorID.toString() ,
+                                    message_type = VCConstants.SaveChatMessageType.TEXT.value,
+                                    vc_id = sharedViewModel.roomID!!
+                                )
+                            }
+                        }
+
+                    )
+                }else if(message.estimationDetails!=null) {
+                    var estimateJsonString:String  = Gson().toJson(message.estimationDetails)
+                    // Commented as estimation details will not be saved.
+//                    chatList.add(
+//                        when(PreferenceManager.getuserType()) {
+//                            "SERVICE_PERSON" -> {
+//                                ChatModelItem(
+//                                    chat_box = estimateJsonString,
+//                                    mes_from_id = vcScreenViewModel.serviceAdvisorID.toString(),
+//                                    mes_to_id = vcScreenViewModel.customerCode.toString(),
+//                                    message_type = Constants.Companion.MessageType.ESTIMATION.value,
+//                                    vc_id =vcScreenViewModel.roomID!!
+//                                )
+//                            }
+//                            else -> {
+//                                ChatModelItem(
+//                                    chat_box =estimateJsonString!! ,
+//                                    mes_from_id = vcScreenViewModel.customerCode.toString(),
+//                                    mes_to_id =vcScreenViewModel.serviceAdvisorID.toString() ,
+//                                    message_type = Constants.Companion.MessageType.ESTIMATION.value,
+//                                    vc_id = vcScreenViewModel.roomID!!
+//                                )
+//                            }
+//                        }
+//                    )
+                }else {
+                    chatList.add(
+                        when(PreferenceManager.getuserType()) {
+                            "SERVICE_PERSON" -> {
+                                ChatModelItem(
+                                    chat_box =message.fileName ,
+                                    mes_from_id = sharedViewModel.serviceAdvisorID.toString(),
+                                    mes_to_id = sharedViewModel.customerCode.toString(),
+                                    message_type = VCConstants.SaveChatMessageType.FILE.value,
+                                    vc_id =sharedViewModel.roomID!!
+                                )
+                            }
+                            else -> {
+                                ChatModelItem(
+                                    chat_box =message.fileName ,
+                                    mes_from_id = sharedViewModel.customerCode.toString(),
+                                    mes_to_id =sharedViewModel.serviceAdvisorID.toString() ,
+                                    message_type = VCConstants.SaveChatMessageType.FILE.value,
+                                    vc_id = sharedViewModel.roomID!!
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+
+        return chatList
     }
 
 
