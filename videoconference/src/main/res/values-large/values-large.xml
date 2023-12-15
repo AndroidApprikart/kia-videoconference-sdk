@@ -2,6 +2,6 @@
 <resources>
     <bool name="is_device_small">false</bool>
     <bool name="is_device_normal">false</bool>
-    <bool name="is_device_large">false</bool>
+    <bool name="is_device_large">true</bool>
     <bool name="is_device_xlarge">false</bool>
 </resources>

@@ -2,7 +2,6 @@ package com.app.vc
 
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Dialog
 import android.content.BroadcastReceiver
@@ -41,11 +40,9 @@ import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.view.children
-import androidx.core.view.size
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.app.vc.VCConstants.CAMERA_STATUS
 import com.app.vc.VCConstants.CAM_TURNED_OFF
@@ -65,7 +62,6 @@ import com.app.vc.VCConstants.SOUND_DEVICE_FRAG
 import com.app.vc.VCConstants.TEXT_MESSAGE
 import com.app.vc.VCConstants.UPDATE_STATUS
 import com.app.vc.VCConstants.ESTIMATION_MESSAGE
-import com.app.vc.VCConstants.ESTIMATION_MESSAGE_VALUE
 
 import com.app.vc.baseui.BaseActivity
 import com.app.vc.customui.RemotePeerView
@@ -150,7 +146,7 @@ class VCDynamicActivity4 : BaseActivity() {
     private lateinit var screenShareFragment: ScreenShareFragment
     private lateinit var messageFragment: MessageFragment
 
-    private var isLandscape: Boolean = false
+    private var isScreenLargeOrXlarge: Boolean = false
     private lateinit var rateUSDialog: Dialog
     private lateinit var estimationConfirmationDialog: Dialog
 
@@ -268,7 +264,11 @@ class VCDynamicActivity4 : BaseActivity() {
 //            streamId = intent.getStringExtra("stream_id_in_use")
         }
         Log.d(TAG, "onCreate: intentForReconnect -> $isIntentForReconnect")
-        isLandscape = resources.getBoolean(com.app.vc.R.bool.landscape_only)
+        Log.d(TAG, "onCreate: screenSize: isSmall: ${resources.getBoolean(R.bool.is_device_small)}")
+        Log.d(TAG, "onCreate: screenSize: isNormal: ${resources.getBoolean(R.bool.is_device_normal)}")
+        Log.d(TAG, "onCreate: screenSize: isLarge: ${resources.getBoolean(R.bool.is_device_large)}")
+        Log.d(TAG, "onCreate: screenSize: isXlarge: ${resources.getBoolean(R.bool.is_device_xlarge)}")
+        isScreenLargeOrXlarge = resources.getBoolean(R.bool.is_device_xlarge)
         // Set window styles for fullscreen-window size. Needs to be done before
         // adding content.
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -1367,8 +1367,8 @@ class VCDynamicActivity4 : BaseActivity() {
         joinVCDialog.setContentView(dialogBinding.root)
         joinVCDialog.setCancelable(false)
         joinVCDialog.setCanceledOnTouchOutside(false)
-        Log.d(TAG, "showJoinVCRoomDialog: ${isLandscape}")
-        if(isLandscape) {
+        Log.d(TAG, "showJoinVCRoomDialog: ${isScreenLargeOrXlarge}")
+        if(isScreenLargeOrXlarge) {
             joinVCDialog.window?.setLayout(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -1459,7 +1459,7 @@ class VCDynamicActivity4 : BaseActivity() {
         endVCDialog.setCancelable(false)
         endVCDialog.setCanceledOnTouchOutside(false)
 
-        if(isLandscape) {
+        if(isScreenLargeOrXlarge) {
             endVCDialog.window?.setLayout(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -1678,7 +1678,7 @@ class VCDynamicActivity4 : BaseActivity() {
         binding.fContainer.removeViewAt(0)
 
         var sContainerLayoutParams:LinearLayout.LayoutParams? = null
-        if(isLandscape) {
+        if(isScreenLargeOrXlarge) {
             sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
         }else {
             sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
@@ -1741,7 +1741,7 @@ class VCDynamicActivity4 : BaseActivity() {
         }
 //        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
         var sContainerLayoutParams:LinearLayout.LayoutParams? = null
-        if(isLandscape) {
+        if(isScreenLargeOrXlarge) {
             sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
         }else {
             sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
@@ -1796,7 +1796,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            val sContainerLayoutParams: LinearLayout.LayoutParams =
 //                LinearLayout.LayoutParams(500, 500)
             var sContainerLayoutParams:LinearLayout.LayoutParams? = null
-            if(isLandscape) {
+            if(isScreenLargeOrXlarge) {
                 sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
             }else {
                 sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
@@ -1827,7 +1827,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
 //        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
         var sContainerLayoutParams:LinearLayout.LayoutParams? = null
-        if(isLandscape) {
+        if(isScreenLargeOrXlarge) {
             sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
         }else {
             sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
@@ -2245,7 +2245,7 @@ class VCDynamicActivity4 : BaseActivity() {
             "addInitialLocalParticipant: participant -> ${Gson().toJson(viewModel.participants)}"
         )
         viewModel.participantCount.value = " ${viewModel.participants.size} "
-        viewModel.updateParticipants.value = true
+        viewModel.updateParticipants.value = true // adding local participants when publish started
     }
 
     private fun addNewParticipant(track: VideoTrack, isLocal: Boolean) {
@@ -2295,7 +2295,7 @@ class VCDynamicActivity4 : BaseActivity() {
         /*notify adapter/ other places*/
         Log.d(TAG, "addNewParticipant: participants -> ${Gson().toJson(viewModel.participants)}")
         viewModel.participantCount.value = " ${viewModel.participants.size} "
-        viewModel.updateParticipants.value = true
+        viewModel.updateParticipants.value = true // add new particiant on NewVideo Track
     }
 
     private fun removeParticipant(track: VideoTrack) {
@@ -2312,7 +2312,7 @@ class VCDynamicActivity4 : BaseActivity() {
         /*notify adapter/ other places*/
         Log.d(TAG, "removeParticipant: participants -> ${Gson().toJson(viewModel.participants)}")
         viewModel.participantCount.value = " ${viewModel.participants.size} "
-        viewModel.updateParticipants.value = true
+        viewModel.updateParticipants.value = true // remove participants
     }
 
     private fun updateMicrophoneStatusForParticipant(
@@ -2320,24 +2320,27 @@ class VCDynamicActivity4 : BaseActivity() {
         eventType: String,
         isForLocal: Boolean
     ) {
-        Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244: streamId: ${streamID} eventType : ${eventType}")
+        Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:1 streamId: ${streamID} eventType : ${eventType} isLocal : ${isForLocal}")
         var isAudioOn = if (eventType.equals(VCConstants.MIC_MUTED)) {
             false
         } else eventType.equals(VCConstants.MIC_UNMUTED)
 
-        Log.d(TAG, "updateMicrophoneStatusForParticipant: streamId: ${streamID} ")
+        Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:2 ${Gson().toJson(viewModel.participants)}")
+
         for (participant in viewModel.participants) {
-            Log.d(TAG, "updateMicrophoneStatusForParticipant: pStreamId: ${participant.streamId} uStreamId : ${streamID}")
-            if (participant.isLocal == isForLocal) {
+            Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:3 pStreamId: ${participant.streamId} uStreamId : ${streamID}")
+            if (isForLocal) {
+                Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:4: localParticipant: true: break")
                 participant.isMicOn = isAudioOn
                 break
             } else {
+                Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:5: localParticipant: false: ")
                 if (participant.trackId.contains(streamID)) {
-                    Log.d(TAG, "updateMicrophoneStatusForParticipant: test234: doesContain:  ")
+                    Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:6  trackId: containsStreamId: true break   ")
                     participant.isMicOn = isAudioOn
                     break
                 }else {
-                    Log.d(TAG, "updateMicrophoneStatusForParticipant: test234: doesnotContain:  ")
+                    Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:7  trackId: containsStreamId: false")
                 }
             }
         }
@@ -2346,7 +2349,7 @@ class VCDynamicActivity4 : BaseActivity() {
             "updateMicrophoneStatusForParticipant: participants -> ${Gson().toJson(viewModel.participants)}"
         )
         viewModel.participantCount.value = " ${viewModel.participants.size} "
-        viewModel.updateParticipants.value = true
+        viewModel.updateParticipants.value = true // update mic status for a participant
     }
 
     private fun updateCameraStatusForParticipant(
@@ -2358,7 +2361,7 @@ class VCDynamicActivity4 : BaseActivity() {
             false
         } else eventType.equals(VCConstants.CAM_TURNED_ON)
         for (participant in viewModel.participants) {
-            if (participant.isLocal == isForLocal) {
+            if (isForLocal) {
                 participant.isCamOn = isCamOn
                 break
             } else {
@@ -2373,7 +2376,7 @@ class VCDynamicActivity4 : BaseActivity() {
             "updateCameraStatusForParticipant: participants -> ${Gson().toJson(viewModel.participants)}"
         )
         viewModel.participantCount.value = " ${viewModel.participants.size} "
-        viewModel.updateParticipants.value = true
+        viewModel.updateParticipants.value = true // update camera status for participants
 
     }
 
@@ -2711,6 +2714,10 @@ class VCDynamicActivity4 : BaseActivity() {
                 jsonObject.put(
                     CAMERA_STATUS,
                     conferenceManager!!.isPublisherVideoOn
+                )
+                jsonObject.put(
+                    VCConstants.SCREEN_SHARE_STATUS,
+                    viewModel.screenShareStatus
                 )
                 conferenceManager!!.sendNotificationEventForStatus(
                     UPDATE_STATUS,
@@ -4190,7 +4197,7 @@ class VCDynamicActivity4 : BaseActivity() {
                         viewModel.customerCode = "C2019070005"
                         viewModel.dealerCode = "UP307"
                         viewModel.roNo = "R202300212"
-                        viewModel.displayName = "Android Customer 1"
+                        viewModel.displayName = "Android Customer 2"
                         viewModel.userName = "9136388890"
                     }
                 }

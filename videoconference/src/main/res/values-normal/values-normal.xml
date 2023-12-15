@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <bool name="is_device_small">false</bool>
-    <bool name="is_device_normal">false</bool>
+    <bool name="is_device_normal">true</bool>
     <bool name="is_device_large">false</bool>
     <bool name="is_device_xlarge">false</bool>
 </resources>

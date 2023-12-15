@@ -771,7 +771,7 @@ class MainViewModel : ViewModel() {
                     TAG,
                     "processGetDisplayNameResponse: particiapnts -> ${Gson().toJson(participants)}"
                 )
-                updateParticipants.value = true
+                updateParticipants.value = true // updating display Name from api
                 updateParticipantsNameUI.value = true
             }
             return
@@ -789,7 +789,7 @@ class MainViewModel : ViewModel() {
                 TAG,
                 "processGetDisplayNameResponse: particiapnts -> ${Gson().toJson(participants)}"
             )
-            updateParticipants.value = true
+            updateParticipants.value = true // updating display Name from api
             updateParticipantsNameUI.value = true
         }
     }

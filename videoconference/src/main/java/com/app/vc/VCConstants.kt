@@ -68,6 +68,7 @@ object VCConstants {
     val UPDATE_STATUS = "UPDATE_STATUS"
     val MIC_STATUS = "mic"
     val CAMERA_STATUS = "camera"
+    val SCREEN_SHARE_STATUS = "SCREEN_SHARE"
 
 //    val COMMAND = "command"
 
