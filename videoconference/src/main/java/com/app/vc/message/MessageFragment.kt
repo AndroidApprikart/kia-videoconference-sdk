@@ -58,6 +58,10 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
     var selectedLabourList = kotlin.collections.ArrayList<String>()
     private lateinit var estimationConfirmationDialog: Dialog
 
+    var isClickable = true
+    var lastClickTime = System.currentTimeMillis()
+    var clickTimeInterval = 2000
+
 
     /*uncomment for download and open dunitnality*/
     /*private var downloadManager: DownloadManager? = null
@@ -149,7 +153,18 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
         }
         binding.btnAttachFile.setOnClickListener{
             /*open file explorer*/
-            sharedViewModel.openFileManager.value = true
+
+            var now = System.currentTimeMillis()
+            if (now - lastClickTime < clickTimeInterval) {
+                return@setOnClickListener
+            }
+            lastClickTime = now
+            if (!isClickable) {
+                return@setOnClickListener
+            } else {
+                sharedViewModel.openFileManager.value = true
+            }
+
         }
 
         binding.messageToolBar.setNavigationOnClickListener {

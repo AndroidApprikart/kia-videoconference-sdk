@@ -287,7 +287,9 @@ class MainViewModel : ViewModel() {
         )
         call.enqueue(object : retrofit2.Callback<UploadVcFileResponse> {
             override fun onFailure(call: Call<UploadVcFileResponse>, t: Throwable) {
-                Log.d(TAG, "onFailure: uploadFile: Failure")
+                Log.d(TAG, "${t.message}")
+                Log.d(TAG, "onFailure: uploadFile: Failure ${t.cause}")
+                Log.d(TAG, "onFailure: uploadFile: Failure ${t.localizedMessage}")
                 if (retryCount++ < TOTAL_RETRIES) {
                     Log.d(TAG, "onFailure: Retrying... $retryCount out of $TOTAL_RETRIES")
                     retry()
