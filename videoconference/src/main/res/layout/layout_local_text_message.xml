@@ -38,7 +38,7 @@
             android:maxLines="1"
             android:minLines="1"
             android:text="gggggggggggggggggggggggg"
-            android:textColor="@color/color_kia_black"
+            android:textColor="@color/self_name_color"
             android:textSize="14sp"
             app:layout_constrainedWidth="true"
             app:layout_constraintHorizontal_bias="1.0"
@@ -52,7 +52,7 @@
             android:layout_marginHorizontal="@dimen/_5sdp"
             android:paddingStart="@dimen/_5sdp"
             android:layout_height="wrap_content"
-            android:textColor="@color/black"
+            android:textColor="@color/color_kia_black"
             android:textSize="15sp"
             android:visibility="visible"
             android:text=""
@@ -66,24 +66,32 @@
             android:id="@+id/tv_local_time_stamp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="10sp"
             android:layout_margin="@dimen/_5sdp"
+            android:layout_marginStart="204dp"
+            android:layout_marginTop="4dp"
             android:text="10:30"
-            app:layout_constraintTop_toBottomOf="@id/local_message_tv"
+            android:textSize="10sp"
+            android:textColor="@color/self_time_color"
+            app:fontFamily="@font/kia_signature_fix_regular"
+            app:layout_constraintEnd_toEndOf="@+id/local_message_tv"
+            app:layout_constraintHorizontal_bias="1.0"
             app:layout_constraintStart_toEndOf="@id/local_barrier"
-            app:fontFamily="@font/kia_signature_fix_regular" />
+            app:layout_constraintTop_toBottomOf="@id/local_message_tv" />
+
         <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/tv_local_msg_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:visibility="visible"
-            android:textSize="10sp"
-            android:layout_marginBottom="@dimen/_5sdp"
-            android:layout_marginHorizontal="@dimen/_5sdp"
             android:text="status"
+            android:textSize="10sp"
+            android:visibility="visible"
+            android:textColor="@color/self_time_color"
+
+            app:fontFamily="@font/kia_signature_fix_regular"
+            app:layout_constraintEnd_toEndOf="@+id/tv_local_time_stamp"
+            app:layout_constraintHorizontal_bias="1.0"
             app:layout_constraintStart_toEndOf="@id/local_barrier"
-            app:layout_constraintTop_toBottomOf="@id/tv_local_time_stamp"
-            app:fontFamily="@font/kia_signature_fix_regular" />
+            app:layout_constraintTop_toBottomOf="@id/tv_local_time_stamp" />
 
         <androidx.constraintlayout.widget.Barrier
             android:id="@+id/local_barrier"
