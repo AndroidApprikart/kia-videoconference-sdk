@@ -498,20 +498,20 @@ public class MultitrackConferenceManager implements AntMediaSignallingEvents, ID
         }
     }
 
-    public void updateAudioLevel(int level) {
-        JSONObject json = new JSONObject();
-        try {
-            json.put(WebSocketConstants.STREAM_ID, streamId);
-            json.put("eventType", "UPDATE_AUDIO_LEVEL");
-            json.put("audioLevel", level);
-
-            final ByteBuffer buffer = ByteBuffer.wrap(json.toString().getBytes(StandardCharsets.UTF_8));
-            DataChannel.Buffer buf = new DataChannel.Buffer(buffer, false);
-            publishWebRTCClient.sendMessageViaDataChannel(buf);
-        } catch (JSONException e) {
-            Log.e(this.getClass().getSimpleName(), "Connect to conference room JSON error: " + e.getMessage());
-        }
-    }
+//    public void updateAudioLevel(int level) {
+//        JSONObject json = new JSONObject();
+//        try {
+//            json.put(WebSocketConstants.STREAM_ID, streamId);
+//            json.put("eventType", "UPDATE_AUDIO_LEVEL");
+//            json.put("audioLevel", level);
+//
+//            final ByteBuffer buffer = ByteBuffer.wrap(json.toString().getBytes(StandardCharsets.UTF_8));
+//            DataChannel.Buffer buf = new DataChannel.Buffer(buffer, false);
+//            publishWebRTCClient.sendMessageViaDataChannel(buf);
+//        } catch (JSONException e) {
+//            Log.e(this.getClass().getSimpleName(), "Connect to conference room JSON error: " + e.getMessage());
+//        }
+//    }
 
     public boolean isReconnectionEnabled() {
         return reconnectionEnabled;

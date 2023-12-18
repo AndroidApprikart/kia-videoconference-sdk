@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+
+    </data>
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:backgroundTint="@color/white"
+        android:theme="@style/Base.Theme.VideoConference"
+        android:padding="@dimen/_10sdp">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_dialog_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="5dp"
+            android:textColor="@color/color_kia_black"
+            android:textSize="16sp"
+            android:fontFamily="@font/kia_signature_fix_bold"/>
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_dialog_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/tv_dialog_title"
+            android:layout_centerHorizontal="true"
+            android:lines="2"
+            android:maxLines="2"
+            android:gravity="center"
+            android:textColor="@color/color_kia_black"
+            android:fontFamily="@font/kia_signature_fix_regular"
+            android:layout_marginEnd="@dimen/_5sdp"
+            android:layout_marginBottom="10dp"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_below="@id/tv_dialog_message"
+            android:gravity="center_horizontal"
+            android:layout_centerHorizontal="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/tv_cancel_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cancel"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:layout_marginEnd="@dimen/_2sdp"
+                style="@style/OutlinedButtonStyle"
+                android:gravity="center_horizontal"
+                android:padding="@dimen/_3sdp"
+                android:layout_gravity="center_horizontal"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_update"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:text="OK"
+                android:gravity="center_horizontal"
+                android:padding="@dimen/_3sdp"
+                android:layout_gravity="center_horizontal"/>
+        </LinearLayout>
+    </RelativeLayout>
+</layout>

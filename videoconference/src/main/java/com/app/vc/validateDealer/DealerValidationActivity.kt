@@ -11,6 +11,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.RelativeLayout.LayoutParams
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.databinding.DataBindingUtil
@@ -20,9 +22,12 @@ import com.app.vc.databinding.ActivityDealerValidationBinding
 import com.app.vc.databinding.LayoutDialogConfirmationBinding
 
 
+
 class DealerValidationActivity : AppCompatActivity() {
     lateinit var viewModel: DealerValidationViewModel
     lateinit var binding: ActivityDealerValidationBinding
+    private var isScreenLargeOrXlarge: Boolean = false
+    private var isScreenSmallOrNormal: Boolean = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,6 +79,8 @@ class DealerValidationActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_dealer_validation)
         viewModel = DealerValidationViewModel()
         binding.dealerValidationVM = viewModel
+        isScreenLargeOrXlarge = resources.getBoolean(R.bool.is_device_xlarge) or resources.getBoolean(R.bool.is_device_large)
+        isScreenSmallOrNormal = resources.getBoolean(R.bool.is_device_normal) or resources.getBoolean(R.bool.is_device_small)
     }
 
     private fun initializeApiResponseObservers() {
@@ -102,7 +109,7 @@ class DealerValidationActivity : AppCompatActivity() {
                             isCancelable = false,
                             title = "License Expired",
                             message = "Please verify your license with the dealer or \n service advisor to use the VC service.",
-                            isCancelButtonVisible = false
+                            isCancelButtonVisible = true
                         ) {
                             finish()
                         }
@@ -129,12 +136,38 @@ class DealerValidationActivity : AppCompatActivity() {
 
         binding.tvCancelButton.isVisible = isCancelButtonVisible
 
+
+
+        if(isCancelButtonVisible) {
+            val cancelLayoutParams = binding.tvCancelButton.layoutParams as LinearLayout.LayoutParams
+            cancelLayoutParams.width = 0  // Set width to 0 to allow the weight to take effect
+            cancelLayoutParams.weight = 1f  // Set weight for the "Cancel" button
+            binding.tvCancelButton.layoutParams = cancelLayoutParams
+
+            val updateLayoutParams = binding.btnUpdate.layoutParams as LinearLayout.LayoutParams
+            updateLayoutParams.width = 0  // Set width to 0 to allow the weight to take effect
+            updateLayoutParams.weight = 1f  // Set weight for the "Update" button
+            binding.btnUpdate.layoutParams = updateLayoutParams
+        }else {
+            // Change the layout parameters for the "Update" button
+            val layoutParams = binding.btnUpdate.layoutParams as LinearLayout.LayoutParams
+            layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            binding.btnUpdate.layoutParams = layoutParams
+        }
+
         val confirmationDialog = Dialog(context)
         confirmationDialog.setContentView(binding.root)
-        confirmationDialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+
+        if(!isScreenLargeOrXlarge) {
+            confirmationDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+
+
         confirmationDialog.setCancelable(isCancelable)
 
         binding.btnUpdate.setOnClickListener {

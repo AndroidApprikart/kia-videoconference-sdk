@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.media.AudioAttributes
@@ -147,8 +148,12 @@ class VCDynamicActivity4 : BaseActivity() {
     private lateinit var messageFragment: MessageFragment
 
     private var isScreenLargeOrXlarge: Boolean = false
+    private var isScreenSmallOrNormal: Boolean = false
     private lateinit var rateUSDialog: Dialog
     private lateinit var estimationConfirmationDialog: Dialog
+
+    var sContainerSizeLandscape:Int = 0
+    var sContainerSizePortrait:Int = 0
 
 
     /*any customized local broadcasts made exclusively in SDK will be reveived here*/
@@ -268,7 +273,8 @@ class VCDynamicActivity4 : BaseActivity() {
         Log.d(TAG, "onCreate: screenSize: isNormal: ${resources.getBoolean(R.bool.is_device_normal)}")
         Log.d(TAG, "onCreate: screenSize: isLarge: ${resources.getBoolean(R.bool.is_device_large)}")
         Log.d(TAG, "onCreate: screenSize: isXlarge: ${resources.getBoolean(R.bool.is_device_xlarge)}")
-        isScreenLargeOrXlarge = resources.getBoolean(R.bool.is_device_xlarge)
+        isScreenLargeOrXlarge = resources.getBoolean(R.bool.is_device_xlarge) or resources.getBoolean(R.bool.is_device_large)
+        isScreenSmallOrNormal = resources.getBoolean(R.bool.is_device_normal) or resources.getBoolean(R.bool.is_device_small)
         // Set window styles for fullscreen-window size. Needs to be done before
         // adding content.
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -287,6 +293,9 @@ class VCDynamicActivity4 : BaseActivity() {
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
         this.intent.putExtra(CallActivity.EXTRA_CAPTURETOTEXTURE_ENABLED, true)
         PreferenceManager.init(this)
+
+        sContainerSizePortrait= resources.getDimension(com.intuit.sdp.R.dimen._100sdp).toInt()
+        sContainerSizeLandscape= resources.getDimension(com.intuit.sdp.R.dimen._70sdp).toInt()
         init()
         showProgressDialog()
         viewModelObservers()
@@ -340,6 +349,18 @@ class VCDynamicActivity4 : BaseActivity() {
         publisherContainer!!.changeAudioActiveStatus(true)
         publisherContainer!!.streamName.text = getString(R.string.you)
         binding.fContainer.addView(publisherContainer)
+
+        binding.fContainer.setBackgroundColor(resources.getColor(R.color.colorPrimary))
+
+        if (isScreenLargeOrXlarge) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        } else if(isScreenSmallOrNormal) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }else {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+
+
     }
 
     private fun viewModelObservers() {
@@ -1342,6 +1363,90 @@ class VCDynamicActivity4 : BaseActivity() {
         }
     }
 
+//    private fun initConferenceManager(isForRejoin: Boolean) {
+//        if (AndroidUtils.isNetworkOnLine(this)) {
+//            intent.putExtra(CallActivity.EXTRA_SCREENCAPTURE, false) // initially for the screen capture to be false
+//            viewModel.clearMessageBadgeValue()
+//            Log.d(TAG, "initConferenceManager: ")
+//            binding.fContainer.removeAllViews()
+//            binding.sContainer.removeAllViews()
+//            initPublishContainerClickListener()
+//            // initDataChannelListener() // Removed (uncomment if needed)
+//            initWebRTCListener()
+//            viewModel.streamId = null // Set stream ID to null initially
+//
+//            conferenceManager = MultitrackConferenceManager(
+//                this,
+//                iWebRTCListener,
+//                intent,
+//                viewModel.serverUrl,
+//                viewModel.roomID,
+//                publisherContainer!!.surfaceViewRenderer,
+//                ArrayList<SurfaceViewRenderer>(), // Empty list for remote streams
+//                viewModel.streamId,
+//                dataChannelObserver
+//            )
+//            Log.d(TAG, "initConferenceManager: ")
+//
+//            conferenceManager!!.init()
+//            conferenceManager!!.isPlayOnlyMode = false // Default to publish-subscribe mode
+//            conferenceManager!!.setOpenFrontCamera(false) // Default camera not front-facing
+//
+//            // Handle UI state based on rejoin flag
+//            if (isForRejoin) {
+//                viewModel.rejoinInProgress = false
+//                joinConference()
+//            } else {
+//                showJoinVCRoomDialog() // Show UI for fresh joins
+//            }
+//
+//            // Handle camera and microphone state based on flags and update UI
+//            if (conferenceManager!!.isPublisherVideoOn && viewModel.localVideo) {
+//                // Video already in state desired by flags, do nothing
+//            } else {
+//                if (viewModel.localVideo) {
+//                    conferenceManager!!.enableVideo()
+//                    viewModel.localVideo = true
+//                    processCameraUIForPublishContainer(VCConstants.CAM_TURNED_ON)
+//                } else {
+//                    conferenceManager!!.disableVideo()
+//                    viewModel.localVideo = false
+//                    processCameraUIForPublishContainer(VCConstants.CAM_TURNED_OFF)
+//                }
+//            }
+//
+//            if (conferenceManager!!.isPublisherAudioOn && viewModel.localAudio) {
+//                // Audio already in state desired by flags, do nothing
+//            } else {
+//                if (viewModel.localAudio) {
+//                    conferenceManager!!.enableAudio()
+//                    viewModel.localAudio = true
+//                    processMicUIForPublishContainer(VCConstants.MIC_UNMUTED)
+//                } else {
+//                    conferenceManager!!.disableAudio()
+//                    viewModel.localAudio = false
+//                    processMicUIForPublishContainer(VCConstants.MIC_MUTED)
+//                }
+//            }
+//
+//            // Set camera source based on front camera flag
+//            val source = if (viewModel.frontCamera) {
+//                WebRTCClient.SOURCE_FRONT
+//            } else {
+//                WebRTCClient.SOURCE_REAR
+//            }
+//            try {
+//                conferenceManager!!.publishWebRTCClient.changeVideoSource(source)
+//            } catch (e: Exception) {
+//                Log.e(TAG, "Error changing video source", e)
+//            }
+//
+//            Log.d(TAG, "initConferenceManager: end")
+//        } else {
+//            viewModel.toastMessage.value = " No internet connection.. try again"
+//        }
+//    }
+
     fun joinConference() {
         Log.d(TAG, "joinConference: ")
         if (conferenceManager != null) {
@@ -1662,7 +1767,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
 
     private fun addNewContainer(newContainer: RemotePeerView) {
-        val containerMargin = resources.getDimension(com.intuit.sdp.R.dimen._10sdp).toInt()
+        val containerMargin = resources.getDimension(com.intuit.sdp.R.dimen._2sdp).toInt()
         /*add to F::remove first from F and add to S*/
         val fContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -1679,17 +1784,17 @@ class VCDynamicActivity4 : BaseActivity() {
 
         var sContainerLayoutParams:LinearLayout.LayoutParams? = null
         if(isScreenLargeOrXlarge) {
-            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+            sContainerLayoutParams= LinearLayout.LayoutParams(sContainerSizeLandscape, sContainerSizeLandscape)
         }else {
-            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+            sContainerLayoutParams= LinearLayout.LayoutParams(sContainerSizePortrait, sContainerSizePortrait)
         }
 
 
         sContainerLayoutParams.setMargins(
             containerMargin,
+            0,
             containerMargin,
-            containerMargin,
-            containerMargin
+            0
         )
 //        k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
 //        k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
@@ -1697,6 +1802,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
 //        k.translationZ = 3F
         binding.sContainer.addView(k, binding.sContainer.childCount)
+        binding.sContainer.setBackgroundColor(resources.getColor(R.color.colorPrimary))
         for (i in binding.sContainer.children) {
             i.visibility = View.VISIBLE
             val k = i
@@ -1718,7 +1824,7 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun removeEndedContainer(leftContainer: RemotePeerView) {
-        var containerMargin = resources.getDimension(com.intuit.sdp.R.dimen._10sdp).toInt()
+        var containerMargin = resources.getDimension(com.intuit.sdp.R.dimen._2sdp).toInt()
         if (leftContainer.parent == binding.fContainer) {
             Log.d(TAG, "removeEndedContainer: in the fContainer")
             /*if the renderer is in F...then remove from F and add last added renderer of S to F*/
@@ -1742,15 +1848,15 @@ class VCDynamicActivity4 : BaseActivity() {
 //        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
         var sContainerLayoutParams:LinearLayout.LayoutParams? = null
         if(isScreenLargeOrXlarge) {
-            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+            sContainerLayoutParams= LinearLayout.LayoutParams(sContainerSizeLandscape, sContainerSizeLandscape)
         }else {
-            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+            sContainerLayoutParams= LinearLayout.LayoutParams(sContainerSizePortrait, sContainerSizePortrait)
         }
         sContainerLayoutParams.setMargins(
             containerMargin,
+            0,
             containerMargin,
-            containerMargin,
-            containerMargin
+            0
         )
         for (i in binding.sContainer.children) {
             i.visibility = View.VISIBLE
@@ -1769,7 +1875,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
     private fun swapContainer(clickedContainer: RemotePeerView) {
         Log.d(TAG, "swapContainer: SWAP ")
-        val containerMargin = resources.getDimension(com.intuit.sdp.R.dimen._10sdp).toInt()
+        val containerMargin = resources.getDimension(com.intuit.sdp.R.dimen._2sdp).toInt()
         /*add to F::remove first from F and add to S*/
         if (clickedContainer.parent == binding.sContainer) {
 
@@ -1797,15 +1903,15 @@ class VCDynamicActivity4 : BaseActivity() {
 //                LinearLayout.LayoutParams(500, 500)
             var sContainerLayoutParams:LinearLayout.LayoutParams? = null
             if(isScreenLargeOrXlarge) {
-                sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+                sContainerLayoutParams= LinearLayout.LayoutParams(sContainerSizeLandscape, sContainerSizeLandscape)
             }else {
-                sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+                sContainerLayoutParams= LinearLayout.LayoutParams(sContainerSizePortrait, sContainerSizePortrait)
             }
             sContainerLayoutParams.setMargins(
                 containerMargin,
+                0,
                 containerMargin,
-                containerMargin,
-                containerMargin
+                0
             )
 //            k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
 //            k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
@@ -1820,6 +1926,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 binding.sContainer.addView(k)
                 k.layoutParams = sContainerLayoutParams
             }
+
             binding.sContainer.addView(k, clickedIndex)
         } else {
             Log.d(TAG, "swapContainer: SWAP already in F")
@@ -1828,15 +1935,15 @@ class VCDynamicActivity4 : BaseActivity() {
 //        val sContainerLayoutParams: LinearLayout.LayoutParams = LinearLayout.LayoutParams(500, 500)
         var sContainerLayoutParams:LinearLayout.LayoutParams? = null
         if(isScreenLargeOrXlarge) {
-            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizeLandscape, VCConstants.sContainerSizeLandscape)
+            sContainerLayoutParams= LinearLayout.LayoutParams(sContainerSizeLandscape, sContainerSizeLandscape)
         }else {
-            sContainerLayoutParams= LinearLayout.LayoutParams(VCConstants.sContainerSizePortrait, VCConstants.sContainerSizePortrait)
+            sContainerLayoutParams= LinearLayout.LayoutParams(sContainerSizePortrait, sContainerSizePortrait)
         }
         sContainerLayoutParams.setMargins(
             containerMargin,
+            0,
             containerMargin,
-            containerMargin,
-            containerMargin
+            0
         )
 
         Log.d(TAG, "swapContainer: binding.sContainer count " + binding.sContainer.childCount)
@@ -2331,8 +2438,10 @@ class VCDynamicActivity4 : BaseActivity() {
             Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:3 pStreamId: ${participant.streamId} uStreamId : ${streamID}")
             if (isForLocal) {
                 Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:4: localParticipant: true: break")
-                participant.isMicOn = isAudioOn
-                break
+                if(participant.isLocal) {
+                    participant.isMicOn = isAudioOn
+                }
+//                break
             } else {
                 Log.d(TAG, "updateMicrophoneStatusForParticipant: test2244:5: localParticipant: false: ")
                 if (participant.trackId.contains(streamID)) {
@@ -2362,8 +2471,11 @@ class VCDynamicActivity4 : BaseActivity() {
         } else eventType.equals(VCConstants.CAM_TURNED_ON)
         for (participant in viewModel.participants) {
             if (isForLocal) {
-                participant.isCamOn = isCamOn
-                break
+//                participant.isCamOn = isCamOn
+//                break
+                if(participant.isLocal) {
+                    participant.isCamOn = isCamOn
+                }
             } else {
                 if (participant.trackId.contains(streamID)) {
                     participant.isCamOn = isCamOn
@@ -3010,7 +3122,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 Log.w(TAG, "onPublishStarted - $streamId")
                 binding.broadcastingTextView.visibility = View.VISIBLE
                 binding.broadcastingTextView.text = "Publishing"
-                conferenceManager?.publishWebRTCClient?.switchVideoScaling(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+                conferenceManager?.publishWebRTCClient?.switchVideoScaling(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
                 if (streamId != null) {
                     viewModel.streamId = streamId
                     viewModel.streams.add(streamId)
@@ -3178,13 +3290,13 @@ class VCDynamicActivity4 : BaseActivity() {
                             RelativeLayout.LayoutParams.MATCH_PARENT
                         )
                         val containerMargin =
-                            resources.getDimension(com.intuit.sdp.R.dimen._10sdp).toInt()
+                            resources.getDimension(com.intuit.sdp.R.dimen._2sdp).toInt()
 
                         layoutParamsContainer.setMargins(
                             containerMargin,
+                            0,
                             containerMargin,
-                            containerMargin,
-                            containerMargin
+                            0
                         )
 
                         remotePeerView.layoutParams = layoutParamsContainer

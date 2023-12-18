@@ -50,6 +50,7 @@ class RemotePeerView @JvmOverloads constructor(
         attributes.recycle()
         micImage = view.findViewById(R.id.mic_img)
         videoImage = view.findViewById(R.id.video_img)
+        videoImage.visibility = View.GONE
         surfaceViewRenderer = view.findViewById(R.id.surface_view_renderer)
         streamName  = view.findViewById(R.id.stream_name)
         streamName.text = displayText
