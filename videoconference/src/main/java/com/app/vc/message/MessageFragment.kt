@@ -500,7 +500,10 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
     override fun openURLInWeb(url: String) {
         Log.d(TAG, "openURLInWeb: url -> ${url}")
         val sendIntent = Intent(Intent.ACTION_VIEW, Uri.parse(ApiDetails.MEDIA_BASE_URL+url))
+
         val chooser = Intent.createChooser(sendIntent, "Choose Your Browser")
+        //nbg_19Dec2023 Added flag to trigger picture in picture mode when opening file in browser
+        chooser.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         if (sendIntent.resolveActivity(mContext!!.packageManager) != null) {
             startActivity(chooser)
         }

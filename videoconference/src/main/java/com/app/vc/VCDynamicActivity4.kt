@@ -254,6 +254,9 @@ class VCDynamicActivity4 : BaseActivity() {
     val PICKFILE_RESULT_CODE = 700
     val EXTRA_MEDIA_PROJECTION_DATA = "mediaProjectionData"
 
+    private var webSocketNotConnectedThread: Thread? = null
+    private var isAudioDisableDueToPhoneCall = false
+
     /*callbakc handling*/
     private val onBackPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -634,6 +637,64 @@ class VCDynamicActivity4 : BaseActivity() {
                     Toast.makeText(this, "Something went wrong: Save Chat", Toast.LENGTH_SHORT)
                         .show()
                 }
+            }
+        }
+
+        viewModel.isInPhoneCall.observe(this) {
+            if (it) {
+//                disconnectCurrentVC()//commented on 24th Apr 21
+                //added on 24th Apr 21
+                if (conferenceManager!!.isPublisherAudioOn && viewModel.isPhoneCallStarted.value != true) {
+                    viewModel.isPhoneCallStarted.value = true
+                    isAudioDisableDueToPhoneCall = true
+
+//                    isAudioEnable = false
+//                    conferenceManager.disableAudio()
+//                    vcScreenBinding.imgAudioOption.setImageResource(
+//                        com.kia.R.drawable.audio_disable
+//                    )
+
+                    if (conferenceManager!!.isPublisherAudioOn) {
+                        conferenceManager!!.disableAudio()
+                        viewModel.localAudio = false
+                        processMicUIForPublishContainer(MIC_MUTED)
+                    }
+                }
+                webSocketNotConnectedThread()
+                //
+            }
+        }
+
+        viewModel.isPhoneCallEnded.observe(this) {
+            Log.d(TAG, "observer: isPhoneCallEnded: $it")
+            if (it) {
+//                reconnectVc()//commented on 24th Apr 21
+                //added on 24th Apr 21
+                if (webSocketNotConnectedThread != null && webSocketNotConnectedThread!!.isAlive) {
+                    webSocketNotConnectedThread!!.interrupt()
+                    webSocketNotConnectedThread = null
+                }
+
+                if (conferenceManager!!.isWebSocketNotConnected) {
+//                    reconnectVc()
+                    showReconnectionVCDialog()
+                }
+                if (!conferenceManager!!.isPublisherAudioOn && isAudioDisableDueToPhoneCall) {
+                    viewModel.isPhoneCallStarted.value = false
+                    isAudioDisableDueToPhoneCall = false
+
+//                    isAudioEnable = true
+//                    conferenceManager.enableAudio()
+//                    vcScreenBinding.imgAudioOption.setImageResource(com.kia.R.drawable.mic_icon_enable)
+
+
+                    if (conferenceManager!!.isPublisherAudioOn) {
+                        conferenceManager!!.enableAudio()
+                        viewModel.localAudio = true
+                        processMicUIForPublishContainer(MIC_UNMUTED)
+                    }
+                }
+                //
             }
         }
 
@@ -1311,40 +1372,50 @@ class VCDynamicActivity4 : BaseActivity() {
             if (isForRejoin) { //if rejoining conference
                 viewModel.rejoinInProgress = false
                 joinConference()
-                if(conferenceManager!!.isPublisherVideoOn && viewModel.localVideo)
-                {
-                    /**all good*/
-                }else {
-                    if(viewModel.localVideo)
-                    {
-                        /*true value...so cam must be on*/
-                        conferenceManager!!.enableVideo()
-                        viewModel.localVideo = true
-                        processCameraUIForPublishContainer(VCConstants.CAM_TURNED_ON)
-                    }else{
-                        /*false calue...so cam must be off*/
-                        conferenceManager!!.disableVideo()
-                        viewModel.localVideo = false
-                        processCameraUIForPublishContainer(VCConstants.CAM_TURNED_OFF)
-                    }
-                }
-                if(conferenceManager!!.isPublisherAudioOn && viewModel.localAudio)
-                {
-                    /**all good*/
-                }else {
-                    if(viewModel.localAudio)
-                    {
-                        /*true value...so audio must be on*/
-                        conferenceManager!!.enableAudio()
-                        viewModel.localAudio = true
-                        processMicUIForPublishContainer(VCConstants.MIC_UNMUTED)
-                    }else{
-                        /*false calue...so cam must be off*/
-                        conferenceManager!!.disableAudio()
-                        viewModel.localAudio = false
-                        processMicUIForPublishContainer(VCConstants.MIC_MUTED)
-                    }
-                }
+                Log.d(TAG, "initConferenceManager: afterrejoin: conferenceManagerVideoOn : ${conferenceManager!!.isPublisherVideoOn}")
+                Log.d(TAG, "initConferenceManager: afterrejoin: localVideoON : ${viewModel.localVideo}")
+                Log.d(TAG, "initConferenceManager: afterrejoin: conferenceManagerAudioOn : ${conferenceManager!!.isPublisherAudioOn}")
+                Log.d(TAG, "initConferenceManager: afterrejoin: localVideoON : ${viewModel.localAudio}")
+
+                // added_nbg_19Dec2023 bcoz after rejoining the video and audio is in the enabled state
+                processMicUIForPublishContainer(MIC_UNMUTED)
+                processCameraUIForPublishContainer(VCConstants.CAM_TURNED_ON)
+
+                // commented_nbg_19Dec2023 out the logic as it was causing issues when rejoining.. trying to send data Channel when the data channel is  not active yet
+//                if(conferenceManager!!.isPublisherVideoOn && viewModel.localVideo)
+//                {
+//                    /**all good*/
+//                }else {
+//                    if(viewModel.localVideo)
+//                    {
+//                        /*true value...so cam must be on*/
+//                        conferenceManager!!.enableVideo()
+//                        viewModel.localVideo = true
+//                        processCameraUIForPublishContainer(VCConstants.CAM_TURNED_ON)
+//                    }else{
+//                        /*false calue...so cam must be off*/
+//                        conferenceManager!!.disableVideo()
+//                        viewModel.localVideo = false
+//                        processCameraUIForPublishContainer(VCConstants.CAM_TURNED_OFF)
+//                    }
+//                }
+//                if(conferenceManager!!.isPublisherAudioOn && viewModel.localAudio)
+//                {
+//                    /**all good*/
+//                }else {
+//                    if(viewModel.localAudio)
+//                    {
+//                        /*true value...so audio must be on*/
+//                        conferenceManager!!.enableAudio()
+//                        viewModel.localAudio = true
+//                        processMicUIForPublishContainer(VCConstants.MIC_UNMUTED)
+//                    }else{
+//                        /*false calue...so cam must be off*/
+//                        conferenceManager!!.disableAudio()
+//                        viewModel.localAudio = false
+//                        processMicUIForPublishContainer(VCConstants.MIC_MUTED)
+//                    }
+//                }
                 var source = if(viewModel.frontCamera){
                     WebRTCClient.SOURCE_FRONT
                 }else  WebRTCClient.SOURCE_REAR
@@ -1663,20 +1734,53 @@ class VCDynamicActivity4 : BaseActivity() {
                     object : TelephonyCallback(), TelephonyCallback.CallStateListener {
                         override fun onCallStateChanged(state: Int) {
                             when (state) {
-                                TelephonyManager.CALL_STATE_IDLE -> {}
-                                TelephonyManager.CALL_STATE_RINGING -> {}
-                                TelephonyManager.CALL_STATE_OFFHOOK -> {}
+                                TelephonyManager.CALL_STATE_IDLE -> {
+                                    Log.d(TAG, "onCallStateChanged: StateTest: State:Idle")
+                                    //phone is neither ringing nor in a call
+                                    if(viewModel.isInPhoneCall.value!=null) {
+                                        if (viewModel.isInPhoneCall.value!!) {
+                                            viewModel.isInPhoneCall.value = false
+                                            viewModel.isPhoneCallEnded.value = true
+                                        }
+                                    }else {
 
+                                    }
+
+                                }
+                                TelephonyManager.CALL_STATE_RINGING -> {
+                                    Log.d(TAG, "onCallStateChanged: StateTest: Ringing: ")
+                                    viewModel.isInPhoneCall.value = true
+                                    viewModel.isPhoneCallEnded.value = false
+                                }
+                                TelephonyManager.CALL_STATE_OFFHOOK -> {
+                                    Log.d(TAG, "onCallStateChanged: StateTest: OffHook: ")
+                                    viewModel.isInPhoneCall.value = true
+                                }
                             }
                         }
                     })
             } else {
                 telephonyManager!!.listen(object : PhoneStateListener() {
+                    @Deprecated("Deprecated in Java")
                     override fun onCallStateChanged(state: Int, phoneNumber: String?) {
                         when (state) {
-                            TelephonyManager.CALL_STATE_IDLE -> {}
-                            TelephonyManager.CALL_STATE_RINGING -> {}
-                            TelephonyManager.CALL_STATE_OFFHOOK -> {}
+                            TelephonyManager.CALL_STATE_IDLE -> {
+                                //phone is neither ringing nor in a call
+                                Log.d(TAG, "onCallStateChanged: StateTest: State:Idle")
+                                if (viewModel.isInPhoneCall.value!!) {
+                                    viewModel.isInPhoneCall.value = false
+                                    viewModel.isPhoneCallEnded.value = true
+                                }
+                            }
+                            TelephonyManager.CALL_STATE_RINGING -> {
+                                Log.d(TAG, "onCallStateChanged: StateTest: Ringing: ")
+                                viewModel.isInPhoneCall.value = true
+                                viewModel.isPhoneCallEnded.value = false
+                            }
+                            TelephonyManager.CALL_STATE_OFFHOOK -> {
+                                Log.d(TAG, "onCallStateChanged: StateTest: OffHook: ")
+                                viewModel.isInPhoneCall.value = true
+                            }
 
                         }
                     }
@@ -3901,8 +4005,8 @@ class VCDynamicActivity4 : BaseActivity() {
                 Log.d(TAG, "processPickFileData: filePath : ${filePath}")
             } catch (e: Exception) {
                 Log.e(TAG, "processPickFileData: exception caught while parsing file path: ${e.message}")
-                Toast.makeText(this,"Oops, error while parsing file. Please check the file and try again", Toast.LENGTH_SHORT).show()
-                return@let
+//                Toast.makeText(this,"Oops, error while parsing file. Please check the file and try again", Toast.LENGTH_SHORT).show()
+//                return@let
             }
             if (filePath.isNullOrBlank()) {
                 try {
@@ -4596,5 +4700,53 @@ class VCDynamicActivity4 : BaseActivity() {
 //            )
 //        }
     }
+
+    private fun webSocketNotConnectedThread() {
+        try {
+            if (webSocketNotConnectedThread == null) {
+                webSocketNotConnectedThread = Thread(Runnable {
+                    Log.d(TAG, "observer: isInPhoneCall")
+                    try {
+                        Thread.sleep(1500)
+                        Log.d(TAG, "observer: isInPhoneCall")
+                        if (conferenceManager!!.isWebSocketNotConnected) {
+                            Log.d(TAG, "observer: isInPhoneCall: isWebSocketNotConnected")
+                            runOnUiThread {
+                                if (this::reconnectionVCDialog.isInitialized) {
+                                    reconnectionVCDialog.show()
+                                } else {
+                                    showReconnectionVCDialog()
+                                }
+                            }
+                        } else {
+                            if (this::noInternetDialog.isInitialized) {
+                                noInternetDialog.hide()
+                            }
+                            webSocketNotConnectedThread()
+                        }
+                    } catch (e: InterruptedException) {
+
+                    } catch (e: Exception) {
+
+                    }
+                })
+            }
+        } catch (e: IllegalThreadStateException) {
+
+        } catch (e: Exception) {
+
+        }
+
+        try {
+            if (webSocketNotConnectedThread != null && !webSocketNotConnectedThread!!.isAlive)
+                webSocketNotConnectedThread!!.start()
+        } catch (e: IllegalThreadStateException) {
+
+        } catch (e: Exception) {
+
+        }
+
+    }
+
 
 }

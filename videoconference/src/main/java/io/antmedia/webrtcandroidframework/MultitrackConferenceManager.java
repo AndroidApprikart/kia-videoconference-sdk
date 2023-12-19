@@ -590,4 +590,13 @@ public class MultitrackConferenceManager implements AntMediaSignallingEvents, ID
             Log.e(this.getClass().getSimpleName(), "JSON write error when creating notification event");
         }
     }
+
+//    /*custom Nahusha19Dec2023
+    public boolean isWebSocketNotConnected() {
+        if (wsHandler == null || !wsHandler.isConnected()) {
+            return true;
+        }else {
+            return false;
+        }
+    }
 }

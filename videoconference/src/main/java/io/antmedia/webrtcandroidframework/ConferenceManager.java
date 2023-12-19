@@ -378,7 +378,7 @@ public class ConferenceManager implements AntMediaSignallingEvents, IDataChannel
 
             final ByteBuffer buffer = ByteBuffer.wrap(notificationEventText.getBytes(StandardCharsets.UTF_8));
             DataChannel.Buffer buf = new DataChannel.Buffer(buffer, false);
-            sendMessageViaDataChannel(buf);
+//            sendMessageViaDataChannel(buf);
         } catch (JSONException e) {
             Log.e(this.getClass().getSimpleName(), "JSON write error when creating notification event");
         }

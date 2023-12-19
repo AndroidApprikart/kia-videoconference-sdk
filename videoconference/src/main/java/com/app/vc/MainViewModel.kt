@@ -176,6 +176,9 @@ class MainViewModel : ViewModel() {
 
 
     var saveMessageList  =  MutableLiveData<kotlin.collections.ArrayList<ChatModelItem>>()
+    var isInPhoneCall = MutableLiveData<Boolean>()
+    var isPhoneCallEnded = MutableLiveData<Boolean>()
+    var isPhoneCallStarted = MutableLiveData<Boolean>()
 
 
 
