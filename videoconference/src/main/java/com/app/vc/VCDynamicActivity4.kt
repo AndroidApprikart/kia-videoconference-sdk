@@ -63,7 +63,8 @@ import com.app.vc.VCConstants.SOUND_DEVICE_FRAG
 import com.app.vc.VCConstants.TEXT_MESSAGE
 import com.app.vc.VCConstants.UPDATE_STATUS
 import com.app.vc.VCConstants.ESTIMATION_MESSAGE
-
+import com.app.vc.VCConstants.SCREEN_SHARE_ENABLED
+import com.app.vc.VCConstants.SCREEN_SHARE_DISABLED
 import com.app.vc.baseui.BaseActivity
 import com.app.vc.customui.RemotePeerView
 import com.app.vc.databinding.ActivityVcDynamic4Binding
@@ -1209,10 +1210,22 @@ class VCDynamicActivity4 : BaseActivity() {
         settingsDialog.setContentView(dialogBinding.root)
         settingsDialog.setCancelable(false)
         settingsDialog.setCanceledOnTouchOutside(false)
-        settingsDialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+//        settingsDialog.window?.setLayout(
+//            ViewGroup.LayoutParams.MATCH_PARENT,
+//            ViewGroup.LayoutParams.WRAP_CONTENT
+//        )
+
+        if(isScreenLargeOrXlarge) {
+            settingsDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }else {
+            joinVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
 
         dialogBinding.messageTv.text =
             resources.getString(R.string.permissions_msg_to_open_settings)
@@ -1287,10 +1300,23 @@ class VCDynamicActivity4 : BaseActivity() {
             dialog.setContentView(dialogBinding.root)
             dialog.setCancelable(false)
             dialog.setCanceledOnTouchOutside(false)
-            dialog.window?.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+//            dialog.window?.setLayout(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+
+
+            if(isScreenLargeOrXlarge) {
+                dialog.window?.setLayout(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }else {
+                dialog.window?.setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
 
             dialogBinding.messageTv.text = resources.getString(R.string.per_allow_msg)
             dialogBinding.posBtn.text = resources.getString(R.string.allow)
@@ -1603,15 +1629,20 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun controlVideo() {
-        if (conferenceManager!!.isPublisherVideoOn) {
-            conferenceManager!!.disableVideo()
-            viewModel.localVideo = false
-            processCameraUIForPublishContainer(CAM_TURNED_OFF)
-        } else {
-            conferenceManager!!.enableVideo()
-            viewModel.localVideo = true
-            processCameraUIForPublishContainer(CAM_TURNED_ON)
+        if(!viewModel.screenShareStatus) {
+            if (conferenceManager!!.isPublisherVideoOn) {
+                conferenceManager!!.disableVideo()
+                viewModel.localVideo = false
+                processCameraUIForPublishContainer(CAM_TURNED_OFF)
+            } else {
+                conferenceManager!!.enableVideo()
+                viewModel.localVideo = true
+                processCameraUIForPublishContainer(CAM_TURNED_ON)
+            }
+        }else {
+            viewModel.toastMessage.value = "Please disable screen share."
         }
+
     }
 
     private fun leaveConference() {
@@ -1805,10 +1836,22 @@ class VCDynamicActivity4 : BaseActivity() {
         reconnectionVCDialog.setContentView(dialogBinding.root)
         reconnectionVCDialog.setCancelable(false)
         reconnectionVCDialog.setCanceledOnTouchOutside(false)
-        reconnectionVCDialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+//        reconnectionVCDialog.window?.setLayout(
+//            ViewGroup.LayoutParams.MATCH_PARENT,
+//            ViewGroup.LayoutParams.WRAP_CONTENT
+//        )
+
+        if(isScreenLargeOrXlarge) {
+            reconnectionVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }else {
+            reconnectionVCDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
         dialogBinding.negBtn.setOnClickListener {
             reconnectionVCDialog.dismiss()
 //            goBack()
@@ -1864,7 +1907,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            reInitializeConference()
             publisherContainer = null
             conferenceManager = null
-            initConferenceManager(true)
+//            initConferenceManager(true)
         }
 
     }
@@ -2279,6 +2322,21 @@ class VCDynamicActivity4 : BaseActivity() {
             } else if (eventType.equals(CAM_TURNED_ON)) {
                 /*change surface  UI to null*/
                 removeDefaultBgFromRenderer(remotePeerView)
+            } else {
+                /*do nothing*/
+            }
+        }, 500)
+    }
+
+    private fun processSurfaceRendererBgUiForScreenShare(remotePeerView: RemotePeerView, eventType: String) {
+        Handler().postDelayed({
+            if (eventType.equals(SCREEN_SHARE_DISABLED)) {
+                /*change surface bg UI to single character UI*/
+                removeDefaultBgFromRenderer(remotePeerView)
+
+            } else if (eventType.equals(SCREEN_SHARE_ENABLED)) {
+                /*change surface  UI to null*/
+                applyDefaultBgToRenderer(remotePeerView)
             } else {
                 /*do nothing*/
             }
@@ -2714,6 +2772,8 @@ class VCDynamicActivity4 : BaseActivity() {
             viewModel.toastMessage.value = "Screen share started"
             viewModel.updateScreenShareForFragment.value = true
             viewModel.screenShareStatus = true
+            //Added to hide the insception during screen share
+            processSurfaceRendererBgUiForScreenShare(publisherContainer!!, SCREEN_SHARE_ENABLED)
         }
 //        val mediaProjectionManager = application.getSystemService(
 //            Context.MEDIA_PROJECTION_SERVICE
@@ -2730,6 +2790,8 @@ class VCDynamicActivity4 : BaseActivity() {
         viewModel.toastMessage.value = "Screen share stopped"
         viewModel.updateScreenShareForFragment.value = false
         viewModel.screenShareStatus = false
+        //Added to handle screen flickered during screen-share
+        processSurfaceRendererBgUiForScreenShare(publisherContainer!!, SCREEN_SHARE_DISABLED)
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 ////            stopService(
 ////                Intent(
@@ -2762,6 +2824,8 @@ class VCDynamicActivity4 : BaseActivity() {
                     viewModel.toastMessage.value = "Screen share started"
                     viewModel.updateScreenShareForFragment.value = true
                     viewModel.screenShareStatus = true
+                    // Added to handle insception of video frame in the publisher container
+                    processSurfaceRendererBgUiForScreenShare(publisherContainer!!, SCREEN_SHARE_ENABLED)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         MediaProjectionService.setListener { mediaProjection ->
                             conferenceManager!!.publishWebRTCClient.setMediaProjection(
@@ -3099,10 +3163,17 @@ class VCDynamicActivity4 : BaseActivity() {
 
 //        joinVCDialog.context.setTheme(R.style.MyAlertDialogTheme)
         noInternetDialog.setContentView(R.layout.layout_no_internet_connection)
-        noInternetDialog.window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        if(isScreenLargeOrXlarge) {
+            noInternetDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }else {
+            noInternetDialog.window?.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
         noInternetDialog.setCancelable(false)
 //        val tryAgain = noInternetDialog.findViewById(R.id.btn_try_again) as Button
 //        tryAgain.setOnClickListener {
@@ -3262,7 +3333,7 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun noStreamExistsToPlay(streamId: String?) {
-                viewModel.toastMessage.value = "No stream exists to play for $streamId"
+//                viewModel.toastMessage.value = "No stream exists to play for $streamId"
                 Log.w(TAG, "noStreamExistsToPlay - $streamId")
                 removeOnlyRemoteViews()
             }
@@ -3891,6 +3962,7 @@ class VCDynamicActivity4 : BaseActivity() {
         val textMessage = json.getString(VCConstants.TEXT_MESSAGE_VALUE)?:""
 //                var displayName = ""
         val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+        viewModel.toastMessage.value = "${displayName} messaged You"
         val remoteMessageId = AndroidUtils.getCurrentTimeInMill()
         Log.d(TAG, "onMessage: displayName: $displayName")
         val tempRemoteMessage = MessageModel(
@@ -3918,6 +3990,7 @@ class VCDynamicActivity4 : BaseActivity() {
         val textMessage = json.getString(VCConstants.TEXT_MESSAGE_VALUE)
 //                var displayName = ""
         val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+        viewModel.toastMessage.value = "${displayName} messaged You"
         val fileName = json.getString(VCConstants.FILE_NAME)?:""
         val serverFilePath = json.getString(VCConstants.SERVER_FILE_PATH)?:""
         Log.d(TAG, "onMessage: displayName: $displayName")
@@ -3956,6 +4029,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
 
             val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+            viewModel.toastMessage.value = "${displayName} messaged You"
             val remoteMessageId = AndroidUtils.getCurrentTimeInMill()
             val tempRemoteMessage = MessageModel(
                 displayName,
@@ -4521,10 +4595,22 @@ class VCDynamicActivity4 : BaseActivity() {
         alertDialog.setContentView(dialogBinding.root)
         alertDialog.setCancelable(false)
         alertDialog.setCanceledOnTouchOutside(false)
-        alertDialog.window?.setLayout(
+//        alertDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+
+        if(isScreenLargeOrXlarge) {
+            alertDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }else {
+            alertDialog.window?.setLayout(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
+        }
         dialogBinding.messageTv.text = error
         dialogBinding.posBtn.text = "Retry"
         dialogBinding.negBtn.text = "Go back"

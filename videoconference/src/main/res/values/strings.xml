@@ -13,11 +13,11 @@
     <string name="playing">Playing</string>
     <string name="data_channel_not_available">"Data channel is not available. Enable data channel in both Android and Server side and then restart Streaming</string>
 
-    <string name="permissions_msg_to_open_settings">Permission required for this application, provide them by open settings</string>
+    <string name="permissions_msg_to_open_settings">Permission required for this application,\n provide them by open settings</string>
     <string name="open_settings">Open Settings</string>
     <string name="per_cancel">Cancel</string>
     <string name="allow_later">Allow Later</string>
-    <string name="per_allow_msg">Permission required for this application provide them by clicking allow</string>
+    <string name="per_allow_msg">Permission required for this application \nprovide them by clicking allow</string>
     <string name="allow">Allow</string>
     <string name="try_again">Try again</string>
     <string name="no_internet">No Internet Connection, please check the connection and try again!</string>

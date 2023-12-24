@@ -37,7 +37,7 @@
             android:minLines="1"
             android:paddingStart="@dimen/_5sdp"
             android:text="e"
-            android:textColor="@color/self_name_color"
+            android:textColor="@color/colorPrimary"
             android:textSize="14sp"
             app:layout_constrainedWidth="true"
             app:layout_constraintEnd_toEndOf="parent"
@@ -129,11 +129,13 @@
             android:textColor="@color/self_name_color"
             android:textSize="10sp"
             android:visibility="visible"
+            android:layout_marginVertical="@dimen/_5sdp"
+            android:layout_marginEnd="@dimen/_2sdp"
             app:fontFamily="@font/kia_signature_fix_regular"
-            app:layout_constraintEnd_toEndOf="@+id/bg_file"
+            app:layout_constraintEnd_toStartOf="@+id/tv_local_time_stamp"
             app:layout_constraintHorizontal_bias="1.0"
             app:layout_constraintStart_toEndOf="@id/local_barrier"
-            app:layout_constraintTop_toBottomOf="@id/tv_local_time_stamp" />
+            app:layout_constraintTop_toBottomOf="@id/local_file_type_tv"/>
 
         <androidx.constraintlayout.widget.Barrier
             android:id="@+id/local_barrier"

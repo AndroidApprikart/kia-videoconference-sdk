@@ -558,6 +558,7 @@ public class WebRTCClient implements IWebRTCClient, AntMediaSignallingEvents, ID
                 if (newState == PeerConnection.PeerConnectionState.CONNECTED) {
                     onConnected();
                 } else if (newState == PeerConnection.PeerConnectionState.DISCONNECTED) {
+                    Log.d(TAG, "onConnectionChange: test1111::: Disconnected duew to connection change: Disconnection");
                     onDisconnected();
                 } else if (newState == PeerConnection.PeerConnectionState.FAILED) {
                     reportError(streamId, "DTLS connection failed.");
@@ -1446,6 +1447,7 @@ public class WebRTCClient implements IWebRTCClient, AntMediaSignallingEvents, ID
     }
 
     public void reportError(String streamId, final String description) {
+        Log.d(TAG, "onErrorDefination: client $"+description);
         this.handler.post(() -> {
 
             if (!isError) {
@@ -1875,6 +1877,7 @@ public class WebRTCClient implements IWebRTCClient, AntMediaSignallingEvents, ID
 
     @Override
     public void onError(String streamId, String definition) {
+        Log.d(TAG, "onErrorDefination: websocket $"+definition);
         this.handler.post(()-> {
             if (webRTCListener != null) {
                 webRTCListener.onError(definition, streamId);

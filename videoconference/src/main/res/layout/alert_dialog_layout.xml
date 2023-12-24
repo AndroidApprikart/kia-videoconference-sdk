@@ -43,7 +43,7 @@
             android:layout_marginEnd="@dimen/_5sdp"
             android:fontFamily="@font/kia_signature_fix_bold"
             android:textAllCaps="false"
-            app:cornerRadius="@dimen/_7sdp"
+
             app:layout_constraintHorizontal_chainStyle="packed"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toStartOf="@id/pos_btn"
@@ -59,7 +59,6 @@
             android:layout_marginStart="@dimen/_10sdp"
             android:fontFamily="@font/kia_signature_fix_bold"
             android:textAllCaps="false"
-            app:cornerRadius="@dimen/_7sdp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/neg_btn"
             app:layout_constraintTop_toBottomOf="@id/message_tv"

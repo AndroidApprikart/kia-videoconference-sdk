@@ -167,7 +167,7 @@
             android:id="@+id/tv_local_msg_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/_5sdp"
+            android:layout_marginEnd="@dimen/_2sdp"
             android:layout_marginBottom="@dimen/_5sdp"
             android:text="status"
             android:textSize="10sp"

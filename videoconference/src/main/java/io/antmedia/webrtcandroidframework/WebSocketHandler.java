@@ -105,6 +105,8 @@ public class WebSocketHandler implements WebSocket.WebSocketConnectionObserver {
     @Override
     public void onClose(WebSocketCloseNotification webSocketCloseNotification, String s) {
         Log.d(TAG, "WebSocket connection closed.");
+        Log.d(TAG, "onConnectionChange: test1111::: Disconnected: onClose: notiification: "+webSocketCloseNotification);
+        Log.d(TAG, "onConnectionChange: test1111::: Disconnected: onClose:  string:  "+s);
         signallingListener.onDisconnected();
         synchronized (closeEventLock) {
             closeEvent = true;

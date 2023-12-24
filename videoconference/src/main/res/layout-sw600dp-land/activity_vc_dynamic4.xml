@@ -456,7 +456,7 @@
 
         <FrameLayout
             android:id="@+id/fragment_holder_for_message"
-            android:layout_width="@dimen/_150sdp"
+            android:layout_width="@dimen/_180sdp"
             android:layout_height="0dp"
             android:background="@color/white"
             android:visibility="gone"
