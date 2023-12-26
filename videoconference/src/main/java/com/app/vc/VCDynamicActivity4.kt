@@ -861,7 +861,11 @@ class VCDynamicActivity4 : BaseActivity() {
             Log.d(TAG, "setUpOnClickListeners: ")
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
-                    openScreenShareOptions()
+                    if(viewModel.localVideo) {
+                        openScreenShareOptions()
+                    }else {
+                        viewModel.toastMessage.value = "Please enabled the video."
+                    }
                 }
             }
         }
