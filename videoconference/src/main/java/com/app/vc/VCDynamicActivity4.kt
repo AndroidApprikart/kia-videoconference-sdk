@@ -3218,7 +3218,9 @@ class VCDynamicActivity4 : BaseActivity() {
         iWebRTCListener = null
         iWebRTCListener = object : IWebRTCListener {
             override fun onDisconnected(streamId: String?) {
-                viewModel.toastMessage.value = "Disconnected for $streamId"
+                if(viewModel.isDevMode){
+                    viewModel.toastMessage.value = "Disconnected for $streamId"
+                }
                 Log.w(TAG, "onDisconnected - $streamId")
                 if(!viewModel.rejoinInProgress) {
                     if (conferenceManager != null) {
@@ -3238,7 +3240,10 @@ class VCDynamicActivity4 : BaseActivity() {
                                 TAG,
                                 "onDisconnected: getting callback before joined -> restart conference"
                             )
-                            viewModel.toastMessage.value = "Not able to connect to the web socket"
+                            if(viewModel.isDevMode) {
+                                viewModel.toastMessage.value = "Not able to connect to the web socket"
+                            }
+
                             try {
                                 if (joinVCDialog != null) {
                                     if (joinVCDialog.isShowing) {
@@ -3263,7 +3268,10 @@ class VCDynamicActivity4 : BaseActivity() {
 
             override fun onPublishFinished(streamId: String?) {
                 Log.w(TAG, "onPublishFinished - $streamId")
-                viewModel.toastMessage.value = "Publish finished for $streamId"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Publish finished for $streamId"
+                }
+
                 binding.broadcastingTextView.visibility = View.GONE
                 if(streamId!=null) {
                     Log.d(TAG, "onPublishFinished: ")
@@ -3291,7 +3299,10 @@ class VCDynamicActivity4 : BaseActivity() {
 
             override fun onPlayFinished(streamId: String?) {
                 Log.w(TAG, "onPlayFinished - $streamId")
-                viewModel.toastMessage.value = "Play finished for $streamId"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Play finished for $streamId"
+                }
+
                 if (streamId != null) {
                     viewModel.streams.remove(streamId)
                 }
@@ -3299,9 +3310,17 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun onPublishStarted(streamId: String?) {
-                viewModel.toastMessage.value = "Publish started for $streamId"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Publish started for $streamId"
+                }
+
                 Log.w(TAG, "onPublishStarted - $streamId")
-                binding.broadcastingTextView.visibility = View.VISIBLE
+                if(viewModel.isDevMode) {
+                    binding.broadcastingTextView.visibility = View.VISIBLE
+                }else {
+                    binding.broadcastingTextView.visibility = View.GONE
+                }
+
                 binding.broadcastingTextView.text = "Publishing"
                 conferenceManager?.publishWebRTCClient?.switchVideoScaling(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
                 if (streamId != null) {
@@ -3329,7 +3348,10 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun onPlayStarted(streamId: String?) {
-                viewModel.toastMessage.value = "Play started for $streamId"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Play started for $streamId"
+                }
+
                 Log.w(TAG, "onPlayStarted - $streamId")
                 if (streamId != null) {
                     viewModel.streams.add(streamId)
@@ -3343,7 +3365,10 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun onError(description: String?, streamId: String?) {
-                viewModel.toastMessage.value = "Error for $streamId : $description"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Error for $streamId : $description"
+                }
+
                 Log.w(TAG, "onError - $streamId : $description")
 
             }
@@ -3358,13 +3383,19 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun streamIdInUse(streamId: String?) {
-                viewModel.toastMessage.value = "Stream id is already in use $streamId"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Stream id is already in use $streamId"
+                }
+
                 viewModel.streamId = streamId
                 Log.w(TAG, "streamIdInUse - $streamId")
             }
 
             override fun onIceConnected(streamId: String?) {
-                viewModel.toastMessage.value = "Ice connected for $streamId"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Ice connected for $streamId"
+                }
+
                 if (conferenceManager != null) {
                     if(!viewModel.rejoinInProgress){
                         if(conferenceManager!!.isJoined) {
@@ -3398,12 +3429,18 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun onIceDisconnected(streamId: String?) {
-                viewModel.toastMessage.value = "Ice disconnected for $streamId"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Ice disconnected for $streamId"
+                }
+
                 Log.w(TAG, "onIceDisconnected - $streamId")
             }
 
             override fun onTrackList(tracks: Array<out String>?) {
-                viewModel.toastMessage.value = "Track list received - ${tracks?.size}"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Track list received - ${tracks?.size}"
+                }
+
                 Log.w(TAG, "onTrackList - ${Gson().toJson(tracks)}")
                 tracks?.let {
                     viewModel.roomInfoStreamsList.addAll(it)
@@ -3424,13 +3461,19 @@ class VCDynamicActivity4 : BaseActivity() {
                 streamId: String?,
                 streamInfoList: java.util.ArrayList<StreamInfo>?
             ) {
-                viewModel.toastMessage.value = "Stream info list received ${streamInfoList?.size}"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Stream info list received ${streamInfoList?.size}"
+                }
+
                 Log.w(TAG, "onStreamInfoList - $streamId : ${Gson().toJson(streamInfoList)}")
             }
 
             override fun onNewVideoTrack(track: VideoTrack?) {
                 Log.d(TAG, "onNewVideoTrack: already in vm ${Gson().toJson(viewModel.tracks)}")
-                runOnUiThread { viewModel.toastMessage.value = "New video track received" }
+                if(viewModel.isDevMode) {
+                    runOnUiThread { viewModel.toastMessage.value = "New video track received" }
+                }
+
                 Log.w(TAG, "onNewVideoTrack id-Object -${track!!.id()} -${Gson().toJson(track)}")
 
                 //(working logic) commented out for testing as the (logic for syncing streams) uncomment if required
@@ -3525,7 +3568,10 @@ class VCDynamicActivity4 : BaseActivity() {
 
             override fun onVideoTrackEnded(track: VideoTrack?) {
                 viewModel.tracks.remove(track)
-                viewModel.toastMessage.value = "Video track ended - ${track!!.id()}"
+                if(viewModel.isDevMode) {
+                    viewModel.toastMessage.value = "Video track ended - ${track!!.id()}"
+                }
+
                 Log.w(TAG, "onVideoTrackEnded - ${Gson().toJson(track)}")
 //        runOnUiThread {
 //            var surfaceViewFound : SurfaceViewRenderer? = null
@@ -3545,7 +3591,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 runOnUiThread {
                     var remotePeerViewFound: RelativeLayout? = null
                     for (entry in trackRelMap) {
-                        if (track.id().equals(entry.value)) {
+                        if (track!!.id().equals(entry.value)) {
                             //remove this renderer
                             remotePeerViewFound = entry.key
                             removeEndedContainer(entry.key)

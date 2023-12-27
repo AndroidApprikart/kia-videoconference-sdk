@@ -180,6 +180,9 @@ class MainViewModel : ViewModel() {
     var isPhoneCallEnded = MutableLiveData<Boolean>()
     var isPhoneCallStarted = MutableLiveData<Boolean>()
 
+    //dev mode
+    var isDevMode:Boolean = false
+
 
 
     /*message handling functions*/
