@@ -4037,7 +4037,7 @@ class VCDynamicActivity4 : BaseActivity() {
         eventType: String
     ) {
 
-        val textMessage = json.getString(VCConstants.TEXT_MESSAGE_VALUE)
+        val textMessage = json.optString(VCConstants.TEXT_MESSAGE_VALUE)
 //                var displayName = ""
         val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
         viewModel.toastMessage.value = "${displayName} messaged You"
