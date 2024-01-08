@@ -3147,9 +3147,7 @@ class VCDynamicActivity4 : BaseActivity() {
             Log.d(TAG, "rejoinConferenceRestartConference: ")
             clearRemoteUIs()
             showProgressDialog()
-            Handler().postDelayed({
-                initConferenceManager(true)
-            }, 10000)
+            initConferenceManager(true)
 
         }
 
@@ -3403,7 +3401,7 @@ class VCDynamicActivity4 : BaseActivity() {
                                 try {
                                     if (reconnectionVCDialog != null) {
                                         if (reconnectionVCDialog.isShowing) {
-                                            reconnectionVCDialog.dismiss()
+//                                            reconnectionVCDialog.dismiss()
                                             dismissProgressDialog()
 
                                         }
@@ -3419,7 +3417,7 @@ class VCDynamicActivity4 : BaseActivity() {
                     }else{
                         if(reconnectionVCDialog!=null) {
                             if (reconnectionVCDialog.isShowing) {
-                                reconnectionVCDialog.dismiss()
+//                                reconnectionVCDialog.dismiss()
                                 dismissProgressDialog()
                             }
                         }
@@ -4518,12 +4516,37 @@ class VCDynamicActivity4 : BaseActivity() {
 //                        viewModel.displayName = "Android Customer"
 //                        viewModel.userName = "9136388890"
 //                    }
+//                    VCConstants.UserType.SERVICE_PERSON.value -> {
+//                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
+//                        viewModel.roomID = "DWYCQUNC0T"
+//                        viewModel.serviceAdvisorID = "EUP3070025"
+//                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+//                        viewModel.meetingPasscode = "34232"
+//                        viewModel.customerCode = "C2019070005"
+//                        viewModel.dealerCode = "UP307"
+//                        viewModel.roNo = "R202300212"
+//                        viewModel.displayName = "Android Service Advisor 2"
+//                    }
+//
+//                    else -> {
+//                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
+//                        viewModel.roomID = "DWYCQUNC0T"
+//                        viewModel.serviceAdvisorID = "EUP3070025"
+//                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
+//                        viewModel.meetingPasscode = "34232"
+//                        viewModel.customerCode = "C2019070005"
+//                        viewModel.dealerCode = "UP307"
+//                        viewModel.roNo = "R202300212"
+//                        viewModel.displayName = "Android Customer 2"
+//                        viewModel.userName = "9136388890"
+//                    }
+
                     VCConstants.UserType.SERVICE_PERSON.value -> {
                         PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
-                        viewModel.roomID = "DWYCQUNC0T"
+                        viewModel.roomID = "A1BSOE03Q4"
                         viewModel.serviceAdvisorID = "EUP3070025"
                         viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
-                        viewModel.meetingPasscode = "34232"
+                        viewModel.meetingPasscode = "83675"
                         viewModel.customerCode = "C2019070005"
                         viewModel.dealerCode = "UP307"
                         viewModel.roNo = "R202300212"
@@ -4532,10 +4555,10 @@ class VCDynamicActivity4 : BaseActivity() {
 
                     else -> {
                         PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
-                        viewModel.roomID = "DWYCQUNC0T"
+                        viewModel.roomID = "A1BSOE03Q4"
                         viewModel.serviceAdvisorID = "EUP3070025"
                         viewModel.userType = VCConstants.UserType.CUSTOMER.value
-                        viewModel.meetingPasscode = "34232"
+                        viewModel.meetingPasscode = "83675"
                         viewModel.customerCode = "C2019070005"
                         viewModel.dealerCode = "UP307"
                         viewModel.roNo = "R202300212"
@@ -4554,6 +4577,9 @@ class VCDynamicActivity4 : BaseActivity() {
                  viewModel.displayName = intent.getStringExtra("displayName")
                  viewModel.userName = intent.getStringExtra("userName")
                  viewModel.vcEndTime = intent.getStringExtra("vcEndTime")
+
+
+
 
 //                 viewModel.userId = intent.getStringExtra("userId")
 //                 viewModel.password = intent.getStringExtra("password")
