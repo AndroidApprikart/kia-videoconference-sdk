@@ -4,6 +4,8 @@ plugins {
 //    id("com.android.application")
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id ("io.sentry.android.gradle")version("4.1.1")
+
 }
 
 android {
@@ -83,6 +85,7 @@ dependencies {
     //retrofit - API calls
     implementation ("com.squareup.retrofit2:retrofit:2.9.0")
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation ("io.sentry:sentry-android:5.0.1")
 
 
 }
