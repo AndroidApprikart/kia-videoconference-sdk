@@ -1118,7 +1118,8 @@ class MainViewModel : ViewModel() {
                         if(response.body()!!.msg.success) {
 
                         }else {
-                            toastMessage.value = "Stream Id not present in room"
+                            Log.d(TAG, "onResponse: deleteBroadCast: StreamIdNotPresent in the room")
+//                            toastMessage.value = "Stream Id not present in room"
                         }
                     }
                 }
