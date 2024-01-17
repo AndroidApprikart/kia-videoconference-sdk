@@ -2574,10 +2574,15 @@ class VCDynamicActivity4 : BaseActivity() {
     private fun removeParticipant(track: VideoTrack) {
         var participantPosition = -1
         for (partiipant in viewModel.participants) {
-            if (track.id().equals(partiipant.trackId)) {
-                participantPosition = viewModel.participants.indexOf(partiipant)
-                break
+            try {
+                if (track.id().equals(partiipant.trackId)) {
+                    participantPosition = viewModel.participants.indexOf(partiipant)
+                    break
+                }
+            }catch (e:Exception) {
+                Log.d(TAG, "removeParticipant: exceptionFound: ${e.message}")
             }
+            
         }
         if (participantPosition != -1) {
             viewModel.participants.removeAt(participantPosition)
@@ -3125,7 +3130,10 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun rejoinConferenceRestartConference() {
+        viewModel.isRejoinClicked = true
+        viewModel.unwantedStreams.add(conferenceManager?.streamId!!)
         Log.d(TAG, "rejoinConferenceRestartConference: ")
+        
         viewModel.rejoinInProgress = true
 
         if (conferenceManager != null) {
@@ -3342,6 +3350,11 @@ class VCDynamicActivity4 : BaseActivity() {
                         version = VCConstants.version
                     )
                     updateStreamNameTextView(publisherContainer!!,viewModel.displayName!!) //until the api call
+                }
+                
+                if(viewModel.isRejoinClicked) {
+                    //call a function handle unwnated streams
+                    handleUnwnatedStreams(viewModel.unwantedStreams)
                 }
             }
 
@@ -3642,6 +3655,10 @@ class VCDynamicActivity4 : BaseActivity() {
 //                        udpateStreamsFromRoomInformation(streams, false)
 //                    }
 //                }).start()
+                
+                viewModel.tempRoomInfo.clear()
+                viewModel.tempRoomInfo.addAll(streams)
+                Log.d(TAG, "onRoomInformation: tempRoomInfo ${viewModel.tempRoomInfo}")
 
             }
 
@@ -4911,6 +4928,15 @@ class VCDynamicActivity4 : BaseActivity() {
         }
 
     }
+    
+    fun handleUnwnatedStreams(unwantedStreams: ArrayList<String>) {
+        Log.d(TAG, "handleUnwnatedStreams: unwantedStreams ${unwantedStreams}")
+        viewModel.isRejoinClicked = false
 
-
+        Handler().postDelayed({
+            for(stream in unwantedStreams) {
+                viewModel.deleteBroadCast("http://kia.apprikart.com/kandid_api/v1/",stream)
+            }
+        },10000)
+    }
 }

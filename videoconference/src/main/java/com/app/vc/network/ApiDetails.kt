@@ -50,6 +50,8 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val UPDATE_VC_STATUS_CUSTOMER_NEW = "service/vcConference/updateVcStatus"
         const val GET_VC_LIST = "kandid_api/v1/get_vc_list/?"
 
+        const val DELETE_BROADCAST = "delete_stream_from_room"
+
 
     }
 }

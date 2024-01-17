@@ -124,4 +124,10 @@ interface ApiInterface {
         @Body body: ArrayList<ChatModelItem>
     ):Call<ResponseModelUpdateEstimationStatus>
 
+    @GET(ApiDetails.DELETE_BROADCAST)
+    fun deleteBroadcast(
+        @Query("room_id") roomId: String,
+        @Query("stream_id") streamId: String
+    ):Call<ResponseModelDeleteBroadcast>
+
 }

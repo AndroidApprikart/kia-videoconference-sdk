@@ -31,6 +31,7 @@ import com.app.vc.models.login.ResponseModelLogin
 import com.app.vc.network.ApiDetails
 import com.app.vc.network.ApiInterface
 import com.app.vc.network.Resource
+import com.app.vc.network.ResponseModelDeleteBroadcast
 import com.app.vc.network.RetrofitClient
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -182,6 +183,10 @@ class MainViewModel : ViewModel() {
 
     //dev mode
     var isDevMode:Boolean = false
+
+    var isRejoinClicked = false
+    var tempRoomInfo = ArrayList<String>()
+    var unwantedStreams = ArrayList<String>()
 
 
 
@@ -1089,6 +1094,38 @@ class MainViewModel : ViewModel() {
                 isProgressBarVisible.value = false
                 Log.d(TAG, "chatListResponse: onFailure: SaveChatList ${t.message.toString()}")
 
+            }
+        })
+    }
+
+    var deleteBroadCastResponse = MutableLiveData<ResponseModelDeleteBroadcast>()
+
+
+    fun deleteBroadCast(baseUrl: String,streamId:String) {
+        var call = getServiceObject(baseUrl).deleteBroadcast(
+            roomId = roomID!!,
+            streamId = streamId
+        )
+
+        call.enqueue(object : Callback<ResponseModelDeleteBroadcast?> {
+            override fun onResponse(
+                call: Call<ResponseModelDeleteBroadcast?>,
+                response: Response<ResponseModelDeleteBroadcast?>
+            ) {
+                if(response.code() in 200..299) {
+                    if(response.body()!=null) {
+                        unwantedStreams.remove(streamId)
+                        if(response.body()!!.msg.success) {
+
+                        }else {
+                            toastMessage.value = "Stream Id not present in room"
+                        }
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<ResponseModelDeleteBroadcast?>, t: Throwable) {
+                toastMessage.value = "Failure.. deleteBroadcast.. ${t.message}"
             }
         })
     }
