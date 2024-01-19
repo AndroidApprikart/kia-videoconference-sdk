@@ -42,13 +42,15 @@
             android:fontFamily="@font/kia_signature_fix_regular"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/_4sdp"
-            android:layout_marginTop="@dimen/_4sdp"
-            android:layout_marginEnd="@dimen/_4sdp"
+            android:layout_marginStart="@dimen/_2sdp"
+            android:layout_marginTop="@dimen/_2sdp"
+            android:layout_marginEnd="@dimen/_2sdp"
             android:layout_marginBottom="@dimen/_4sdp"
             android:background="@drawable/bg_tv"
             android:gravity="top|center_horizontal"
-            android:padding="@dimen/_5sdp"
+            android:padding="@dimen/_3sdp"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:textColor="@color/white" />
 
 

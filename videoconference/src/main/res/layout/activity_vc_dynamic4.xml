@@ -42,6 +42,19 @@
             app:layout_constraintTop_toTopOf="parent"
             android:padding="@dimen/_10sdp">
 
+            <ImageView
+                android:id="@+id/img_kia_logo_vc_screen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                android:padding="@dimen/_5sdp"
+                android:scaleType="fitXY"
+                android:src="@drawable/ic_brand_logo_kia"
+                android:visibility="visible"
+                app:tint="@color/white" />
+
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/img_logo"
                 android:layout_width="wrap_content"

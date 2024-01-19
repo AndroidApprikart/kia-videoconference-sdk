@@ -17,4 +17,6 @@ interface MessageClickListener {
 
     /**use for local message of both type(file, text) for resending, based on the message status*/
     fun resendMessage(data:MessageModel)
+
+    fun downloadFileUsingServerFilePath(serverFilePath:String,fileName:String)
 }

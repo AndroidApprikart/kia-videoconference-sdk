@@ -89,6 +89,9 @@ class ScreenShareFragment : BottomSheetDialogFragment() {
         binding.btnCancel.setOnClickListener {
             viewModel.cancel()
         }
+        binding.btnCancelRemoveFragment.setOnClickListener {
+            viewModel.cancel()
+        }
         binding.btnStartScreenShare.setOnClickListener {
             viewModel.dostartScreenShare()
         }

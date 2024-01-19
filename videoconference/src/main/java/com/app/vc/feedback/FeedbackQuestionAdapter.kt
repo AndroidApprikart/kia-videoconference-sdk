@@ -55,6 +55,7 @@ class FeedbackQuestionAdapter(
         Log.d(TAG, "onBindViewHolder: ")
         var currentItem = dataList[position]
         holder.feedBackQuestion.text = currentItem.surveyData.surveyQuestion
+        holder.ratingBar.rating = dataList[position].rating.toFloat()
 
 
 //        holder.comments.text = currentItem.comment
@@ -78,7 +79,7 @@ class FeedbackQuestionAdapter(
 
                 dataList[position].comment = ""
                 holder.etComments.text.clear()
-                notifyDataSetChanged()
+                notifyItemChanged(position)
 
             }
         }

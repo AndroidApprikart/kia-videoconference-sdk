@@ -22,7 +22,7 @@
     <string name="try_again">Try again</string>
     <string name="no_internet">No Internet Connection, please check the connection and try again!</string>
     <string name="please_wait">Please wait!</string>
-    <string name="ready_to_join_msg">Join the VC Room?</string>
+    <string name="ready_to_join_msg">Ready to Join</string>
     <string name="end_the_call">Do you want to end call ?</string>
     <string name="join_now">Join now</string>
     <string name="participants">Participants</string>

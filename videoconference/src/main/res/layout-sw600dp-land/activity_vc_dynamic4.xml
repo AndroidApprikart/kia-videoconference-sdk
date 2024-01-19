@@ -43,6 +43,19 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
+            <ImageView
+                android:id="@+id/img_kia_logo_vc_screen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                android:padding="@dimen/_5sdp"
+                android:scaleType="fitXY"
+                android:src="@drawable/ic_brand_logo_kia"
+                android:visibility="visible"
+                app:tint="@color/white" />
+
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/img_logo"
                 android:layout_width="wrap_content"
@@ -335,7 +348,6 @@
             android:background="@color/color_kia_black"
             android:paddingVertical="@dimen/_5sdp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintHorizontal_chainStyle="spread"
             app:layout_constraintStart_toStartOf="parent">
 
             <RelativeLayout
@@ -344,9 +356,10 @@
                 android:layout_height="wrap_content"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_audio_switch"
-                app:layout_constraintHorizontal_chainStyle="spread"
+                app:layout_constraintHorizontal_chainStyle="packed"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent">
+                app:layout_constraintTop_toTopOf="parent"
+                style="@style/horizontal_margin_bottom_nav">
 
                 <ImageView
                     android:id="@+id/img_vc_participants"
@@ -378,7 +391,8 @@
                 app:layout_constraintEnd_toStartOf="@id/btn_video"
                 app:layout_constraintStart_toEndOf="@id/btn_participants"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_mic_enabled" />
+                app:srcCompat="@drawable/ic_mic_enabled"
+                style="@style/horizontal_margin_bottom_nav"/>
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_video"
@@ -388,7 +402,8 @@
                 app:layout_constraintEnd_toStartOf="@id/btn_end_call"
                 app:layout_constraintStart_toEndOf="@id/btn_audio_switch"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_video_enabled" />
+                app:srcCompat="@drawable/ic_video_enabled"
+                style="@style/horizontal_margin_bottom_nav"/>
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_end_call"
@@ -400,7 +415,8 @@
                 app:layout_constraintEnd_toStartOf="@id/btn_screen_share"
                 app:layout_constraintStart_toEndOf="@id/btn_video"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_end_call" />
+                app:srcCompat="@drawable/ic_end_call"
+                style="@style/horizontal_margin_bottom_nav"/>
 
 
             <com.google.android.material.imageview.ShapeableImageView
@@ -411,7 +427,8 @@
                 app:layout_constraintEnd_toStartOf="@id/btn_audio_output_devices"
                 app:layout_constraintStart_toEndOf="@id/btn_end_call"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_screen_share" />
+                app:srcCompat="@drawable/ic_screen_share"
+                style="@style/horizontal_margin_bottom_nav"/>
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_audio_output_devices"
@@ -422,7 +439,8 @@
                 app:layout_constraintStart_toEndOf="@id/btn_screen_share"
                 app:layout_constraintTop_toTopOf="parent"
                 app:srcCompat="@drawable/ic_audio_output_devices"
-                app:tint="@color/white" />
+                app:tint="@color/white"
+                style="@style/horizontal_margin_bottom_nav"/>
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/btn_chat"
@@ -432,24 +450,25 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/btn_audio_output_devices"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_messages" />
+                app:srcCompat="@drawable/ic_messages"
+                style="@style/horizontal_margin_bottom_nav"/>
 
             <TextView
                 android:id="@+id/tv_msg_count"
                 style="@style/text_view_regular"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_margin="@dimen/_1sdp"
                 android:background="@drawable/bg_participants_background"
                 android:backgroundTint="@color/white"
                 android:gravity="center"
                 android:maxLength="5"
-                android:layout_margin="@dimen/_1sdp"
-                android:textSize="10sp"
-                app:layout_constraintTop_toTopOf="@+id/btn_chat"
-                app:layout_constraintEnd_toEndOf="@id/btn_chat"
                 android:text="@{vm.messageUnreadCount}"
                 android:textColor="@color/color_kia_black"
-                android:visibility="gone" />
+                android:textSize="10sp"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="@id/btn_chat"
+                app:layout_constraintTop_toTopOf="@+id/btn_chat" />
 
 
         </androidx.constraintlayout.widget.ConstraintLayout>

@@ -47,6 +47,21 @@
             app:strokeColor="@color/color_kia_black" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel_remove_fragment"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/_10sdp"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:paddingHorizontal="@dimen/_10sdp"
+            android:text="@string/cancel"
+            android:textAllCaps="false"
+            app:layout_constraintEnd_toStartOf="@+id/btn_stop_screen_share"
+            app:layout_constraintTop_toBottomOf="@id/tv_screen_share_msg_ongoing"
+            app:strokeColor="@color/color_kia_black"
+            android:layout_marginVertical="@dimen/_10sdp"/>
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_start_screen_share"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="wrap_content"
@@ -105,6 +120,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="visible"
-            app:constraint_referenced_ids="tv_screen_share_msg_ongoing,btn_stop_screen_share" />
+            app:constraint_referenced_ids="tv_screen_share_msg_ongoing,btn_stop_screen_share,btn_cancel_remove_fragment" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

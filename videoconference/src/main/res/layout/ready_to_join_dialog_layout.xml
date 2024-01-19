@@ -22,7 +22,7 @@
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/message_tv"
             android:fontFamily="@font/kia_signature_fix_bold"
-            android:textSize="@dimen/_14ssp"
+            android:textSize="14sp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/ready_to_join_msg"

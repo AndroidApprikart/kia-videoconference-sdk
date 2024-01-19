@@ -2,56 +2,65 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_dialog"
-        android:padding="@dimen/_10sdp"
-        android:theme="@style/Base.Theme.VideoConference">
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/message_tv"
-            android:fontFamily="@font/kia_signature_fix_regular"
+        android:paddingHorizontal="@dimen/_10sdp"
+        android:paddingVertical="@dimen/_10sdp">
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/end_the_call"
-            android:textAlignment="center"
-            android:textColor="@color/black"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:background="@drawable/bg_dialog"
+            android:padding="@dimen/_10sdp"
+            android:theme="@style/Base.Theme.VideoConference">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/message_tv"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/end_the_call"
+                android:textAlignment="center"
+                android:textColor="@color/black"
+                android:textSize="14sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
 
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/neg_btn"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="@dimen/_2sdp"
-            android:fontFamily="@font/kia_signature_fix_bold"
-            android:text="@string/no"
-            android:textAllCaps="false"
-            app:layout_constraintHorizontal_chainStyle="packed"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/pos_btn"
-            app:layout_constraintTop_toBottomOf="@id/message_tv"
-            app:strokeColor="@color/color_kia_black"
-            android:layout_marginTop="@dimen/_10sdp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/neg_btn"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/_2sdp"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:text="Cancel"
+                android:textAllCaps="false"
+                app:layout_constraintHorizontal_chainStyle="packed"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/pos_btn"
+                app:layout_constraintTop_toBottomOf="@id/message_tv"
+                app:strokeColor="@color/color_kia_black"
+                android:layout_marginTop="@dimen/_15sdp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/pos_btn"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/_2sdp"
-            android:fontFamily="@font/kia_signature_fix_bold"
-            android:text="@string/yes"
-            android:textAllCaps="false"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/neg_btn"
-            android:layout_marginTop="@dimen/_10sdp"
-            app:layout_constraintTop_toBottomOf="@id/message_tv" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pos_btn"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/_2sdp"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:text="@string/yes"
+                android:textAllCaps="false"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/neg_btn"
+                android:layout_marginTop="@dimen/_15sdp"
+                app:layout_constraintTop_toBottomOf="@id/message_tv" />
 
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </RelativeLayout>
+
+
 </layout>

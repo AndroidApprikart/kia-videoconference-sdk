@@ -520,6 +520,18 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
     override fun openFile(data: MessageModel) {  /*if requirement arises -> fetch code form extra code section in the file*/ }
 
     override fun resendMessage(data: MessageModel) {  /*if requirement arises -> fetch code form extra code section in the file*/ }
+    override fun downloadFileUsingServerFilePath(serverFilePath: String, fileName: String) {
+        val uri = Uri.parse(getWebUrlToDownloadFile(serverFilePath,fileName))
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        if (intent.resolveActivity(mContext?.packageManager!!) != null) {
+            mContext.startActivity(intent)
+        }
+    }
+
+    fun getWebUrlToDownloadFile(serverFilePath: String,fileName: String):String {
+        return "https://kia.apprikart.com/kandid_api/v1/download_file?file_url=" + ApiDetails.MEDIA_BASE_URL + serverFilePath + "&desired_filename=" +fileName
+    }
 
     override fun onDestroy() {
         super.onDestroy()

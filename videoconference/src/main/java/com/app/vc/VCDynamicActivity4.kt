@@ -711,6 +711,7 @@ class VCDynamicActivity4 : BaseActivity() {
         estimationConfirmationDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         var dialogBinding = LayoutDialogConfirmationBinding.inflate(LayoutInflater.from(this))
         estimationConfirmationDialog.setContentView(dialogBinding.root)
+        dialogBinding.tvDialogTitle.visibility = View.GONE
         dialogBinding.tvDialogMessage.text =  "Do you want to send the \n estimation details."
         estimationConfirmationDialog.window?.setLayout(
             ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -1872,9 +1873,12 @@ class VCDynamicActivity4 : BaseActivity() {
         dialogBinding.posBtn.setOnClickListener {
             if (AndroidUtils.isNetworkOnLine(this)) {
                 Log.d(TAG, "openJoinVCRoomDialog: internetPresent: ")
-                rejoinConferenceRestartConference()
+                if(checkForValidInternetSpeed()) {
+                    rejoinConferenceRestartConference()
 //                rejoinConferenceRestartActivity()
-                reconnectionVCDialog.dismiss()
+                    reconnectionVCDialog.dismiss()
+                }
+
             } else {
                 Toast.makeText(this, "No internet connection.", Toast.LENGTH_SHORT).show()
             }
@@ -3099,6 +3103,39 @@ class VCDynamicActivity4 : BaseActivity() {
         // Schedule the next logging after 1 second
         handler.postDelayed(::logInternetSpeed, internetLogInterval)
     }
+    
+    fun checkForValidInternetSpeed():Boolean {
+        val context = applicationContext
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val netInfo = cm.activeNetworkInfo
+        val nc = cm.getNetworkCapabilities(cm.activeNetwork)
+        if (netInfo != null && nc != null) {
+            val downSpeedKbps = nc.linkDownstreamBandwidthKbps
+            val upSpeedKbps = nc.linkUpstreamBandwidthKbps
+
+            val speedLogKbps = "D: $downSpeedKbps Kbps, U: $upSpeedKbps Kbps"
+
+            val downSpeedMbps = downSpeedKbps / 1000.0
+            val upSpeedMbps = upSpeedKbps / 1000.0
+
+            // Log the internet speed in Mbps
+            val speedLogInMbps = "D: $downSpeedMbps Mbps, U: $upSpeedMbps Mbps"
+
+            Log.d(TAG, "checkForValidInternetSpeed: speedDuringRejoin: ${speedLogInMbps}")
+            viewModel.toastMessage.value = "${speedLogInMbps}"
+
+            return if (downSpeedMbps > 6.0) {
+                true
+            }else {
+                viewModel.toastMessage.value = "Low internet speed. Please connect to a better internet connection and try again."
+                false
+            }
+        } else {
+            viewModel.internetSpeed.value = "-"
+//            Log.d(TAG, "logInternetSpeed:-")
+            return false
+        }
+    }
 
     override fun onStop() {
         super.onStop()
@@ -3328,7 +3365,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
 
                 binding.broadcastingTextView.text = "Publishing"
-                conferenceManager?.publishWebRTCClient?.switchVideoScaling(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+//                conferenceManager?.publishWebRTCClient?.switchVideoScaling(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
                 if (streamId != null) {
                     viewModel.streamId = streamId
                     viewModel.streams.add(streamId)

@@ -214,7 +214,8 @@ class MessageAdapterMutliple (
                 (holder as LocalTextHolder).bind(dataList[position]).also{}
             }
             2->{ /*local file*/
-                (holder as LocalFileHolder).bind(dataList[position]).also{ holder.itemView.setOnClickListener{listener.openURLInWeb(dataList[position].serverFilePath)}}
+//                (holder as LocalFileHolder).bind(dataList[position]).also{ holder.itemView.setOnClickListener{listener.openURLInWeb(dataList[position].serverFilePath)}}
+                (holder as LocalFileHolder).bind(dataList[position]).also{ holder.itemView.setOnClickListener{listener.downloadFileUsingServerFilePath(dataList[position].serverFilePath,dataList[position].fileName)}}
             }
             3->{ /*local estimate*/
                 (holder as LocalEstimateHolder).bind(dataList[position]).also{ }
@@ -224,7 +225,8 @@ class MessageAdapterMutliple (
                 (holder as RemoteTextHolder).bind(dataList[position]).also{ }
             }
             5->{ /*remote file*/
-                (holder as RemoteFileHolder).bind(dataList[position]).also{ holder.itemView.setOnClickListener{listener.openURLInWeb(dataList[position].serverFilePath)}}
+//                (holder as RemoteFileHolder).bind(dataList[position]).also{ holder.itemView.setOnClickListener{listener.openURLInWeb(dataList[position].serverFilePath)}}
+                (holder as RemoteFileHolder).bind(dataList[position]).also{ holder.itemView.setOnClickListener{listener.downloadFileUsingServerFilePath(dataList[position].serverFilePath,dataList[position].fileName)}}
             }
             6->{ /*remote estimate*/
                 (holder as RemoteEstimateHolder).bind(dataList[position]).also{ }
