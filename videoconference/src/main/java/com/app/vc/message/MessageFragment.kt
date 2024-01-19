@@ -530,7 +530,7 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
     }
 
     fun getWebUrlToDownloadFile(serverFilePath: String,fileName: String):String {
-        return "https://kia.apprikart.com/kandid_api/v1/download_file?file_url=" + ApiDetails.MEDIA_BASE_URL + serverFilePath + "&desired_filename=" +fileName
+        return "https://kia.apprikart.com/kandid_api/v1/download_file?file_url=https://videoserver.apprikart.com$serverFilePath&desired_filename=$fileName"
     }
 
     override fun onDestroy() {
