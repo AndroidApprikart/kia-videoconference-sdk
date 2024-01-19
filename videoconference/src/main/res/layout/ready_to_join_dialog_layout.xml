@@ -48,8 +48,8 @@
             app:layout_constraintEnd_toStartOf="@id/pos_btn"
             app:layout_constraintHorizontal_chainStyle="spread"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/message_tv"
-            app:strokeColor="@color/color_kia_black" />
+            app:strokeColor="@color/color_kia_black"
+            app:layout_constraintTop_toBottomOf="@id/message_tv" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/pos_btn"
