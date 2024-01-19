@@ -5,12 +5,15 @@ import android.content.res.TypedArray
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
 import android.graphics.drawable.shapes.RectShape
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -34,6 +37,7 @@ class RemotePeerView @JvmOverloads constructor(
      lateinit var videoImage:ImageView
      lateinit var surfaceViewRenderer: SurfaceViewRenderer
      lateinit var streamName:TextView
+     lateinit var micImageTop: ImageView
 
 
      var videoActive = false
@@ -49,6 +53,8 @@ class RemotePeerView @JvmOverloads constructor(
         videoActive = attributes.getBoolean(R.styleable.RemotePeerView_video_active,false)
         attributes.recycle()
         micImage = view.findViewById(R.id.mic_img)
+        micImageTop = view.findViewById(R.id.mic_img_top)
+
         videoImage = view.findViewById(R.id.video_img)
         videoImage.visibility = View.GONE
         surfaceViewRenderer = view.findViewById(R.id.surface_view_renderer)
@@ -68,10 +74,14 @@ class RemotePeerView @JvmOverloads constructor(
         if(audioActive){
             micImage.setImageResource(R.drawable.ic_mic_enabled_without_bg)
             micImage.setColorFilter(Color.parseColor("#FFFFFF"));
+            micImageTop.setImageResource(R.drawable.ic_mic_enabled_without_bg)
+            micImageTop.setColorFilter(Color.parseColor("#FFFFFF"));
         }else
         {
             micImage.setImageResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
             micImage.setColorFilter(Color.parseColor("#FFFFFF"));
+            micImageTop.setImageResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
+            micImageTop.setColorFilter(Color.parseColor("#FFFFFF"));
         }
 
         if(videoActive){
@@ -101,11 +111,14 @@ class RemotePeerView @JvmOverloads constructor(
 
         if(audioActive){
             micImage.setImageResource(R.drawable.ic_mic_enabled_without_bg)
+            micImageTop.setImageResource(R.drawable.ic_mic_enabled_without_bg)
         }else
         {
             micImage.setImageResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
+            micImageTop.setImageResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
         }
         micImage.setColorFilter(Color.parseColor("#FFFFFF"));
+        micImageTop.setColorFilter(Color.parseColor("#FFFFFF"));
     }
 
     fun addCharacterBg(){
@@ -113,6 +126,17 @@ class RemotePeerView @JvmOverloads constructor(
     }
     fun removeCharacterBg(){
         surfaceViewRenderer.background = null
+    }
+    //function added (19Jan2024)to handle mic image visible when its in either in full screen container or in the small screen container
+    fun updateMicForFContainer() {
+        micImage.visibility = View.GONE
+        micImageTop.visibility = View.VISIBLE
+    }
+
+    //function added (19Jan2024) to handle mic image visible when its in either in full screen container or in the small screen container
+    fun updateMicForSContainer() {
+        micImage.visibility = View.VISIBLE
+        micImageTop.visibility = View.GONE
     }
 
     fun createLayerDrawable(context: Context,character: String): LayerDrawable {
@@ -141,6 +165,60 @@ class RemotePeerView @JvmOverloads constructor(
         view.draw(canvas)
         return bitmap
     }
+
+//    fun addCharacterBg(isRemoteRenderer:Boolean){
+//        if(isRemoteRenderer) {
+//            surfaceViewRenderer.background = createLayerDrawableForSmallcontainerRenderer(context,streamName.text.toString().first().toString())
+//        }else {
+//            surfaceViewRenderer.background = createLayerDrawableForFullScreenRenderer(context,streamName.text.toString().first().toString())
+//        }
+//
+//
+//    }
+//    fun createLayerDrawableForFullScreenRenderer(context: Context,character: String): LayerDrawable {
+//        val rectangleDrawable = ShapeDrawable(RectShape())
+//        rectangleDrawable.paint.color = ContextCompat.getColor(context, R.color.colorPrimary)
+//
+//
+//        val customLayout = LayoutInflater.from(context).inflate(R.layout.layout_renderer_background, null) as ViewGroup
+//        val customTextView = customLayout.findViewById<TextView>(R.id.tv_first_char)
+//        customTextView.text = character
+//        var bitmap = createBitmapFromView(customLayout)
+//
+//
+//        val iconDrawable = BitmapDrawable(resources, bitmap)
+//        iconDrawable.gravity = android.view.Gravity.CENTER
+//
+//
+//        return LayerDrawable(arrayOf(rectangleDrawable, iconDrawable))
+//    }
+//
+//
+//    fun createLayerDrawableForSmallcontainerRenderer(context: Context, character: String): LayerDrawable {
+//        val backgroundDrawable = ShapeDrawable(RectShape())
+//        backgroundDrawable.paint.color = ContextCompat.getColor(context, R.color.colorPrimary)
+//        backgroundDrawable.paint.style = Paint.Style.FILL
+//
+//
+//        val borderDrawable = ShapeDrawable(RectShape())
+//        borderDrawable.paint.color = Color.WHITE // Static white color for border
+//        borderDrawable.paint.style = Paint.Style.STROKE
+//        borderDrawable.paint.strokeWidth = 2f // Static 2dp width for border
+//
+//
+//        val customLayout = LayoutInflater.from(context).inflate(R.layout.layout_renderer_background, null) as ViewGroup
+//        val customTextView = customLayout.findViewById<TextView>(R.id.tv_first_char)
+//        customTextView.text = character
+//
+//
+//        val iconDrawable = BitmapDrawable(resources, createBitmapFromView(customLayout))
+//        iconDrawable.gravity = Gravity.CENTER
+//
+//
+//        val layers = arrayOf<Drawable>(backgroundDrawable, borderDrawable, iconDrawable)
+//        return LayerDrawable(layers)
+//    }
+
 
 
 }

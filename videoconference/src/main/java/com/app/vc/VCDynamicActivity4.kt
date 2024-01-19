@@ -352,7 +352,9 @@ class VCDynamicActivity4 : BaseActivity() {
         publisherContainer!!.changeVideoActiveStatus(true)
         publisherContainer!!.changeAudioActiveStatus(true)
         publisherContainer!!.streamName.text = getString(R.string.you)
+        publisherContainer!!.updateMicForFContainer()
         binding.fContainer.addView(publisherContainer)
+
 
         binding.fContainer.setBackgroundColor(resources.getColor(R.color.colorPrimary))
 
@@ -1932,6 +1934,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //        newContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
         newContainer.layoutParams = fContainerLayoutParams
 //        binding.sContainer.removeView(newRenderer
+        newContainer!!.updateMicForFContainer()
         binding.fContainer.addView(newContainer, binding.fContainer.childCount)
 
         val k = binding.fContainer.getChildAt(0)
@@ -1956,7 +1959,7 @@ class VCDynamicActivity4 : BaseActivity() {
         k.layoutParams = sContainerLayoutParams
 
 //        k.translationZ = 3F
-        binding.sContainer.addView(k, binding.sContainer.childCount)
+
         binding.sContainer.setBackgroundColor(resources.getColor(R.color.colorPrimary))
         for (i in binding.sContainer.children) {
             i.visibility = View.VISIBLE
@@ -1965,6 +1968,8 @@ class VCDynamicActivity4 : BaseActivity() {
             binding.sContainer.addView(k)
             k.layoutParams = sContainerLayoutParams
         }
+        (k as RemotePeerView).updateMicForSContainer()
+        binding.sContainer.addView(k, binding.sContainer.childCount)
 
 
 //        for(i in 0..binding.sContainer.childCount)
@@ -2017,6 +2022,7 @@ class VCDynamicActivity4 : BaseActivity() {
             i.visibility = View.VISIBLE
             var k = i;
             binding.sContainer.removeView(i)
+            (k as RemotePeerView).updateMicForSContainer()
             binding.sContainer.addView(k)
             k.layoutParams = sContainerLayoutParams
         }
@@ -2050,6 +2056,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            clickedContainer.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
             clickedContainer.layoutParams = fContainerLayoutParams
 //        binding.sContainer.removeView(newRenderer
+            clickedContainer.updateMicForFContainer()
             binding.fContainer.addView(clickedContainer, binding.fContainer.childCount)
 
             val k = binding.fContainer.getChildAt(0)
@@ -2081,7 +2088,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 binding.sContainer.addView(k)
                 k.layoutParams = sContainerLayoutParams
             }
-
+            (k as RemotePeerView).updateMicForSContainer()
             binding.sContainer.addView(k, clickedIndex)
         } else {
             Log.d(TAG, "swapContainer: SWAP already in F")
@@ -3804,6 +3811,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            remotePeerView.setBackgroundResource(R.drawable.bg_peer_container)
         publisherContainer!!.changeVideoActiveStatus(true)
         publisherContainer!!.changeAudioActiveStatus(true)
+        publisherContainer!!.updateMicForFContainer()
         binding.fContainer.addView(publisherContainer)
         publisherContainer!!.streamName.text = viewModel.displayName?:"You"
         publisherContainer!!.surfaceViewRenderer.setOnClickListener {

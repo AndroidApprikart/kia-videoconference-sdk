@@ -26,6 +26,17 @@
             app:tint="@color/white" />
 
         <ImageView
+            android:id="@+id/mic_img_top"
+            android:layout_width="@dimen/_20sdp"
+            android:layout_height="@dimen/_20sdp"
+            android:padding="@dimen/_2sdp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentTop="true"
+            android:background="@drawable/bg_rounded"
+            android:src="@drawable/ic_mic_enabled"
+            app:tint="@color/white" />
+
+        <ImageView
             android:id="@+id/video_img"
             android:layout_width="@dimen/_20sdp"
             android:layout_height="@dimen/_20sdp"
