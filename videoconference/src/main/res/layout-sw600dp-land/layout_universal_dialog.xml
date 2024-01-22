@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+
+    </data>
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+        <RelativeLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/white"
+            android:theme="@style/Base.Theme.VideoConference">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_dialog_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:textColor="@color/color_kia_black"
+                android:textSize="16sp"
+                android:fontFamily="@font/kia_signature_fix_bold"/>
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_dialog_message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/tv_dialog_title"
+                android:layout_centerHorizontal="true"
+                android:lines="2"
+                android:maxLines="2"
+                android:gravity="center"
+                android:textColor="@color/color_kia_black"
+                android:fontFamily="@font/kia_signature_fix_regular"/>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_below="@id/tv_dialog_message"
+                android:gravity="center_horizontal"
+                android:layout_centerHorizontal="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_negative"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    style="@style/OutlinedButtonStyle"
+                    android:gravity="center"
+                    android:layout_gravity="center_horizontal"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_positive"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/white"
+                    android:gravity="center"
+                    android:layout_gravity="center_horizontal"/>
+            </LinearLayout>
+        </RelativeLayout>
+    </RelativeLayout>
+
+</layout>

@@ -29,6 +29,7 @@ import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.DisplayMetrics
 import android.util.Log
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -716,6 +717,8 @@ class VCDynamicActivity4 : BaseActivity() {
         estimationConfirmationDialog.setContentView(dialogBinding.root)
         dialogBinding.tvDialogTitle.visibility = View.GONE
         dialogBinding.tvDialogMessage.text =  "Do you want to send the \n estimation details."
+        dialogBinding.tvDialogMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP,16F)
+        dialogBinding.btnUpdate.text = "Yes"
         estimationConfirmationDialog.window?.setLayout(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -2933,10 +2936,23 @@ class VCDynamicActivity4 : BaseActivity() {
             cameraDialog.setContentView(dialogBinding.root)
             cameraDialog.setCancelable(false)
             cameraDialog.setCanceledOnTouchOutside(false)
-            cameraDialog.window?.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+//            cameraDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+
+            if(isScreenLargeOrXlarge) {
+                cameraDialog.window?.setLayout(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }else {
+                cameraDialog.window?.setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
+
             /*msgTv.text = resources.getString(R.string.per_allow_msg)
             posBtn.text = resources.getString(R.string.allow)
             negBtn.text = resources.getString(R.string.per_cancel)*/
@@ -3420,7 +3436,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
 
                 binding.broadcastingTextView.text = "Publishing"
-//                conferenceManager?.publishWebRTCClient?.switchVideoScaling(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+                conferenceManager?.publishWebRTCClient?.switchVideoScaling(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
                 if (streamId != null) {
                     viewModel.streamId = streamId
                     viewModel.streams.add(streamId)

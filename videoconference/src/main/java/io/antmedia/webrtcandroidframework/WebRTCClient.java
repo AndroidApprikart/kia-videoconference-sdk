@@ -1490,6 +1490,15 @@ public class WebRTCClient implements IWebRTCClient, AntMediaSignallingEvents, ID
              */
             changeVideoCapturer(newVideoCapturer);
             currentSource = newSource;
+
+            // nbg_22Jan2023Custom function added to handle cropped image in screen share for tabs
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    disableVideo();
+                    enableVideo();
+                }
+            }, 2000);
         }
     }
 

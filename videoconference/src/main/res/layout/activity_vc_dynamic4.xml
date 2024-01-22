@@ -73,7 +73,6 @@
                 app:layout_constraintEnd_toStartOf="@id/btn_camera_toggle"
                 app:layout_constraintTop_toTopOf="parent"
                 app:srcCompat="@drawable/ic_hide_participants"
-                android:layout_marginEnd="@dimen/_10sdp"
                 app:tint="@color/white"
                 />
 
@@ -97,8 +96,7 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/ic_switch_camera"
-                android:layout_marginEnd="@dimen/_10sdp"/>
+                app:srcCompat="@drawable/ic_switch_camera" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
 
