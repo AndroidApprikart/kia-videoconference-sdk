@@ -18,6 +18,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -1875,10 +1876,31 @@ class VCDynamicActivity4 : BaseActivity() {
         dialogBinding.posBtn.setOnClickListener {
             if (AndroidUtils.isNetworkOnLine(this)) {
                 Log.d(TAG, "openJoinVCRoomDialog: internetPresent: ")
-                if(checkForValidInternetSpeed()) {
-                    rejoinConferenceRestartConference()
-//                rejoinConferenceRestartActivity()
-                    reconnectionVCDialog.dismiss()
+
+                // commented for testing 22JAN2023
+//                if(checkForValidInternetSpeed()) {
+//                    rejoinConferenceRestartConference()
+////                rejoinConferenceRestartActivity()
+//                    reconnectionVCDialog.dismiss()
+//                }
+
+                if(isConnectedToWifi(this)) {
+                    viewModel.toastMessage.value = getWifiSignalStrength(this).toString()
+                    printCurrentInternetSpeedInMbps()
+                    if(isGoodInternetConnection(this,-67))  {
+                        rejoinConferenceRestartConference()
+                        reconnectionVCDialog.dismiss()
+                    }else {
+                        viewModel.toastMessage.value = "Please connect to wifi with good strength"
+                    }
+                }else {
+                    printCurrentInternetSpeedInMbps()
+                    if(checkForValidInternetSpeed()) {
+                        rejoinConferenceRestartConference()
+                        reconnectionVCDialog.dismiss()
+                    }else {
+                        viewModel.toastMessage.value = "Low internet speed. Please connect to a better internet connection and try again."
+                    }
                 }
 
             } else {
@@ -3110,6 +3132,32 @@ class VCDynamicActivity4 : BaseActivity() {
         // Schedule the next logging after 1 second
         handler.postDelayed(::logInternetSpeed, internetLogInterval)
     }
+
+    fun printCurrentInternetSpeedInMbps() {
+        val context = applicationContext
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val netInfo = cm.activeNetworkInfo
+        val nc = cm.getNetworkCapabilities(cm.activeNetwork)
+        if (netInfo != null && nc != null) {
+            val downSpeedKbps = nc.linkDownstreamBandwidthKbps
+            val upSpeedKbps = nc.linkUpstreamBandwidthKbps
+
+            val speedLogKbps = "D: $downSpeedKbps Kbps, U: $upSpeedKbps Kbps"
+
+            val downSpeedMbps = downSpeedKbps / 1000.0
+            val upSpeedMbps = upSpeedKbps / 1000.0
+
+            // Log the internet speed in Mbps
+            val speedLogInMbps = "D: $downSpeedMbps Mbps, U: $upSpeedMbps Mbps"
+
+            Log.d(TAG, "checkForValidInternetSpeed: speedDuringRejoin: ${speedLogInMbps}")
+            viewModel.toastMessage.value = "${speedLogInMbps}"
+        } else {
+            viewModel.internetSpeed.value = "-"
+//            Log.d(TAG, "logInternetSpeed:-")
+
+        }
+    }
     
     fun checkForValidInternetSpeed():Boolean {
         val context = applicationContext
@@ -3129,12 +3177,12 @@ class VCDynamicActivity4 : BaseActivity() {
             val speedLogInMbps = "D: $downSpeedMbps Mbps, U: $upSpeedMbps Mbps"
 
             Log.d(TAG, "checkForValidInternetSpeed: speedDuringRejoin: ${speedLogInMbps}")
-            viewModel.toastMessage.value = "${speedLogInMbps}"
+//            viewModel.toastMessage.value = "${speedLogInMbps}"
 
             return if (downSpeedMbps > 6.0) {
                 true
             }else {
-                viewModel.toastMessage.value = "Low internet speed. Please connect to a better internet connection and try again."
+
                 false
             }
         } else {
@@ -4983,5 +5031,47 @@ class VCDynamicActivity4 : BaseActivity() {
                 viewModel.deleteBroadCast("http://kia.apprikart.com/kandid_api/v1/",stream)
             }
         },10000)
+    }
+
+
+    fun getWifiSignalStrength(context: Context): Int {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        return wifiManager.connectionInfo.rssi
+    }
+
+
+    fun isConnectedToWifi(context: Context):Boolean {
+        val cm =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)  {
+            val capabilities = cm.getNetworkCapabilities(cm.activeNetwork)
+            if (capabilities != null) {
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))  {
+                    return true
+                }
+            }
+        }else {
+            val activeNetwork = cm.activeNetworkInfo
+            if(activeNetwork!=null) {
+                if (activeNetwork.type == ConnectivityManager.TYPE_WIFI)  {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+    fun isGoodInternetConnection(context: Context, minAcceptableSignalStrength: Int): Boolean {
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkInfo = connectivityManager.activeNetworkInfo
+
+        if (networkInfo != null && networkInfo.isConnected && networkInfo.type == ConnectivityManager.TYPE_WIFI) {
+            val signalStrength = getWifiSignalStrength(context)
+
+            return signalStrength > minAcceptableSignalStrength
+        }
+
+        return false
     }
 }

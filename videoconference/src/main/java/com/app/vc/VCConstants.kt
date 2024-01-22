@@ -5,7 +5,7 @@ import android.os.Build
 object VCConstants {
 
     // List of mandatory application permissions to be checked before starting VC conference
-    const val version = "test_1.2"
+    const val version = "test_1.3"
 
     val MANDATORY_PERMISSIONS = arrayOf(
         android.Manifest.permission.MODIFY_AUDIO_SETTINGS,
