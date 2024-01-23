@@ -9,7 +9,9 @@
 
     <RelativeLayout
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:paddingVertical="@dimen/_5sdp"
+        android:paddingHorizontal="@dimen/_10sdp">
         <RelativeLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -24,7 +26,7 @@
                 android:layout_centerHorizontal="true"
                 android:textColor="@color/color_kia_black"
                 android:textSize="16sp"
-                android:paddingBottom="@dimen/_3sdp"
+                android:paddingBottom="@dimen/_5sdp"
                 android:fontFamily="@font/kia_signature_fix_bold"/>
 
             <com.google.android.material.imageview.ShapeableImageView
@@ -40,11 +42,10 @@
                 android:layout_height="wrap_content"
                 android:layout_below="@id/iv_dialog_logo"
                 android:layout_centerHorizontal="true"
-                android:lines="2"
-                android:maxLines="2"
                 android:gravity="center"
                 android:textColor="@color/color_kia_black"
-                android:paddingBottom="@dimen/_3sdp"
+                android:textSize="14sp"
+                android:paddingBottom="@dimen/_5sdp"
                 android:fontFamily="@font/kia_signature_fix_regular"/>
 
             <LinearLayout
@@ -53,8 +54,8 @@
                 android:orientation="horizontal"
                 android:layout_below="@id/tv_dialog_message"
                 android:gravity="center_horizontal"
-                android:paddingTop="@dimen/_3sdp"
-                android:layout_centerHorizontal="true">
+                android:layout_centerHorizontal="true"
+                android:paddingTop="@dimen/_5sdp">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_negative"
@@ -63,7 +64,7 @@
                     android:fontFamily="@font/kia_signature_fix_bold"
                     style="@style/OutlinedButtonStyle"
                     android:gravity="center"
-                    android:layout_marginEnd="@dimen/_3sdp"
+                    android:layout_marginEnd="@dimen/_10sdp"
                     android:layout_gravity="center_horizontal"/>
 
                 <com.google.android.material.button.MaterialButton
@@ -71,8 +72,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/white"
+                    android:layout_marginStart="@dimen/_10sdp"
                     android:gravity="center"
-                    android:layout_marginStart="@dimen/_3sdp"
                     android:layout_gravity="center_horizontal"/>
             </LinearLayout>
         </RelativeLayout>

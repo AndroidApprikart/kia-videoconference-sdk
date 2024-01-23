@@ -82,7 +82,7 @@
                 android:id="@+id/btn_hid_peers_slash"
                 android:layout_width="@dimen/_10sdp"
                 android:layout_height="@dimen/_10sdp"
-                android:layout_marginEnd="@dimen/_12sdp"
+                android:layout_marginEnd="@dimen/_2sdp"
                 android:visibility="gone"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_camera_toggle"
@@ -327,7 +327,8 @@
             android:orientation="horizontal"
             app:layout_constraintBottom_toTopOf="@id/cl_bottom_action_bar"
             app:layout_constraintEnd_toStartOf="@id/fragment_holder_for_message"
-            app:layout_constraintStart_toStartOf="parent">
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="@dimen/_3sdp">
 
             <LinearLayout
                 android:id="@+id/s_container"
@@ -336,6 +337,7 @@
                 android:elevation="@dimen/_1sdp"
                 android:gravity="center"
                 android:orientation="horizontal"
+                android:backgroundTint="@color/black"
                 android:translationZ="@dimen/_1sdp" />
         </HorizontalScrollView>
 

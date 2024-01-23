@@ -27,6 +27,7 @@ import com.app.vc.VCConstants
 import com.app.vc.baseui.BaseFragment
 import com.app.vc.databinding.FragmentMessageBinding
 import com.app.vc.databinding.LayoutDialogConfirmationBinding
+import com.app.vc.databinding.LayoutUniversalDialogBinding
 import com.app.vc.models.MessageModel
 import com.app.vc.network.ApiDetails
 import com.google.gson.Gson
@@ -232,11 +233,12 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
         isCancelButtonVisible: Boolean,
         onPositiveButtonClickListener: View.OnClickListener
     ) {
-        val binding = LayoutDialogConfirmationBinding.inflate(LayoutInflater.from(context))
+        val binding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(context))
         binding.tvDialogTitle.text = title
         binding.tvDialogMessage.text = message
+        binding.btnPositive.text = "OK"
 
-        binding.tvCancelButton.isVisible = isCancelButtonVisible
+        binding.btnNegative.isVisible = isCancelButtonVisible
 
         val confirmationDialog = Dialog(context)
         confirmationDialog.setContentView(binding.root)
@@ -246,12 +248,12 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
         )
         confirmationDialog.setCancelable(isCancelable)
 
-        binding.btnUpdate.setOnClickListener {
+        binding.btnPositive.setOnClickListener {
             onPositiveButtonClickListener.onClick(it)
             confirmationDialog.dismiss()
         }
 
-        binding.tvCancelButton.setOnClickListener {
+        binding.btnNegative.setOnClickListener {
             confirmationDialog.dismiss()
         }
 
@@ -453,10 +455,13 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
     private fun setUpRecyclerView() {
         Log.d(TAG, "setUpRecyclerView: new DataList ->${dataList.size}")
         /*new setup recycler view for the same */
-        binding.rvData.layoutManager = LinearLayoutManager(mContext, LinearLayoutManager.VERTICAL, false)
+        //bug fix 23Jan2023
+        if(!::adapter.isInitialized) {
+            binding.rvData.layoutManager = LinearLayoutManager(mContext, LinearLayoutManager.VERTICAL, false)
 //        adapter = MessageAdapterNew(dataList,this)
-        adapter = MessageAdapterMutliple(dataList,this,mContext,this)
-        binding.rvData.adapter = adapter
+            adapter = MessageAdapterMutliple(dataList,this,mContext,this)
+            binding.rvData.adapter = adapter
+        }
     }
 
     private fun processNewRemoteMessage(messages: MessageModel) {
@@ -821,7 +826,7 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
     private fun showDialogToConfirmEstimateRejection(parentPosition: Int, estimationDetails: ResponseModelEstimateData) {
         estimationConfirmationDialog = Dialog(requireContext())
         estimationConfirmationDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        var dialogBinding = LayoutDialogConfirmationBinding.inflate(LayoutInflater.from(context))
+        var dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(context))
         estimationConfirmationDialog.setContentView(dialogBinding.root)
         dialogBinding.tvDialogMessage.text = "Are you sure you want to reject the estimation."
         estimationConfirmationDialog.window?.setLayout(
@@ -832,12 +837,15 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
 //        val cancel = estimationConfirmationDialog.findViewById(R.id.neg_btn) as TextView
 //        val ok = estimationConfirmationDialog.findViewById(R.id.pos_btn) as TextView
 
+        dialogBinding.tvDialogTitle.visibility = View.GONE
+        dialogBinding.btnPositive.text = "Yes"
+        dialogBinding.btnNegative.text = "No"
 
-        dialogBinding.tvCancelButton.setOnClickListener {
+        dialogBinding.btnNegative.setOnClickListener {
             estimationConfirmationDialog.dismiss()
             sharedViewModel.isProgressBarVisible.value = false
         }
-        dialogBinding.btnUpdate.setOnClickListener {
+        dialogBinding.btnPositive.setOnClickListener {
             estimationConfirmationDialog.dismiss()
 //            goBack()
 //                finish()

@@ -43,6 +43,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.view.children
+import androidx.core.view.marginTop
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.Lifecycle
@@ -74,6 +75,7 @@ import com.app.vc.databinding.AlertDialogLayoutBinding
 import com.app.vc.databinding.DialogCameraEnableBinding
 import com.app.vc.databinding.DialogEndTrheCallBinding
 import com.app.vc.databinding.LayoutDialogConfirmationBinding
+import com.app.vc.databinding.LayoutUniversalDialogBinding
 import com.app.vc.databinding.PermissionsDialogLayoutBinding
 import com.app.vc.databinding.ReadyToJoinDialogLayoutBinding
 import com.app.vc.databinding.RejoinDialogLayoutBinding
@@ -713,12 +715,19 @@ class VCDynamicActivity4 : BaseActivity() {
     private fun showDialogToConfirmEstimation(estimationDetails: ResponseModelEstimateData) {
         estimationConfirmationDialog = Dialog(this)
         estimationConfirmationDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        var dialogBinding = LayoutDialogConfirmationBinding.inflate(LayoutInflater.from(this))
+        var dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
+
         estimationConfirmationDialog.setContentView(dialogBinding.root)
+//        dialogBinding.tvDialogTitle.visibility = View.GONE
+//        dialogBinding.tvDialogMessage.text =  "Do you want to send the \n estimation details."
+//        dialogBinding.tvDialogMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP,16F)
+//        dialogBinding.btnUpdate.text = "Yes"
+
         dialogBinding.tvDialogTitle.visibility = View.GONE
-        dialogBinding.tvDialogMessage.text =  "Do you want to send the \n estimation details."
-        dialogBinding.tvDialogMessage.setTextSize(TypedValue.COMPLEX_UNIT_SP,16F)
-        dialogBinding.btnUpdate.text = "Yes"
+        dialogBinding.tvDialogMessage.text = "Do you want to send the \n estimation details."
+        dialogBinding.btnNegative.text = "No"
+        dialogBinding.btnPositive.text = "Yes"
+
         estimationConfirmationDialog.window?.setLayout(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -729,10 +738,10 @@ class VCDynamicActivity4 : BaseActivity() {
 //        val ok = estimationConfirmationDialog.findViewById(R.id.pos_btn) as TextView
 
 
-        dialogBinding.tvCancelButton.setOnClickListener {
+        dialogBinding.btnNegative.setOnClickListener {
             estimationConfirmationDialog.dismiss()
         }
-        dialogBinding.btnUpdate.setOnClickListener {
+        dialogBinding.btnPositive.setOnClickListener {
             estimationConfirmationDialog.dismiss()
 //            vCScreenViewModel.messageModelFromVC.value = viewModel.tempEstimateModel
 //            sendEstimateMessage(estimationDetails)
@@ -1217,7 +1226,7 @@ class VCDynamicActivity4 : BaseActivity() {
             }
         }
         settingsDialog = Dialog(this)
-        val dialogBinding = PermissionsDialogLayoutBinding.inflate(LayoutInflater.from(this))
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
         settingsDialog.setContentView(dialogBinding.root)
         settingsDialog.setCancelable(false)
         settingsDialog.setCanceledOnTouchOutside(false)
@@ -1227,24 +1236,19 @@ class VCDynamicActivity4 : BaseActivity() {
 //        )
 
         if(isScreenLargeOrXlarge) {
-            settingsDialog.window?.setLayout(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+            dialogBinding.tvDialogMessage.text = resources.getString(R.string.per_allow_msg)
         }else {
-            joinVCDialog.window?.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+            dialogBinding.tvDialogMessage.text = "Permission required \nfor this application provide them by clicking allow"
         }
 
-        dialogBinding.messageTv.text =
+        dialogBinding.tvDialogTitle.visibility = View.GONE
+        dialogBinding.tvDialogMessage.text =
             resources.getString(R.string.permissions_msg_to_open_settings)
-        dialogBinding.posBtn.text = resources.getString(R.string.open_settings)
-        dialogBinding.negBtn.text = resources.getString(R.string.per_cancel)
-        dialogBinding.negBtn.visibility = View.GONE
+        dialogBinding.btnPositive.text = resources.getString(R.string.open_settings)
+        dialogBinding.btnNegative.text = resources.getString(R.string.per_cancel)
+        dialogBinding.btnNegative.visibility = View.GONE
 
-        dialogBinding.posBtn.setOnClickListener {
+        dialogBinding.btnPositive.setOnClickListener {
             Log.d(
                 TAG, "" +
                         "() Checking for  onPositive Btn"
@@ -1253,7 +1257,7 @@ class VCDynamicActivity4 : BaseActivity() {
             openSettings()
         }
 
-        dialogBinding.negBtn.setOnClickListener {
+        dialogBinding.btnNegative.setOnClickListener {
             Log.d(TAG_PERMISSION, "showDialogForAppSettings() Checking for onNegative Btn")
             settingsDialog.dismiss()
 //            Toast.makeText(this, "Not enough permissions to join", Toast.LENGTH_SHORT).show()
@@ -1307,33 +1311,29 @@ class VCDynamicActivity4 : BaseActivity() {
     private fun showDialogToReqPermissionAgain() {
         if (!this::dialog.isInitialized) {
             dialog = Dialog(this)
-            val dialogBinding = PermissionsDialogLayoutBinding.inflate(LayoutInflater.from(this))
+            val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
             dialog.setContentView(dialogBinding.root)
             dialog.setCancelable(false)
             dialog.setCanceledOnTouchOutside(false)
-//            dialog.window?.setLayout(
-//                ViewGroup.LayoutParams.MATCH_PARENT,
-//                ViewGroup.LayoutParams.WRAP_CONTENT
-//            )
+            dialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
 
+            dialogBinding.tvDialogTitle.visibility = View.GONE
 
             if(isScreenLargeOrXlarge) {
-                dialog.window?.setLayout(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+                dialogBinding.tvDialogMessage.text = resources.getString(R.string.per_allow_msg)
             }else {
-                dialog.window?.setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+                dialogBinding.tvDialogMessage.text = "Permission required for this application provide them by clicking allow"
             }
 
-            dialogBinding.messageTv.text = resources.getString(R.string.per_allow_msg)
-            dialogBinding.posBtn.text = resources.getString(R.string.allow)
-            dialogBinding.negBtn.text = resources.getString(R.string.per_cancel)
+//            dialogBinding.tvDialogMessage.text = resources.getString(R.string.per_allow_msg)
 
-            dialogBinding.posBtn.setOnClickListener {
+            dialogBinding.btnPositive.text = resources.getString(R.string.allow)
+            dialogBinding.btnNegative.text = resources.getString(R.string.per_cancel)
+
+            dialogBinding.btnPositive.setOnClickListener {
                 Log.d(
                     TAG,
                     "showDialogToReqPermissionAgain() Checking for  onPositive Btn"
@@ -1345,7 +1345,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
 
-            dialogBinding.negBtn.setOnClickListener {
+            dialogBinding.btnNegative.setOnClickListener {
                 dialog.dismiss()
 //                Toast.makeText(this, "Not enough permissions to join", Toast.LENGTH_SHORT).show()
 //                goBack()
@@ -1565,8 +1565,67 @@ class VCDynamicActivity4 : BaseActivity() {
         }
     }
 
+//    private fun showJoinVCRoomDialog() {
+//        Log.d(TAG, "showJoinVCRoomDialog: ")
+//        if (this::joinVCDialog.isInitialized) {
+//            if (joinVCDialog.isShowing) {
+//                joinVCDialog.dismiss()
+//            }
+//        }
+//        joinVCDialog = Dialog(this)
+//        joinVCDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+//
+////        joinVCDialog.context.setTheme(R.style.MyAlertDialogTheme)
+//        val dialogBinding = ReadyToJoinDialogLayoutBinding.inflate(LayoutInflater.from(this))
+//        joinVCDialog.setContentView(dialogBinding.root)
+//        joinVCDialog.setCancelable(false)
+//        joinVCDialog.setCanceledOnTouchOutside(false)
+//        Log.d(TAG, "showJoinVCRoomDialog: ${isScreenLargeOrXlarge}")
+//        if(isScreenLargeOrXlarge) {
+//            joinVCDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.WRAP_CONTENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+//        }else {
+//            joinVCDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+//        }
+//
+//
+//        dialogBinding.negBtn.setOnClickListener {
+//            joinVCDialog.dismiss()
+//            dismissProgressDialog()
+////            goBack()
+//            finishActivity(false)
+//        }
+//        dialogBinding.posBtn.setOnClickListener {
+//            if (AndroidUtils.isNetworkOnLine(this)) {
+//                Log.d(TAG, "openJoinVCRoomDialog: internetPresent: ")
+//                joinVCDialog.dismiss()
+//                joinConference()
+//                showProgressDialog()
+//            } else {
+//                Log.d(TAG, "openJoinVCRoomDialog: internetNotPresent: ")
+////                viewModel.noInternetScenario = Constants.NO_INTERNET_JOIN_CONFERENCE
+////                joinVCDialog.dismiss()
+////                showNoInternetDialog()
+//                viewModel.toastMessage.value = "No Internet Connection"
+//            }
+//        }
+//        //dialog alignment and size code.
+////        val lp = WindowManager.LayoutParams()
+//////        lp.copyFrom(joinVCDialog.window?.attributes)
+////        lp.width = WindowManager.LayoutParams.MATCH_PARENT
+////        lp.height = WindowManager.LayoutParams.WRAP_CONTENT
+//////        lp.gravity = Gravity.CENTER
+////        joinVCDialog.window?.attributes = lp
+////        joinVCDialog.getWindow()?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
+//        joinVCDialog.show()
+//    }
+
     private fun showJoinVCRoomDialog() {
-        Log.d(TAG, "showJoinVCRoomDialog: ")
         if (this::joinVCDialog.isInitialized) {
             if (joinVCDialog.isShowing) {
                 joinVCDialog.dismiss()
@@ -1575,32 +1634,30 @@ class VCDynamicActivity4 : BaseActivity() {
         joinVCDialog = Dialog(this)
         joinVCDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
 
-//        joinVCDialog.context.setTheme(R.style.MyAlertDialogTheme)
-        val dialogBinding = ReadyToJoinDialogLayoutBinding.inflate(LayoutInflater.from(this))
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
         joinVCDialog.setContentView(dialogBinding.root)
         joinVCDialog.setCancelable(false)
         joinVCDialog.setCanceledOnTouchOutside(false)
-        Log.d(TAG, "showJoinVCRoomDialog: ${isScreenLargeOrXlarge}")
-        if(isScreenLargeOrXlarge) {
-            joinVCDialog.window?.setLayout(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }else {
-            joinVCDialog.window?.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
+
+        joinVCDialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        dialogBinding.tvDialogTitle.visibility = View.GONE
+        dialogBinding.ivDialogLogo.setImageResource(R.drawable.ic_ready_to_join)
+        dialogBinding.tvDialogMessage.text = "Ready to Join"
+        dialogBinding.btnNegative.text = "Cancel"
+        dialogBinding.btnPositive.text = "Join"
 
 
-        dialogBinding.negBtn.setOnClickListener {
+        dialogBinding.btnNegative.setOnClickListener {
             joinVCDialog.dismiss()
             dismissProgressDialog()
 //            goBack()
             finishActivity(false)
         }
-        dialogBinding.posBtn.setOnClickListener {
+        dialogBinding.btnPositive.setOnClickListener {
             if (AndroidUtils.isNetworkOnLine(this)) {
                 Log.d(TAG, "openJoinVCRoomDialog: internetPresent: ")
                 joinVCDialog.dismiss()
@@ -1672,30 +1729,41 @@ class VCDynamicActivity4 : BaseActivity() {
         Log.d(TAG, "showAlertToEndtheUserCall: ")
         endVCDialog = Dialog(this)
         endVCDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        val dialogBinding = DialogEndTrheCallBinding.inflate(LayoutInflater.from(this))
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
         endVCDialog.setContentView(dialogBinding.root)
         endVCDialog.setCancelable(false)
         endVCDialog.setCanceledOnTouchOutside(false)
 
-        if(isScreenLargeOrXlarge) {
-            endVCDialog.window?.setLayout(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }else {
-            endVCDialog.window?.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
+        endVCDialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
 
-        dialogBinding.negBtn.setOnClickListener {
+        dialogBinding.tvDialogTitle.visibility = View.GONE
+        dialogBinding.tvDialogMessage.text = "Do you want to end call ?"
+        dialogBinding.btnNegative.text = "Cancel"
+        dialogBinding.btnPositive.text = "Yes"
+
+
+//        if(isScreenLargeOrXlarge) {
+//            endVCDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.WRAP_CONTENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+//        }else {
+//            endVCDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+//        }
+
+        dialogBinding.btnNegative.setOnClickListener {
             endVCDialog.dismiss()
 //                viewModel.isEndVcEnabled.value = true
             Log.d(TAG, "showAlertToEndtheUserCall: stopVc: true: can")
 
         }
-        dialogBinding.posBtn.setOnClickListener {
+        dialogBinding.btnPositive.setOnClickListener {
             endVCDialog.dismiss()
             //show progress dialog
             // check if the userType is customer if yes , then make api call to update vc status else endVC
@@ -1843,27 +1911,32 @@ class VCDynamicActivity4 : BaseActivity() {
         }
         reconnectionVCDialog = Dialog(this)
         reconnectionVCDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        val dialogBinding = RejoinDialogLayoutBinding.inflate(LayoutInflater.from(this))
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
         reconnectionVCDialog.setContentView(dialogBinding.root)
         reconnectionVCDialog.setCancelable(false)
         reconnectionVCDialog.setCanceledOnTouchOutside(false)
-//        reconnectionVCDialog.window?.setLayout(
-//            ViewGroup.LayoutParams.MATCH_PARENT,
-//            ViewGroup.LayoutParams.WRAP_CONTENT
-//        )
+        reconnectionVCDialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
 
-        if(isScreenLargeOrXlarge) {
-            reconnectionVCDialog.window?.setLayout(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }else {
-            reconnectionVCDialog.window?.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-        dialogBinding.negBtn.setOnClickListener {
+        dialogBinding.tvDialogTitle.visibility  = View.GONE
+        dialogBinding.tvDialogMessage.text = resources.getString(R.string.rejoin_to_room)
+        dialogBinding.btnNegative.text = "No"
+        dialogBinding.btnPositive.text = "Rejoin"
+
+//        if(isScreenLargeOrXlarge) {
+//            reconnectionVCDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.WRAP_CONTENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+//        }else {
+//            reconnectionVCDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+//        }
+        dialogBinding.btnNegative.setOnClickListener {
             reconnectionVCDialog.dismiss()
 //            goBack()
 //            if (conferenceManager != null) {
@@ -1876,7 +1949,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            finishActivity(true)
             showEndVCDialog()
         }
-        dialogBinding.posBtn.setOnClickListener {
+        dialogBinding.btnPositive.setOnClickListener {
             if (AndroidUtils.isNetworkOnLine(this)) {
                 Log.d(TAG, "openJoinVCRoomDialog: internetPresent: ")
 
@@ -1975,9 +2048,9 @@ class VCDynamicActivity4 : BaseActivity() {
 
         sContainerLayoutParams.setMargins(
             containerMargin,
-            0,
             containerMargin,
-            0
+            containerMargin,
+            containerMargin
         )
 //        k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
 //        k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
@@ -2039,9 +2112,9 @@ class VCDynamicActivity4 : BaseActivity() {
         }
         sContainerLayoutParams.setMargins(
             containerMargin,
-            0,
             containerMargin,
-            0
+            containerMargin,
+            containerMargin
         )
         for (i in binding.sContainer.children) {
             i.visibility = View.VISIBLE
@@ -2096,9 +2169,9 @@ class VCDynamicActivity4 : BaseActivity() {
             }
             sContainerLayoutParams.setMargins(
                 containerMargin,
-                0,
                 containerMargin,
-                0
+                containerMargin,
+                containerMargin
             )
 //            k.setPadding(containerMargin,containerMargin,containerMargin,containerMargin)
 //            k.setBackgroundColor(getColor(android.R.color.holo_blue_dark))
@@ -2128,9 +2201,9 @@ class VCDynamicActivity4 : BaseActivity() {
         }
         sContainerLayoutParams.setMargins(
             containerMargin,
-            0,
             containerMargin,
-            0
+            containerMargin,
+            containerMargin
         )
 
         Log.d(TAG, "swapContainer: binding.sContainer count " + binding.sContainer.childCount)
@@ -2932,37 +3005,37 @@ class VCDynamicActivity4 : BaseActivity() {
     private fun showDialogToEnableCamera() {
         if (!this::cameraDialog.isInitialized) {
             cameraDialog = Dialog(this)
-            val dialogBinding = DialogCameraEnableBinding.inflate(LayoutInflater.from(this))
+            val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
             cameraDialog.setContentView(dialogBinding.root)
             cameraDialog.setCancelable(false)
             cameraDialog.setCanceledOnTouchOutside(false)
-//            cameraDialog.window?.setLayout(
-//                ViewGroup.LayoutParams.MATCH_PARENT,
-//                ViewGroup.LayoutParams.WRAP_CONTENT
-//            )
+            cameraDialog.window?.setLayout(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+
 
             if(isScreenLargeOrXlarge) {
-                cameraDialog.window?.setLayout(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+
             }else {
-                cameraDialog.window?.setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+
             }
 
             /*msgTv.text = resources.getString(R.string.per_allow_msg)
             posBtn.text = resources.getString(R.string.allow)
             negBtn.text = resources.getString(R.string.per_cancel)*/
 
-            dialogBinding.posBtn.setOnClickListener {
+            dialogBinding.tvDialogTitle.visibility = View.GONE
+            dialogBinding.tvDialogMessage.text  = resources.getString(R.string.disbaled_video_info)
+            dialogBinding.btnNegative.text = "No"
+            dialogBinding.btnPositive.text = "Yes"
+
+            dialogBinding.btnPositive.setOnClickListener {
                 Log.d(TAG, "showDialogToEnableCamera():posBtn")
                 controlVideo()
                 cameraDialog.dismiss()
             }
-            dialogBinding.negBtn.setOnClickListener {
+            dialogBinding.btnNegative.setOnClickListener {
                 Log.d(TAG, "showDialogToEnableCamera(): negBtn")
                 cameraDialog.dismiss()
             }
@@ -3281,17 +3354,22 @@ class VCDynamicActivity4 : BaseActivity() {
 
 //        joinVCDialog.context.setTheme(R.style.MyAlertDialogTheme)
         noInternetDialog.setContentView(R.layout.layout_no_internet_connection)
-        if(isScreenLargeOrXlarge) {
-            noInternetDialog.window?.setLayout(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }else {
-            noInternetDialog.window?.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
+
+        noInternetDialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+//        if(isScreenLargeOrXlarge) {
+//            noInternetDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.WRAP_CONTENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+//        }else {
+//            noInternetDialog.window?.setLayout(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//            )
+//        }
         noInternetDialog.setCancelable(false)
 //        val tryAgain = noInternetDialog.findViewById(R.id.btn_try_again) as Button
 //        tryAgain.setOnClickListener {
@@ -3638,9 +3716,9 @@ class VCDynamicActivity4 : BaseActivity() {
 
                         layoutParamsContainer.setMargins(
                             containerMargin,
-                            0,
                             containerMargin,
-                            0
+                            containerMargin,
+                            containerMargin
                         )
 
                         remotePeerView.layoutParams = layoutParamsContainer

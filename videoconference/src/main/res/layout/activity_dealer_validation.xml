@@ -24,7 +24,7 @@
             android:visibility="gone" />
 
         <RelativeLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:layout_marginStart="10dp"
@@ -34,17 +34,31 @@
             android:background="@drawable/bg_rounded_recangle"
             android:elevation="10dp"
             android:gravity="center_vertical"
-            android:padding="10dp">
+            android:padding="@dimen/_10sdp">
 
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_welcome_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:gravity="center_horizontal"
+                android:textSize="16sp"
+                android:text="Welcome"
+                android:layout_marginBottom="@dimen/_8sdp"/>
 
             <androidx.appcompat.widget.AppCompatTextView
                 android:id="@+id/tv_welcome_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
-                android:fontFamily="@font/kia_signature_fix_bold"
+                android:fontFamily="@font/kia_signature_fix_regular"
                 android:gravity="center_horizontal"
-                android:text="Welcome to ABC Motors" />
+                android:layout_below="@id/tv_welcome_title"
+                android:textSize="14sp"
+                android:layout_marginBottom="@dimen/_10sdp"
+                android:text="Welcome to ASB AutoMotors Limited\n Video Conference." />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_continue_to_vc"
@@ -53,7 +67,6 @@
                 android:layout_height="wrap_content"
                 android:layout_below="@id/tv_welcome_text"
                 android:layout_centerHorizontal="true"
-                android:layout_marginTop="40dp"
                 android:gravity="center"
                 android:text="Continue" />
 

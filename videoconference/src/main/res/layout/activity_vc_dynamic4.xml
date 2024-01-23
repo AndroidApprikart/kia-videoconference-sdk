@@ -81,7 +81,7 @@
                 android:layout_width="@dimen/_16sdp"
                 android:layout_height="@dimen/_16sdp"
                 app:layout_constraintBottom_toBottomOf="parent"
-                android:layout_marginEnd="@dimen/_15sdp"
+                android:layout_marginEnd="@dimen/_7sdp"
                 app:layout_constraintEnd_toStartOf="@id/btn_camera_toggle"
                 app:layout_constraintTop_toTopOf="parent"
                 app:srcCompat="@drawable/ic_hide_peers_slash"
@@ -120,7 +120,8 @@
             android:orientation="horizontal"
             app:layout_constraintBottom_toTopOf="@id/cl_bottom_action_bar"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="@dimen/_5sdp">
 
             <LinearLayout
                 android:id="@+id/s_container"
@@ -129,6 +130,7 @@
                 android:elevation="@dimen/_1sdp"
                 android:gravity="center"
                 android:orientation="horizontal"
+                android:backgroundTint="@color/black"
                 android:translationZ="@dimen/_1sdp" />
         </HorizontalScrollView>
 

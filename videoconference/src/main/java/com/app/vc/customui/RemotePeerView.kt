@@ -21,6 +21,7 @@ import android.widget.ImageView
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.marginRight
 import com.app.vc.R
 import org.webrtc.SurfaceViewRenderer
 
@@ -52,6 +53,8 @@ class RemotePeerView @JvmOverloads constructor(
         audioActive = attributes.getBoolean(R.styleable.RemotePeerView_audio_active,false)
         videoActive = attributes.getBoolean(R.styleable.RemotePeerView_video_active,false)
         attributes.recycle()
+        //Added background color to differentiate between the renderers
+        view.setBackgroundColor(resources.getColor(R.color.colorPrimary))
         micImage = view.findViewById(R.id.mic_img)
         micImageTop = view.findViewById(R.id.mic_img_top)
 

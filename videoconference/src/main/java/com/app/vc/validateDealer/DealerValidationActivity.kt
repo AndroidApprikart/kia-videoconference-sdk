@@ -11,16 +11,18 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.LinearLayout
 import android.widget.RelativeLayout.LayoutParams
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.databinding.DataBindingUtil
 import com.app.vc.R
+import com.app.vc.VCConstants
 import com.app.vc.VCDynamicActivity4
 import com.app.vc.databinding.ActivityDealerValidationBinding
 import com.app.vc.databinding.LayoutDialogConfirmationBinding
-
+import com.app.vc.databinding.LayoutUniversalDialogBinding
 
 
 class DealerValidationActivity : AppCompatActivity() {
@@ -28,6 +30,8 @@ class DealerValidationActivity : AppCompatActivity() {
     lateinit var binding: ActivityDealerValidationBinding
     private var isScreenLargeOrXlarge: Boolean = false
     private var isScreenSmallOrNormal: Boolean = false
+
+    private lateinit var dealerValidationDialog: Dialog
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,16 +107,16 @@ class DealerValidationActivity : AppCompatActivity() {
                         )
                     }
                     else -> {
-
-                        showConfirmationDialog(
-                            this,
-                            isCancelable = false,
-                            title = "License Expired",
-                            message = "Please verify your license with the dealer or \n service advisor to use the VC service.",
-                            isCancelButtonVisible = true
-                        ) {
-                            finish()
-                        }
+                        showDealerValidationResponseDialog()
+//                        showConfirmationDialog(
+//                            this,
+//                            isCancelable = false,
+//                            title = "License Expired",
+//                            message = "Please verify your license with the dealer or \n service advisor to use the VC service.",
+//                            isCancelButtonVisible = true
+//                        ) {
+//                            finish()
+//                        }
                     }
                 }
             } else {
@@ -121,7 +125,56 @@ class DealerValidationActivity : AppCompatActivity() {
         }
     }
 
+    private fun showDealerValidationResponseDialog() {
+        dealerValidationDialog = Dialog(this)
+        dealerValidationDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
+        dealerValidationDialog.setContentView(dialogBinding.root)
+        dealerValidationDialog.setCancelable(false)
+        dealerValidationDialog.setCanceledOnTouchOutside(false)
 
+        dealerValidationDialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        dialogBinding.tvDialogTitle.text = "License Expired"
+        dialogBinding.tvDialogMessage.text = "Please verify your license with the dealer or \n service advisor to use the VC service."
+        dialogBinding.btnNegative.visibility = View.GONE
+        dialogBinding.btnPositive.text = "OK"
+
+
+        if(isScreenLargeOrXlarge) {
+            dialogBinding.tvDialogMessage.text = "Please verify your license with the dealer or \n service advisor to use the VC service."
+        }else {
+            dialogBinding.tvDialogMessage.text = "Please verify your license with the dealer or service advisor to use the VC service."
+        }
+
+        dialogBinding.btnNegative.setOnClickListener {
+            dealerValidationDialog.dismiss()
+//                viewModel.isEndVcEnabled.value = true
+
+        }
+        dialogBinding.btnPositive.setOnClickListener {
+            dealerValidationDialog.dismiss()
+            //show progress dialog
+            // check if the userType is customer if yes , then make api call to update vc status else endVC
+            // based on the response if success show rate us dialog if failed then, show show errorr message with okay button
+            // on click of okay button, open feedback screen
+
+            finish()
+        }
+        //dialog alignment and size code.
+//        val lp = WindowManager.LayoutParams()
+//        lp.copyFrom(endVCDialog.window?.attributes)
+//        lp.width = WindowManager.LayoutParams.MATCH_PARENT
+//        lp.height = WindowManager.LayoutParams.WRAP_CONTENT
+//        lp.gravity = Gravity.CENTER
+//        endVCDialog.window?.attributes = lp
+//        endVCDialog.getWindow()?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT));
+
+        dealerValidationDialog.show()
+    }
     fun showConfirmationDialog(
         context: Context,
         isCancelable: Boolean,

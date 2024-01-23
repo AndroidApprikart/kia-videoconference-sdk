@@ -30,6 +30,8 @@
             android:layout_width="@dimen/_20sdp"
             android:layout_height="@dimen/_20sdp"
             android:padding="@dimen/_2sdp"
+            android:layout_marginEnd="@dimen/_2sdp"
+            android:layout_marginTop="@dimen/_2sdp"
             android:layout_alignParentEnd="true"
             android:layout_alignParentTop="true"
             android:background="@drawable/bg_rounded"
