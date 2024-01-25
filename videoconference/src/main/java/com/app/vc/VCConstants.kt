@@ -1,6 +1,10 @@
 package com.app.vc
 
 import android.os.Build
+import androidx.annotation.RequiresApi
+import java.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 
 object VCConstants {
 
@@ -107,5 +111,30 @@ object VCConstants {
         ESTIMATION("Estimation"),
         FILE("File")
     }
+
+    private const val AES_ALGORITHM = "AES"
+    private const val AES_KEY_SIZE = 16 // 128 bits
+    private const val ENCRYPTION_KEY = "Replace_With_A_Strong_Password"
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun decrypt(input: String): String {
+        val cipher = Cipher.getInstance(AES_ALGORITHM)
+        cipher.init(Cipher.DECRYPT_MODE, generateKey())
+        val decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(input))
+        return String(decryptedBytes)
+    }
+
+    private fun generateKey(): SecretKeySpec {
+        // Truncate or pad the password to match the AES key size
+        val keyData = ENCRYPTION_KEY.toByteArray().copyOf(AES_KEY_SIZE)
+        return SecretKeySpec(keyData, AES_ALGORITHM)
+    }
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun encrypt(input: String): String {
+        val cipher = Cipher.getInstance(AES_ALGORITHM)
+        cipher.init(Cipher.ENCRYPT_MODE, generateKey())
+        val encryptedBytes = cipher.doFinal(input.toByteArray())
+        return Base64.getEncoder().encodeToString(encryptedBytes)
+    }
+
 
 }

@@ -3181,13 +3181,31 @@ class VCDynamicActivity4 : BaseActivity() {
             println(speedLogInMbps) // You can use Log.d() for Android logging
 //            Log.d(TAG, "logInternetSpeed: $speedLogInMbps")
 
-            if (downSpeedMbps < 4.0) {
-                Toast.makeText(
-                    context,
-                    "Low Internet speed. Functionalities of the VC may be impacted.",
-                    Toast.LENGTH_SHORT
-                ).show()
+            if(isConnectedToWifi(this)) {
+                if (downSpeedMbps<5.0||!isGoodInternetConnection(this,-67)) {
+                    Toast.makeText(
+                        context,
+                        "Low Internet speed. Functionalities of the VC may be impacted.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }else {
+                if (downSpeedMbps < 5.0) {
+                    Toast.makeText(
+                        context,
+                        "Low Internet speed. Functionalities of the VC may be impacted.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
+
+//            if (downSpeedMbps < 4.0) {
+//                Toast.makeText(
+//                    context,
+//                    "Low Internet speed. Functionalities of the VC may be impacted.",
+//                    Toast.LENGTH_SHORT
+//                ).show()
+//            }
             viewModel.internetSpeed.value = speedLogInMbps
 
 
