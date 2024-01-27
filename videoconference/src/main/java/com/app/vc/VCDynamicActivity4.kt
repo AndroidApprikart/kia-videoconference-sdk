@@ -102,6 +102,7 @@ import io.antmedia.webrtcandroidframework.StreamInfo
 import io.antmedia.webrtcandroidframework.WebRTCClient
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager.AudioDevice
 import io.antmedia.webrtcandroidframework.apprtc.CallActivity
+import io.sentry.Sentry
 import org.json.JSONException
 import org.json.JSONObject
 import org.webrtc.DataChannel
@@ -269,9 +270,12 @@ class VCDynamicActivity4 : BaseActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate: ")
+
+        Sentry.captureException(RuntimeException("This app uses Sentry! :)"))
         if (intent.hasExtra("intent_for_reconnect")) {
             isIntentForReconnect = intent.getBooleanExtra("intent_for_reconnect", false)
 //            streamId = intent.getStringExtra("stream_id_in_use")
@@ -312,8 +316,11 @@ class VCDynamicActivity4 : BaseActivity() {
 
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun init() {
         progressDialog = AndroidUtils.progressDialog(this)
+
+
 
         bottomSheetBehavior =
             BottomSheetBehavior.from(binding.moreOptionsLayoutSheet)
@@ -1116,34 +1123,34 @@ class VCDynamicActivity4 : BaseActivity() {
                             return
                         }
                     }
-                    if (Manifest.permission.WRITE_EXTERNAL_STORAGE == permission) {
-                        if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
-                            // you now have permission
-                            Log.d(
-                                TAG_PERMISSION,
-                                "onRequestPermissionsResult: WRITE_EXTERNAL_STORAGE: Granted:  "
-                            )
-                        } else if (Build.VERSION.SDK_INT >= 23 && !shouldShowRequestPermissionRationale(
-                                permissions[i]
-                            )
-                        ) {
-                            // if user denied permission and selected Don't Ask Again
-                            Log.d(
-                                TAG_PERMISSION,
-                                "onRequestPermissionsResult: WRITE_EXTERNAL_STORAGE: NotGranted: OpenSettings:  "
-                            )
-                            showDialogForAppSettings()
-                            return
-                        } else {
-                            // User Denied Permission
-                            Log.d(
-                                TAG_PERMISSION,
-                                "onRequestPermissionsResult: WRITE_EXTERNAL_STORAGE: NotGranted: ShowDialogAgain:  "
-                            )
-                            showDialogToReqPermissionAgain()
-                            return
-                        }
-                    }
+//                    if (Manifest.permission.WRITE_EXTERNAL_STORAGE == permission) {
+//                        if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+//                            // you now have permission
+//                            Log.d(
+//                                TAG_PERMISSION,
+//                                "onRequestPermissionsResult: WRITE_EXTERNAL_STORAGE: Granted:  "
+//                            )
+//                        } else if (Build.VERSION.SDK_INT >= 23 && !shouldShowRequestPermissionRationale(
+//                                permissions[i]
+//                            )
+//                        ) {
+//                            // if user denied permission and selected Don't Ask Again
+//                            Log.d(
+//                                TAG_PERMISSION,
+//                                "onRequestPermissionsResult: WRITE_EXTERNAL_STORAGE: NotGranted: OpenSettings:  "
+//                            )
+//                            showDialogForAppSettings()
+//                            return
+//                        } else {
+//                            // User Denied Permission
+//                            Log.d(
+//                                TAG_PERMISSION,
+//                                "onRequestPermissionsResult: WRITE_EXTERNAL_STORAGE: NotGranted: ShowDialogAgain:  "
+//                            )
+//                            showDialogToReqPermissionAgain()
+//                            return
+//                        }
+//                    }
                     if (Manifest.permission.READ_PHONE_STATE == permission) {
                         if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
                             // you now have permission

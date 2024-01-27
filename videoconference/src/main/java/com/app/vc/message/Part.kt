@@ -1,5 +1,6 @@
 package com.kia.vc.message
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class Part(
@@ -35,4 +36,4 @@ data class Part(
     val quantity: String,
 //    @SerializedName("part_tax")
 //    val tax: String
-):java.io.Serializable
+): KeepModel

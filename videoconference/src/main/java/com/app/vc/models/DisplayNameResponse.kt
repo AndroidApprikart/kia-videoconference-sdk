@@ -1,5 +1,6 @@
 package com.app.vc.models
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class DisplayNameResponse (
@@ -9,6 +10,6 @@ data class DisplayNameResponse (
     var displayName:String?,
     @SerializedName("user_type")
 var userType:String?
-) {
+): KeepModel {
     constructor() : this(null, null, null)
 }

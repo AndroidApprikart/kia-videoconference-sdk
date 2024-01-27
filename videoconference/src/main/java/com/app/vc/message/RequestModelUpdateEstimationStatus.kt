@@ -1,5 +1,6 @@
 package com.app.vc.message
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class RequestModelUpdateEstimationStatus(
@@ -17,4 +18,4 @@ data class RequestModelUpdateEstimationStatus(
     val roNo: String,
     @SerializedName("dealer_no")
     val dealerNumber: String
-):java.io.Serializable
+): KeepModel

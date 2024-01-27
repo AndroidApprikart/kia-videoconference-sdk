@@ -1,6 +1,7 @@
 package com.app.vc.models
 
 import com.app.vc.AndroidUtils
+import com.app.vc.KeepModel
 import com.app.vc.VCConstants
 import com.app.vc.message.ResponseModelEstimateData
 import java.text.SimpleDateFormat
@@ -19,7 +20,7 @@ class MessageModel(
     var serverFilePath:String,
     var status:String,
     var estimationDetails: ResponseModelEstimateData?
-){
+): KeepModel {
 
 
     constructor():this("","", true,

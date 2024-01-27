@@ -1,5 +1,6 @@
 package com.app.vc.feedback
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class SurveyData(
@@ -9,4 +10,4 @@ data class SurveyData(
     val surveyQuestion: String,
     @SerializedName("cmm_grp_code_name")
     val cmmGroupName: String
-):java.io.Serializable
+): KeepModel

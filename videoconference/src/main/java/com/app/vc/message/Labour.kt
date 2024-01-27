@@ -1,5 +1,6 @@
 package com.kia.vc.message
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class Labour(
@@ -25,4 +26,4 @@ data class Labour(
 //    val techId: String,
 //    @SerializedName("tech_name")
 //    val techName: String
-):java.io.Serializable
+): KeepModel

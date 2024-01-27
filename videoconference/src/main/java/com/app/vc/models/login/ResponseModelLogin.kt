@@ -1,5 +1,6 @@
 package com.app.vc.models.login
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 import java.io.Serializable
 
@@ -14,7 +15,7 @@ data class ResponseModelLogin(
     val status: String?,
     @SerializedName("success")
     val success: Boolean?
-):Serializable
+): KeepModel
 {
     constructor():this(null,null,null,"failed",false)
 }

@@ -1,5 +1,6 @@
 package com.app.vc.models
 
+import com.app.vc.KeepModel
 import org.webrtc.VideoTrack
 
 /* created by Naghma 27/09/23*/
@@ -12,6 +13,6 @@ class ParticipantsModel(
     var isMicOn:Boolean,
     var isCamOn:Boolean,
     var track: VideoTrack?
-){
+): KeepModel {
     var displayName = ""
 }

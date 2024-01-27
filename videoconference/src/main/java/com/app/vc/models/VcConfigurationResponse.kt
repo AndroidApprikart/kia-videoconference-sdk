@@ -1,5 +1,6 @@
 package com.app.vc.models
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class VcConfigurationResponse(
@@ -9,4 +10,4 @@ data class VcConfigurationResponse(
     var status:String?,
     @SerializedName("error")
     var error:String?
-)
+): KeepModel

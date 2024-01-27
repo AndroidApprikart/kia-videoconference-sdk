@@ -11,6 +11,8 @@ object VCConstants {
     // List of mandatory application permissions to be checked before starting VC conference
     const val version = "test_1.4"
 
+
+
     val MANDATORY_PERMISSIONS = arrayOf(
         android.Manifest.permission.MODIFY_AUDIO_SETTINGS,
         android.Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -128,13 +130,13 @@ object VCConstants {
         val keyData = ENCRYPTION_KEY.toByteArray().copyOf(AES_KEY_SIZE)
         return SecretKeySpec(keyData, AES_ALGORITHM)
     }
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun encrypt(input: String): String {
-        val cipher = Cipher.getInstance(AES_ALGORITHM)
-        cipher.init(Cipher.ENCRYPT_MODE, generateKey())
-        val encryptedBytes = cipher.doFinal(input.toByteArray())
-        return Base64.getEncoder().encodeToString(encryptedBytes)
-    }
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    fun encrypt(input: String): String {
+//        val cipher = Cipher.getInstance(AES_ALGORITHM)
+//        cipher.init(Cipher.ENCRYPT_MODE, generateKey())
+//        val encryptedBytes = cipher.doFinal(input.toByteArray())
+//        return Base64.getEncoder().encodeToString(encryptedBytes)
+//    }
 
 
 }

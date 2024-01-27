@@ -1,5 +1,6 @@
 package com.app.vc.message
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 import com.kia.vc.message.Labour
 import com.kia.vc.message.Part
@@ -21,4 +22,4 @@ data class ResponseModelEstimateData(
     val totalPartsEstimate: Double,
     var selectedItemsTotal: Double = 0.0,
     var areAllItemsSelected:Boolean = false
-):java.io.Serializable
+): KeepModel

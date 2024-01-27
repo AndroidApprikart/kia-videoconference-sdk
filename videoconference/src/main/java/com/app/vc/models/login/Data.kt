@@ -1,5 +1,6 @@
 package com.app.vc.models.login
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 import java.io.Serializable
 
@@ -42,4 +43,4 @@ data class Data(
     val vc_enabled: String,
     @SerializedName("work_area_name")
     val work_area_name: String
-):Serializable
+): KeepModel

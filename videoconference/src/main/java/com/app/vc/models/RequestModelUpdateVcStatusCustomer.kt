@@ -1,5 +1,6 @@
 package com.app.vc.models
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class RequestModelUpdateVcStatusCustomer(
@@ -11,4 +12,4 @@ data class RequestModelUpdateVcStatusCustomer(
     val vcStatus: String,
     @SerializedName("dealer_no")
     val dealerNumber: String,
-)
+): KeepModel

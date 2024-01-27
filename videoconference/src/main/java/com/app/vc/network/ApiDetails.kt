@@ -1,10 +1,10 @@
 package com.app.vc.network
 
-class ApiDetails {
+internal class ApiDetails {
     companion object{
         /*const val BASE_URL = "https://toyota-lakshya-onlineassessment.in/"
 const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
-        const val BASE_URL = "http://kia.apprikart.com/"
+        const val BASE_URL = "https://kia.apprikart.com/"
         const val KIA_BASE_URL = "https://kialinkd-qa.kiaindia.net/dev/"
         const val KIA_BASE_URL_VPN = "http://10.107.11.242:7001/kiakandit/service/vcConference/"
 
@@ -35,12 +35,6 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
 
         const val LOGIN = KIA_BASE_URL + "LoginForm"
 
-        const val stunUrl = "stun:kiadigi-connect." + "in"
-        const val udp = "turn:kiadigi-connect." + "in:3478?transport=udp"
-        const val tcp = "turn:kiadigi-connect." + "in:3478?transport=tcp"
-        const val port = "turn:kiadigi-connect." + "in:3478"
-
-
         const val GET_ESTIMATION_LIST_NEW = "customerEstimate"
         const val SAVE_CHAT_DETAILS_NEW = "storeMessage"
 
@@ -51,6 +45,13 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val GET_VC_LIST = "kandid_api/v1/get_vc_list/?"
 
         const val DELETE_BROADCAST = "delete_stream_from_room"
+
+        const val encryptedUserName = "OjV2hfJEdrshGQ7WdAasqg=="
+        const val encryptedPassword = "OjV2hfJEdrshGQ7WdAasqg=="
+        const val stunUrl = "stun:vc.apprikart.com"
+        const val udp = "turn:vc.apprikart.com" + ":3478?transport=udp"
+        const val tcp = "turn:vc.apprikart.com" + ":3478?transport=tcp"
+        const val port = "turn:vc.apprikart.com" + ":3478"
 
 
     }

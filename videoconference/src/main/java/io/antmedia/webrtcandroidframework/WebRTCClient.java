@@ -28,6 +28,8 @@ import android.view.WindowManager;
 import androidx.annotation.NonNull;
 
 import com.app.vc.R;
+import com.app.vc.VCConstants;
+import com.app.vc.network.ApiDetails;
 
 import org.webrtc.AddIceObserver;
 import org.webrtc.AudioSource;
@@ -747,16 +749,17 @@ public class WebRTCClient implements IWebRTCClient, AntMediaSignallingEvents, ID
         this.context = context;
         mainHandler = new Handler(context.getMainLooper());
         //changes, added on 23 August 2023 - added 06 sep 2023
-        String stunUrl = "stun:vc.apprikart.com";
-        String udp = "turn:vc.apprikart.com" + ":3478?transport=udp";
-        String tcp = "turn:vc.apprikart.com" + ":3478?transport=tcp";
-        String port = "turn:vc.apprikart.com" + ":3478";
-        String username = "apprikart";
-        String password = "apprikart";
-        iceServers.add(PeerConnection.IceServer.builder(stunUrl).createIceServer());
-        iceServers.add(PeerConnection.IceServer.builder(udp).setUsername(username).setPassword(password).createIceServer());
-        iceServers.add(PeerConnection.IceServer.builder(tcp).setUsername(username).setPassword(password).createIceServer());
-        iceServers.add(PeerConnection.IceServer.builder(port).setUsername(username).setPassword(password).createIceServer());
+
+        iceServers.add(PeerConnection.IceServer.builder(ApiDetails.stunUrl).createIceServer());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            iceServers.add(PeerConnection.IceServer.builder(ApiDetails.udp).setUsername(VCConstants.INSTANCE.decrypt(ApiDetails.encryptedUserName)).setPassword(VCConstants.INSTANCE.decrypt(ApiDetails.encryptedPassword)).createIceServer());
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            iceServers.add(PeerConnection.IceServer.builder(ApiDetails.tcp).setUsername(VCConstants.INSTANCE.decrypt(ApiDetails.encryptedUserName)).setPassword(VCConstants.INSTANCE.decrypt(ApiDetails.encryptedPassword)).createIceServer());
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            iceServers.add(PeerConnection.IceServer.builder(ApiDetails.port).setUsername(VCConstants.INSTANCE.decrypt(ApiDetails.encryptedUserName)).setPassword(VCConstants.INSTANCE.decrypt(ApiDetails.encryptedPassword)).createIceServer());
+        }
 
         iceServers.add(new PeerConnection.IceServer(stunServerUri));
     }

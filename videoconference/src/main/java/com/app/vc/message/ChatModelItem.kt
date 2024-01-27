@@ -1,5 +1,6 @@
 package com.app.vc.message
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class ChatModelItem(
@@ -13,4 +14,4 @@ data class ChatModelItem(
     val message_type: String,
     @SerializedName("vc_id")
     val vc_id: String
-):java.io.Serializable
+): KeepModel

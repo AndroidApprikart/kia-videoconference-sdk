@@ -1,5 +1,6 @@
 package com.app.vc.network
 
+import com.app.vc.KeepModel
 import com.google.gson.annotations.SerializedName
 //import com.styletribute.app.usermanagement.models.ErrorResponse
 
@@ -21,5 +22,5 @@ data class ResponseModelApiError(
     val params: String?
 //    @SerializedName("errors")
 //    val errors: List<ErrorResponse>?
-):java.io.Serializable
+): KeepModel
 
