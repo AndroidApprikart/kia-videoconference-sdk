@@ -275,7 +275,7 @@ class VCDynamicActivity4 : BaseActivity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate: ")
 
-        Sentry.captureException(RuntimeException("This app uses Sentry! :)"))
+//        Sentry.captureException(RuntimeException("This app uses Sentry! :)"))
         if (intent.hasExtra("intent_for_reconnect")) {
             isIntentForReconnect = intent.getBooleanExtra("intent_for_reconnect", false)
 //            streamId = intent.getStringExtra("stream_id_in_use")
@@ -339,7 +339,7 @@ class VCDynamicActivity4 : BaseActivity() {
 //            SDK_CUSTOM_BROADCAST_ACTION))
         val intentFilter = IntentFilter()
         intentFilter.addAction(VCConstants.SDK_CUSTOM_BROADCAST_ACTION)
-        registerReceiver(customSDKBroadcastReceiver, intentFilter)
+        registerReceiver(customSDKBroadcastReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
         logInternetSpeedRunnable.run()
         connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
 
@@ -1655,7 +1655,7 @@ class VCDynamicActivity4 : BaseActivity() {
         dialogBinding.ivDialogLogo.setImageResource(R.drawable.ic_ready_to_join)
         dialogBinding.tvDialogMessage.text = "Ready to Join"
         dialogBinding.btnNegative.text = "Cancel"
-        dialogBinding.btnPositive.text = "Join"
+        dialogBinding.btnPositive.text = "Join now"
 
 
         dialogBinding.btnNegative.setOnClickListener {
@@ -3981,6 +3981,7 @@ class VCDynamicActivity4 : BaseActivity() {
         publisherContainer!!.updateMicForFContainer()
         binding.fContainer.addView(publisherContainer)
         publisherContainer!!.streamName.text = viewModel.displayName?:"You"
+        publisherContainer!!.surfaceViewRenderer.setMirror(true)
         publisherContainer!!.surfaceViewRenderer.setOnClickListener {
             Log.d(TAG, "publisherContainer setUpOnClickListeners: ")
             if (conferenceManager != null) {
@@ -5147,7 +5148,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
         Handler().postDelayed({
             for(stream in unwantedStreams) {
-                viewModel.deleteBroadCast("http://kia.apprikart.com/kandid_api/v1/",stream)
+                viewModel.deleteBroadCast("https://kia.apprikart.com/kandid_api/v1/",stream)
             }
         },10000)
     }
