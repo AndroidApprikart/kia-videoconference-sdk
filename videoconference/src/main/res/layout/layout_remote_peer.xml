@@ -23,7 +23,7 @@
             android:layout_alignParentBottom="true"
             android:background="@drawable/bg_rounded"
             android:src="@drawable/ic_mic_enabled"
-            app:tint="@color/white" />
+            android:theme="@style/Base.Theme.VideoConference"/>
 
         <ImageView
             android:id="@+id/mic_img_top"
@@ -34,9 +34,9 @@
             android:layout_marginTop="@dimen/_2sdp"
             android:layout_alignParentEnd="true"
             android:layout_alignParentTop="true"
+            android:theme="@style/Base.Theme.VideoConference"
             android:background="@drawable/bg_rounded"
-            android:src="@drawable/ic_mic_enabled"
-            app:tint="@color/white" />
+            android:src="@drawable/ic_mic_enabled" />
 
         <ImageView
             android:id="@+id/video_img"
