@@ -1,4 +1,4 @@
-package com.app.vc
+package com.app.vc.utils
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -9,7 +9,7 @@ import javax.crypto.spec.SecretKeySpec
 object VCConstants {
 
     // List of mandatory application permissions to be checked before starting VC conference
-    const val version = "3.4_test"
+    const val version = "3.5_test"
 
 
 

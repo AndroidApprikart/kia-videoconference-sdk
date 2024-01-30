@@ -3,9 +3,9 @@ package com.kia.vc.feedback
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.app.vc.PreferenceManager
-import com.app.vc.network.ApiDetails
-import com.app.vc.network.ApiInterface
+import com.app.vc.utils.PreferenceManager
+import com.app.vc.utils.ApiDetails
+import com.app.vc.utils.ApiInterface
 import com.google.gson.GsonBuilder
 
 
@@ -54,7 +54,7 @@ class FeedbackViewModel:ViewModel() {
     private var service: ApiInterface =
         Retrofit.Builder()
             .baseUrl(ApiDetails.BASE_URL)
-//            .client(okhttp)
+            .client(okhttp)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(ApiInterface::class.java)
@@ -128,11 +128,11 @@ class FeedbackViewModel:ViewModel() {
 
 
 
-    fun getServiceObject(baseUrl: String):ApiInterface{
+    fun getServiceObject(baseUrl: String): ApiInterface {
         var service: ApiInterface =
             Retrofit.Builder()
                 .baseUrl(baseUrl)
-//            .client(okhttp)
+                .client(okhttp)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build()
                 .create(ApiInterface::class.java)

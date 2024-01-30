@@ -1,10 +1,8 @@
 package com.kia.vc.validateDealer
 
-import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
-import android.os.Build.VERSION_CODES.P
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -13,12 +11,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.LinearLayout
-import android.widget.RelativeLayout.LayoutParams
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.databinding.DataBindingUtil
 import com.app.vc.R
-import com.app.vc.VCConstants
 import com.app.vc.VCDynamicActivity4
 import com.app.vc.databinding.ActivityDealerValidationBinding
 import com.app.vc.databinding.LayoutDialogConfirmationBinding

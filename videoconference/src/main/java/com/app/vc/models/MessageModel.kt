@@ -1,8 +1,8 @@
 package com.app.vc.models
 
-import com.app.vc.AndroidUtils
-import com.app.vc.KeepModel
-import com.app.vc.VCConstants
+import com.app.vc.utils.AndroidUtils
+import com.app.vc.utils.KeepModel
+import com.app.vc.utils.VCConstants
 import com.app.vc.message.ResponseModelEstimateData
 import java.text.SimpleDateFormat
 import java.util.Date

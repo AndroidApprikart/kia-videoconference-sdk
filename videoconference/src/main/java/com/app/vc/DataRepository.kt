@@ -1,19 +1,8 @@
 package com.app.vc
 
-import android.util.Log
-import com.app.vc.models.DisplayNameResponse
-import com.app.vc.models.UpdateStreamIdResponse
-import com.app.vc.models.UploadVcFileResponse
-import com.app.vc.models.ValidateVcResponse
-import com.app.vc.models.VcConfigurationResponse
-import com.app.vc.models.login.RequestModelLogin
-import com.app.vc.models.login.ResponseModelLogin
-import com.app.vc.network.ApiDetails
-import com.app.vc.network.ApiInterface
+import com.app.vc.utils.ApiDetails
+import com.app.vc.utils.ApiInterface
 import com.app.vc.network.RetrofitClient
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import okhttp3.MultipartBody
 
 class DataRepository (
 ){

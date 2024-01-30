@@ -1,6 +1,6 @@
 package com.app.vc.network
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 
 data class Msg(
     val dataId: Any,

@@ -1,4 +1,4 @@
-package com.app.vc.network
+package com.app.vc.utils
 
 internal class ApiDetails {
     companion object{
@@ -13,14 +13,14 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val SUB_URL = "kandid_api/v1/"
         const val SUB_URL_Testing = "kia_vc_api/v1/"
         //        const val SUB_URL_1 = "kia_vc_api/V1/"
-        const val GET_DISPLAY_NAME = SUB_URL+"get_display_name/?"
-        const val VALIDATE_VC = SUB_URL+"validate_vc/?"
+        const val GET_DISPLAY_NAME = SUB_URL +"get_display_name/?"
+        const val VALIDATE_VC = SUB_URL +"validate_vc/?"
         const val UPLOAD_VC_FILE = SUB_URL_Testing + "upload_vc_file/"
-        const val UPDATE_STREAM_ID = SUB_URL+"update_stream_id/?"
-        const val KICK_OUT_USER = SUB_URL+"kick_out_user/?"
-        const val GET_APP_UPDATE_DETAILS = SUB_URL+"get_app_update_details/?"
-        const val GET_VC_CONFIGURATION = SUB_URL+"get_vc_configuration/?"
-        const val SEND_ESTIMATION = KIA_BASE_URL+"customerEstimate"
+        const val UPDATE_STREAM_ID = SUB_URL +"update_stream_id/?"
+        const val KICK_OUT_USER = SUB_URL +"kick_out_user/?"
+        const val GET_APP_UPDATE_DETAILS = SUB_URL +"get_app_update_details/?"
+        const val GET_VC_CONFIGURATION = SUB_URL +"get_vc_configuration/?"
+        const val SEND_ESTIMATION = KIA_BASE_URL +"customerEstimate"
         const val UPDATE_ESTIMATION_STATUS = KIA_BASE_URL_VPN + "updateEstimateStatus"
         const val SAVE_CHAT_DETAILS = KIA_BASE_URL + "storeMessage"
 

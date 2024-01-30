@@ -3,9 +3,9 @@ package com.kia.vc.validateDealer
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.app.vc.VCConstants
-import com.app.vc.network.ApiDetails
-import com.app.vc.network.ApiInterface
+import com.app.vc.utils.VCConstants
+import com.app.vc.utils.ApiDetails
+import com.app.vc.utils.ApiInterface
 import com.google.gson.GsonBuilder
 
 import okhttp3.OkHttpClient
@@ -49,7 +49,7 @@ class DealerValidationViewModel:ViewModel() {
     private var service: ApiInterface =
         Retrofit.Builder()
             .baseUrl(ApiDetails.BASE_URL)
-//            .client(okhttp)
+            .client(okhttp)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(ApiInterface::class.java)

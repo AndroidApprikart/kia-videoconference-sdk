@@ -18,7 +18,7 @@ import android.widget.Toast
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.app.vc.AndroidUtils
+import com.app.vc.utils.AndroidUtils
 import com.app.vc.R
 import com.app.vc.databinding.ActivityFeedbackBinding
 import com.app.vc.feedback.SurveyData

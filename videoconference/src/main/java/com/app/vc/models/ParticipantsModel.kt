@@ -1,6 +1,6 @@
 package com.app.vc.models
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 import org.webrtc.VideoTrack
 
 /* created by Naghma 27/09/23*/

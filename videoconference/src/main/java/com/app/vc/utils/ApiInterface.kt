@@ -1,4 +1,4 @@
-package com.app.vc.network
+package com.app.vc.utils
 
 import com.app.vc.message.ChatModelItem
 import com.app.vc.message.EstimateModel
@@ -15,6 +15,7 @@ import com.app.vc.models.ValidateVcResponse
 import com.app.vc.models.VcConfigurationResponse
 import com.app.vc.models.login.RequestModelLogin
 import com.app.vc.models.login.ResponseModelLogin
+import com.app.vc.network.ResponseModelDeleteBroadcast
 import com.kia.vc.models.CreateSurvey
 import com.kia.vc.models.ResponseModelGetSurveyQuestionList
 import com.kia.vc.validateDealer.ResponseModelValidateDealerCode

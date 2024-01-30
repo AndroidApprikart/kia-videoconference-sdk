@@ -19,3 +19,18 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+-keep class io.antmedia.webrtcandroidframework.** {
+    *;
+}
+
+-keep class org.webrtc** {
+    *;
+}
+
+-keep class * implements com.app.vc.utils.KeepModel, java.io.Serializable {
+    *;
+}
+-keep class com.app.vc.utils.* {
+    *;
+}

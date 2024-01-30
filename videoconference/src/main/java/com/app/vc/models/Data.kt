@@ -1,6 +1,6 @@
 package com.app.vc.models
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 
 data class Data(
     val `data`: Int,

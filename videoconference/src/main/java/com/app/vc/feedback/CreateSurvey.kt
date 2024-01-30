@@ -1,6 +1,6 @@
 package com.kia.vc.models
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 import com.app.vc.feedback.DataX
 
 data class CreateSurvey(
@@ -8,4 +8,4 @@ data class CreateSurvey(
     val message: String,
     val messageList: Any,
     val status: String
-):KeepModel
+): KeepModel

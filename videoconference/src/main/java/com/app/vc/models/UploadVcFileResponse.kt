@@ -1,6 +1,6 @@
 package com.app.vc.models
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class UploadVcFileResponse(
@@ -18,4 +18,4 @@ data class UploadVcFileResponse(
     var createdDateTime:String?,
     @SerializedName("apiErrorMessage", alternate = arrayOf("error"))
     var apiErrorMessage: String?
-):KeepModel
+): KeepModel

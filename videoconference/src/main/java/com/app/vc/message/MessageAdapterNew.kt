@@ -7,9 +7,9 @@ import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.RecyclerView
-import com.app.vc.FileOperations
+import com.app.vc.utils.FileOperations
 import com.app.vc.R
-import com.app.vc.VCConstants
+import com.app.vc.utils.VCConstants
 import com.app.vc.databinding.MessageItemLayoutNewBinding
 import com.app.vc.models.MessageModel
 import com.app.vc.models.MessageStatusEnum

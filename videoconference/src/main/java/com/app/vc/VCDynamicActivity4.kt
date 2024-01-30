@@ -29,7 +29,6 @@ import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.DisplayMetrics
 import android.util.Log
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -39,46 +38,40 @@ import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.window.OnBackInvokedCallback
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.view.children
-import androidx.core.view.marginTop
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
-import com.app.vc.VCConstants.CAMERA_STATUS
-import com.app.vc.VCConstants.CAM_TURNED_OFF
-import com.app.vc.VCConstants.CAM_TURNED_ON
-import com.app.vc.VCConstants.FILE_MESSAGE
-import com.app.vc.VCConstants.MIC_MUTED
-import com.app.vc.VCConstants.MIC_STATUS
-import com.app.vc.VCConstants.MIC_UNMUTED
-import com.app.vc.VCConstants.PARTICIPANT_FRAG
-import com.app.vc.VCConstants.PERMISSIONS
-import com.app.vc.VCConstants.PERMISSION_CODE
-import com.app.vc.VCConstants.SCREEN_SHARE_FRAG
-import com.app.vc.VCConstants.SDK_BROADCAST_AUDIO_DEVICE_UPDATE
-import com.app.vc.VCConstants.SDK_BROADCAST_CAMERA_DEVICE_UPDATE
-import com.app.vc.VCConstants.SDK_CUSTOM_BROADCAST_ACTION
-import com.app.vc.VCConstants.SOUND_DEVICE_FRAG
-import com.app.vc.VCConstants.TEXT_MESSAGE
-import com.app.vc.VCConstants.UPDATE_STATUS
-import com.app.vc.VCConstants.ESTIMATION_MESSAGE
-import com.app.vc.VCConstants.SCREEN_SHARE_ENABLED
-import com.app.vc.VCConstants.SCREEN_SHARE_DISABLED
+import com.app.vc.utils.VCConstants.CAMERA_STATUS
+import com.app.vc.utils.VCConstants.CAM_TURNED_OFF
+import com.app.vc.utils.VCConstants.CAM_TURNED_ON
+import com.app.vc.utils.VCConstants.FILE_MESSAGE
+import com.app.vc.utils.VCConstants.MIC_MUTED
+import com.app.vc.utils.VCConstants.MIC_STATUS
+import com.app.vc.utils.VCConstants.MIC_UNMUTED
+import com.app.vc.utils.VCConstants.PARTICIPANT_FRAG
+import com.app.vc.utils.VCConstants.PERMISSIONS
+import com.app.vc.utils.VCConstants.PERMISSION_CODE
+import com.app.vc.utils.VCConstants.SCREEN_SHARE_FRAG
+import com.app.vc.utils.VCConstants.SDK_BROADCAST_AUDIO_DEVICE_UPDATE
+import com.app.vc.utils.VCConstants.SDK_BROADCAST_CAMERA_DEVICE_UPDATE
+import com.app.vc.utils.VCConstants.SDK_CUSTOM_BROADCAST_ACTION
+import com.app.vc.utils.VCConstants.SOUND_DEVICE_FRAG
+import com.app.vc.utils.VCConstants.TEXT_MESSAGE
+import com.app.vc.utils.VCConstants.UPDATE_STATUS
+import com.app.vc.utils.VCConstants.ESTIMATION_MESSAGE
+import com.app.vc.utils.VCConstants.SCREEN_SHARE_ENABLED
+import com.app.vc.utils.VCConstants.SCREEN_SHARE_DISABLED
 import com.app.vc.baseui.BaseActivity
 import com.app.vc.customui.RemotePeerView
 import com.app.vc.databinding.ActivityVcDynamic4Binding
 import com.app.vc.databinding.AlertDialogLayoutBinding
-import com.app.vc.databinding.DialogCameraEnableBinding
-import com.app.vc.databinding.DialogEndTrheCallBinding
-import com.app.vc.databinding.LayoutDialogConfirmationBinding
 import com.app.vc.databinding.LayoutUniversalDialogBinding
-import com.app.vc.databinding.PermissionsDialogLayoutBinding
-import com.app.vc.databinding.ReadyToJoinDialogLayoutBinding
-import com.app.vc.databinding.RejoinDialogLayoutBinding
 import com.app.vc.message.MessageFragment
 import com.app.vc.message.ResponseModelEstimateData
 import com.app.vc.models.MessageModel
@@ -89,6 +82,10 @@ import com.app.vc.participants.ParticipantFragment
 import com.app.vc.screenshare.MediaProjectionService
 import com.app.vc.screenshare.ScreenShareFragment
 import com.app.vc.soundDevice.SoundDeviceFragment
+import com.app.vc.utils.AndroidUtils
+import com.app.vc.utils.FileOperations
+import com.app.vc.utils.PreferenceManager
+import com.app.vc.utils.VCConstants
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
@@ -102,7 +99,6 @@ import io.antmedia.webrtcandroidframework.StreamInfo
 import io.antmedia.webrtcandroidframework.WebRTCClient
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager.AudioDevice
 import io.antmedia.webrtcandroidframework.apprtc.CallActivity
-import io.sentry.Sentry
 import org.json.JSONException
 import org.json.JSONObject
 import org.webrtc.DataChannel
@@ -302,7 +298,7 @@ class VCDynamicActivity4 : BaseActivity() {
         binding.vm = viewModel
         binding.lifecycleOwner = this
         // adding onbackpressed callback listener.
-        onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
+//        onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
         this.intent.putExtra(CallActivity.EXTRA_CAPTURETOTEXTURE_ENABLED, true)
         PreferenceManager.init(this)
 
@@ -314,6 +310,34 @@ class VCDynamicActivity4 : BaseActivity() {
         initDataChannelListener()
         setUpVcDetails()
 
+        initializeOnbackPressedListener()
+
+    }
+
+    private fun initializeOnbackPressedListener() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+//                OnBackInvokedDispatcher.PRIORITY_DEFAULT
+//            ) {
+//                val id = navController.currentDestination?.id
+//                if (id == R.id.navi_home || id == R.id.nav_new_user_home)
+//                    CommonUtils.popToRoot(navController)
+//                else navController.popBackStack()
+//            }
+
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(1000, object: OnBackInvokedCallback {
+                override fun onBackInvoked() {
+                        processVCActivityBackPress()
+                }
+            })
+
+        } else {
+            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                   processVCActivityBackPress()
+                }
+            })
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -3776,14 +3800,16 @@ class VCDynamicActivity4 : BaseActivity() {
                         addNewContainer(remotePeerView)
                         updateStreamNameTextView(remotePeerView, track.id()!!)
                         addNewParticipant(track, false)
-                        viewModel.getDisplayNameForStreamId(viewModel.roomID!!,track.id().replace("ARDAMSv",""),VCConstants.version)
+                        viewModel.getDisplayNameForStreamId(viewModel.roomID!!,track.id().replace("ARDAMSv",""),
+                            VCConstants.version)
                     } else {
                         Log.d(TAG, "onNewVideoTrack: else ")
 //            trackRendererMap.put(binding.publishViewRenderer,track.id())
                         trackRelMap[publisherContainer!!] = track.id()
                         trackObjectRelMap[publisherContainer!!] = track
                         addNewParticipant(track, true)
-                        viewModel.getDisplayNameForStreamId(viewModel.roomID!!,viewModel.streamId!!,VCConstants.version) /*this will call again for updated name--> else can be commented for the local participant*/
+                        viewModel.getDisplayNameForStreamId(viewModel.roomID!!,viewModel.streamId!!,
+                            VCConstants.version) /*this will call again for updated name--> else can be commented for the local participant*/
                     }
                     displayRendererMap()
                 }
@@ -4540,7 +4566,8 @@ class VCDynamicActivity4 : BaseActivity() {
         try {
             val eventType =
                 jsonObject.getString(VCConstants.EVENT_TYPE)
-           if(eventType.equals(TEXT_MESSAGE,false)||eventType.equals(FILE_MESSAGE,false)||eventType.equals(VCConstants.ESTIMATION_MESSAGE,false) ){
+           if(eventType.equals(TEXT_MESSAGE,false)||eventType.equals(FILE_MESSAGE,false)||eventType.equals(
+                   VCConstants.ESTIMATION_MESSAGE,false) ){
                 val messageID = jsonObject.getLong(VCConstants.MESSAGEID)
                 viewModel.updateSendStatusForMessage(messageID,successful)
             }

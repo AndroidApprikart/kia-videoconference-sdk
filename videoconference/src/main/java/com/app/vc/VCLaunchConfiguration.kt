@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import com.app.vc.utils.PreferenceManager
 
 import com.kia.vc.validateDealer.DealerValidationActivity
 

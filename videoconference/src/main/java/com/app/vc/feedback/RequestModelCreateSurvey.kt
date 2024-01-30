@@ -1,6 +1,6 @@
 package com.kia.vc.feedback
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 import com.google.gson.annotations.SerializedName
 
 data class RequestModelCreateSurvey(
@@ -18,4 +18,4 @@ data class RequestModelCreateSurvey(
     val userName:String
 
 
-):KeepModel
+): KeepModel

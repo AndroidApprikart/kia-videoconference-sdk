@@ -1,4 +1,4 @@
-package com.app.vc
+package com.app.vc.utils
 
 import java.io.Serializable
 

@@ -1,6 +1,6 @@
 package com.kia.vc.feedback
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 
 data class FeedbackListModel(
     val comments: String,

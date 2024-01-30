@@ -1,6 +1,6 @@
 package com.kia.vc.models
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 import com.app.vc.feedback.SurveyListData
 import com.google.gson.annotations.SerializedName
 
@@ -13,4 +13,4 @@ data class ResponseModelGetSurveyQuestionList(
     val messageList: Any,
     @SerializedName("status")
     val status: String
-):KeepModel
+): KeepModel

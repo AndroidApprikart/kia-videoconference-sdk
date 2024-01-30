@@ -1,6 +1,6 @@
 package com.app.vc.network
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 import com.google.gson.annotations.SerializedName
 //import com.styletribute.app.usermanagement.models.ErrorResponse
 

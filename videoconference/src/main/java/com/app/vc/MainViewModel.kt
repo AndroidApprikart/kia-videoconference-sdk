@@ -1,15 +1,11 @@
 package com.app.vc
 
-import android.os.Handler
 import android.os.RemoteException
 import android.util.Log
-import android.widget.Toast
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.app.vc.models.MessageModel
 import com.app.vc.models.ParticipantsModel
-import androidx.lifecycle.viewModelScope
 import com.app.vc.message.ChatModelItem
 import com.app.vc.message.EstimateModel
 import com.app.vc.message.RequestModelOpenEstimate
@@ -28,17 +24,15 @@ import com.app.vc.models.ValidateVcResponse
 import com.app.vc.models.VcConfigurationResponse
 import com.app.vc.models.login.RequestModelLogin
 import com.app.vc.models.login.ResponseModelLogin
-import com.app.vc.network.ApiDetails
-import com.app.vc.network.ApiInterface
-import com.app.vc.network.Resource
+import com.app.vc.utils.ApiDetails
+import com.app.vc.utils.ApiInterface
 import com.app.vc.network.ResponseModelDeleteBroadcast
+import com.app.vc.utils.PreferenceManager
 import com.app.vc.network.RetrofitClient
+import com.app.vc.utils.VCConstants
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.retry
-import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -1141,11 +1135,11 @@ class MainViewModel : ViewModel() {
         .writeTimeout(60, TimeUnit.SECONDS)
         .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
         .build()
-    fun getServiceObject(baseUrl: String):ApiInterface{
+    fun getServiceObject(baseUrl: String): ApiInterface {
         var service: ApiInterface =
             Retrofit.Builder()
                 .baseUrl(baseUrl)
-//            .client(okhttp)
+                .client(okhttp)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build()
                 .create(ApiInterface::class.java)

@@ -1,5 +1,6 @@
 package com.app.vc.network
 
+import com.app.vc.utils.ApiDetails
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor

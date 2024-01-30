@@ -1,6 +1,6 @@
 package com.kia.vc.validateDealer
 
-import com.app.vc.KeepModel
+import com.app.vc.utils.KeepModel
 
 data class ResponseModelValidateDealerCode(
     val error: String,

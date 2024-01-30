@@ -28,8 +28,8 @@ import android.view.WindowManager;
 import androidx.annotation.NonNull;
 
 import com.app.vc.R;
-import com.app.vc.VCConstants;
-import com.app.vc.network.ApiDetails;
+import com.app.vc.utils.VCConstants;
+import com.app.vc.utils.ApiDetails;
 
 import org.webrtc.AddIceObserver;
 import org.webrtc.AudioSource;

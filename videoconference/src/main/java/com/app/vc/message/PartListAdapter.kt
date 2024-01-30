@@ -7,9 +7,9 @@ import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.app.vc.PreferenceManager
+import com.app.vc.utils.PreferenceManager
 import com.app.vc.R
-import com.app.vc.VCConstants
+import com.app.vc.utils.VCConstants
 
 class PartListAdapter(
     val mContext:  android.content.Context,
