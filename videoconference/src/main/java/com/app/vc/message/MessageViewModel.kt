@@ -10,6 +10,12 @@ class MessageViewModel:ViewModel() {
 
     var userMessageInput = MutableLiveData<String>()
     var saveMessageList = MutableLiveData<Boolean>(false)
+    //Added 09Jan2024
+    var makeApiCallToSendWelcomeMesssage = MutableLiveData<Boolean>(false)
+
+    fun sendWelcomeMessage() {
+        makeApiCallToSendWelcomeMesssage.value = true
+    }
     fun validateUserInputMessage():Boolean{
         if(userMessageInput.value!=null)
         {

@@ -53,6 +53,8 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val tcp = "turn:vc.apprikart.com" + ":3478?transport=tcp"
         const val port = "turn:vc.apprikart.com" + ":3478"
 
+        const val SEND_USER_MANUAL = "sendUserManual"
+
 
     }
 }

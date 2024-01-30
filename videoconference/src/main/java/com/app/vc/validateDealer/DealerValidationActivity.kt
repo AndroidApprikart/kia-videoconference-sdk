@@ -58,6 +58,10 @@ class DealerValidationActivity : AppCompatActivity() {
         viewModel.vcEndTime = intent.getStringExtra("vcEndTime")
         viewModel.dealerName = intent.getStringExtra("dealerName")
 
+        viewModel.callType = intent.getStringExtra("callType")
+        viewModel.customerName = intent.getStringExtra("customerName")
+        viewModel.customerPhoneNumber = intent.getStringExtra("customerPhoneNumber")
+
         binding.tvWelcomeText.text = "Welcome to ${viewModel.dealerName} \n Video Conference."
 
 
@@ -100,6 +104,7 @@ class DealerValidationActivity : AppCompatActivity() {
                             displayName = viewModel.displayName,
                             userName = viewModel.userName,
                             vcEndTime = viewModel.vcEndTime
+
                         )
                     }
                     else -> {
@@ -256,6 +261,10 @@ class DealerValidationActivity : AppCompatActivity() {
         intent.putExtra("displayName", displayName)
         intent.putExtra("userName",userName)
         intent.putExtra("vcEndTime",vcEndTime)
+
+        intent.putExtra("callType",viewModel.callType)
+        intent.putExtra("customerName", viewModel.customerName)
+        intent.putExtra("customerPhoneNumber",viewModel.customerPhoneNumber)
 
         finish()
         startActivity(intent)

@@ -121,6 +121,24 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_attach_file"
                 app:layout_constraintStart_toEndOf="@id/ed_useR_input"
+                app:layout_constraintTop_toTopOf="parent"
+                android:visibility="gone"/>
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/iv_send_welcome_message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/black"
+                android:scaleType="fitCenter"
+                android:src="@drawable/iv_send_user_manual_svg"
+                android:text="E"
+                android:textColor="@color/white"
+                android:onClick="@{()->messageVM.sendWelcomeMessage()}"
+                android:layout_marginHorizontal="@dimen/_2sdp"
+                android:textSize="10sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btn_attach_file"
+                app:layout_constraintStart_toEndOf="@id/ed_useR_input"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <com.google.android.material.imageview.ShapeableImageView

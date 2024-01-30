@@ -32,6 +32,8 @@ import com.app.vc.network.RetrofitClient
 import com.app.vc.utils.VCConstants
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.kia.vc.message.RequestModelSendUserManual
+import com.kia.vc.message.ResponseModelSendUserManual
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -77,6 +79,10 @@ class MainViewModel : ViewModel() {
     var kecName: String? = null
 
     var meetingPasscode: String? = null
+
+    var callType:String? = null
+    var customerName:String? = null
+    var customerPhoneNumber:String? = null
 
     var baseURL = ""
     private fun getRetrofitServiceClient(baseURL: String) =
@@ -182,7 +188,44 @@ class MainViewModel : ViewModel() {
     var tempRoomInfo = ArrayList<String>()
     var unwantedStreams = ArrayList<String>()
 
+    //Added 09Jan2024
+    var apiCallToSendWelcomeMessage = MutableLiveData<Boolean>(false)
+    var isSendWelcomeMessageEnabled = MutableLiveData<Boolean>(true)
+    var sendUserManualResponse = MutableLiveData<ResponseModelSendUserManual>()
 
+
+    fun makeApiCallToSendWelcomeMessage(baseUrl: String) {
+        var requestObject = RequestModelSendUserManual(
+            customerName = customerName!!,
+            dealer_no = dealerCode!!,
+            mobileNo = customerPhoneNumber!!
+        )
+        val call = getServiceObject(baseUrl).sendUserManual(PreferenceManager.getEstimateToken()!!,requestObject)
+        call.enqueue(object : Callback<ResponseModelSendUserManual?> {
+            override fun onResponse(
+                call: Call<ResponseModelSendUserManual?>,
+                response: Response<ResponseModelSendUserManual?>
+            ) {
+                if(response.code() in 200..299) {
+                    if(response.body()!=null) {
+                        sendUserManualResponse.value = response.body()
+                    }else {
+                        isSendWelcomeMessageEnabled.value = true
+                        toastMessage.value = "Something went wrong. null response. sendUserManual"
+                    }
+                }else {
+                    isSendWelcomeMessageEnabled.value = true
+                    toastMessage.value = "Something went wrong. response code. sendUserManual"
+                }
+            }
+
+            override fun onFailure(call: Call<ResponseModelSendUserManual?>, t: Throwable) {
+                isSendWelcomeMessageEnabled.value = true
+                toastMessage.value = "Something went wrong. Failure. Send User Manual"
+                toastMessage.value = "Failure: localizedMessage ${t.message}"
+            }
+        })
+    }
 
     /*message handling functions*/
     fun processNewLocalTextMessage(userInputText: String, id: Long) {

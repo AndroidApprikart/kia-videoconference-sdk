@@ -16,6 +16,8 @@ import com.app.vc.models.VcConfigurationResponse
 import com.app.vc.models.login.RequestModelLogin
 import com.app.vc.models.login.ResponseModelLogin
 import com.app.vc.network.ResponseModelDeleteBroadcast
+import com.kia.vc.message.RequestModelSendUserManual
+import com.kia.vc.message.ResponseModelSendUserManual
 import com.kia.vc.models.CreateSurvey
 import com.kia.vc.models.ResponseModelGetSurveyQuestionList
 import com.kia.vc.validateDealer.ResponseModelValidateDealerCode
@@ -130,5 +132,11 @@ interface ApiInterface {
         @Query("room_id") roomId: String,
         @Query("stream_id") streamId: String
     ):Call<ResponseModelDeleteBroadcast>
+
+    @POST(ApiDetails.SEND_USER_MANUAL)
+    fun sendUserManual(
+        @Header("Authorization") bearerToken: String,
+        @Body body: RequestModelSendUserManual
+    ):Call<ResponseModelSendUserManual>
 
 }

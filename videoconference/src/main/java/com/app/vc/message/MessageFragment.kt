@@ -114,12 +114,44 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
         dataList.addAll(sharedViewModel.messageListInMVM)
 
 
-        if(PreferenceManager.getuserType() == VCConstants.UserType.CUSTOMER.value) {
-            binding.btnSaveChat?.visibility = View.GONE
-            binding.es.visibility = View.GONE
-        }else if(PreferenceManager.getuserType() == "SERVICE_PERSON") {
-            if(sharedViewModel.roNo.isNullOrEmpty()) {
+//        if(PreferenceManager.getuserType() == VCConstants.UserType.CUSTOMER.value) {
+//            binding.btnSaveChat?.visibility = View.GONE
+//            binding.es.visibility = View.GONE
+//        }else if(PreferenceManager.getuserType() == "SERVICE_PERSON") {
+//            if(sharedViewModel.roNo.isNullOrEmpty()) {
+//                binding.es.visibility = View.GONE
+//            }
+//        }
+
+        if(sharedViewModel.callType!=null) {
+            if(sharedViewModel.callType!!.isNotEmpty() && sharedViewModel.callType!! == "WC" )  {
+                binding.ivSendWelcomeMessage?.visibility = View.VISIBLE
                 binding.es.visibility = View.GONE
+            }else {
+                binding.ivSendWelcomeMessage?.visibility = View.GONE
+                binding.es.visibility = View.VISIBLE
+                if(PreferenceManager.getuserType() == "customer") {
+                    binding.btnSaveChat?.visibility = View.GONE
+                    binding.es.visibility = View.GONE
+                }else if(PreferenceManager.getuserType() == "SERVICE_PERSON") {
+                    if(sharedViewModel.roNo.isNullOrEmpty()) {
+                        binding.es.visibility = View.GONE
+                    }
+                }
+            }
+        }else {
+            sharedViewModel.toastMessage.value = "Call type is null"
+        }
+
+        sharedViewModel.isSendWelcomeMessageEnabled.observe(viewLifecycleOwner) {
+            if(it!=null) {
+                if(it) {
+                    binding.ivSendWelcomeMessage?.isEnabled = true
+                    binding.ivSendWelcomeMessage?.isClickable = true
+                }else {
+                    binding.ivSendWelcomeMessage?.isEnabled = false
+                    binding.ivSendWelcomeMessage?.isClickable = false
+                }
             }
         }
 
@@ -218,6 +250,15 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
             }else {
                 sharedViewModel.toastMessage.value  = "No Internet connection."
                 sharedViewModel.isProgressBarVisible.value = false
+            }
+        }
+
+        viewModel.makeApiCallToSendWelcomeMesssage.observe(viewLifecycleOwner) {
+            if(it!=null) {
+                if(it) {
+                    sharedViewModel.isSendWelcomeMessageEnabled.value = false
+                    sharedViewModel.apiCallToSendWelcomeMessage.value = true
+                }
             }
         }
     }

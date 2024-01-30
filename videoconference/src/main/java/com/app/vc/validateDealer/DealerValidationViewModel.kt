@@ -32,6 +32,10 @@ class DealerValidationViewModel:ViewModel() {
     var vcEndTime:String? = null
     var dealerName:String? = null
 
+    var callType:String? = null
+    var customerName:String? = null
+    var customerPhoneNumber:String? = null
+
 
     var validateDealerCodeResponse = MutableLiveData<ResponseModelValidateDealerCode>()
 

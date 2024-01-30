@@ -677,6 +677,26 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+        viewModel.sendUserManualResponse.observe(this) {
+            if(it!=null) {
+                if(it.success) {
+                    viewModel.toastMessage.value = "${it.message.toString()}"
+                    viewModel.isSendWelcomeMessageEnabled.value = true
+                }else {
+                    Toast.makeText(this, "Something went wrong. Send UserManual. resonse", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+        }
+        viewModel.apiCallToSendWelcomeMessage.observe(this) {
+            if(it!=null) {
+                if(it) {
+                    viewModel.makeApiCallToSendWelcomeMessage(PreferenceManager.getBaseUrl()!!)
+                    viewModel.apiCallToSendWelcomeMessage.value = false
+                }
+            }
+        }
+
 
         viewModel.isInPhoneCall.observe(this) {
             if (it) {
@@ -4785,6 +4805,9 @@ class VCDynamicActivity4 : BaseActivity() {
                         viewModel.dealerCode = "UP307"
                         viewModel.roNo = "R202300212"
                         viewModel.displayName = "Android Service Advisor 2"
+                        viewModel.callType = "WC"
+                        viewModel.customerName = "Suneel"
+                        viewModel.customerPhoneNumber = "8105082480"
                     }
 
                     else -> {
@@ -4798,6 +4821,9 @@ class VCDynamicActivity4 : BaseActivity() {
                         viewModel.roNo = "R202300212"
                         viewModel.displayName = "Android Customer 2"
                         viewModel.userName = "9136388890"
+                        viewModel.callType = ""
+                        viewModel.customerName = ""
+                        viewModel.customerPhoneNumber = ""
                     }
 
 //                    VCConstants.UserType.SERVICE_PERSON.value -> {
@@ -4836,6 +4862,9 @@ class VCDynamicActivity4 : BaseActivity() {
                  viewModel.displayName = intent.getStringExtra("displayName")
                  viewModel.userName = intent.getStringExtra("userName")
                  viewModel.vcEndTime = intent.getStringExtra("vcEndTime")
+                 viewModel.callType = intent.getStringExtra("callType")
+                 viewModel.customerName = intent.getStringExtra("customerName")
+                 viewModel.customerPhoneNumber = intent.getStringExtra("customerPhoneNumber")
 
 
 

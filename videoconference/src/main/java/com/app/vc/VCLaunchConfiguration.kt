@@ -23,7 +23,10 @@ public class VCLaunchConfiguration(
     private val userName: String?,
     private val vcEndTime: String?,
     private val dealerName:String?,
-    private val baseUrl:String?
+    private val baseUrl:String?,
+    private val workType:String?,
+    private val customerName:String?,
+    private val customerPhoneNumber:String?
 ) {
 
     fun launchVCScreen() {
@@ -40,44 +43,62 @@ public class VCLaunchConfiguration(
                                                 if (!vcEndTime.isNullOrEmpty()) {
                                                     if(!dealerName.isNullOrEmpty()) {
                                                         if(!baseUrl.isNullOrEmpty()) {
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: activity : ${activity.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: meetingCode : ${meetingCode.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: servicePersonId : ${servicePersonId.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: userType : ${userType.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: authPassCode : ${authPassCode.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: roNo : ${roNo.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: customerCode : ${customerCode.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: dealerCode : ${dealerCode.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: displayName : ${displayName.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: estimateToken : ${estimateToken.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: userName : ${userName.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: vcEndTime : ${vcEndTime.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: dealerName : ${dealerName.toString()} ")
-                                                            Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${baseUrl.toString()} ")
+                                                            if(workType!=null) {
+                                                                if(customerName!=null) {
+                                                                    if(customerPhoneNumber!=null) {
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: activity : ${activity.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: meetingCode : ${meetingCode.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: servicePersonId : ${servicePersonId.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: userType : ${userType.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: authPassCode : ${authPassCode.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: roNo : ${roNo.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: customerCode : ${customerCode.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: dealerCode : ${dealerCode.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: displayName : ${displayName.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: estimateToken : ${estimateToken.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: userName : ${userName.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: vcEndTime : ${vcEndTime.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: dealerName : ${dealerName.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${baseUrl.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${workType.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${customerName.toString()} ")
+                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${customerPhoneNumber.toString()} ")
 
-                                                            saveEstimateToken(
-                                                                context = activity,
-                                                                token = estimateToken
-                                                            )
-                                                            saveBaseUrl(
-                                                                context = activity,
-                                                                baseUrl = baseUrl
-                                                            )
+                                                                        saveEstimateToken(
+                                                                            context = activity,
+                                                                            token = estimateToken
+                                                                        )
+                                                                        saveBaseUrl(
+                                                                            context = activity,
+                                                                            baseUrl = baseUrl
+                                                                        )
 
-                                                            startValidationScreen(
-                                                                activity = activity,
-                                                                meetingCode = meetingCode,
-                                                                servicePersonId = servicePersonId,
-                                                                userType = userType,
-                                                                authPassCode = authPassCode,
-                                                                roNo = roNo,
-                                                                customerCode = customerCode,
-                                                                dealerCode = dealerCode,
-                                                                displayName = displayName,
-                                                                userName = userName,
-                                                                vcEndTime = vcEndTime,
-                                                                dealerName = dealerName
-                                                            )
+                                                                        startValidationScreen(
+                                                                            activity = activity,
+                                                                            meetingCode = meetingCode,
+                                                                            servicePersonId = servicePersonId,
+                                                                            userType = userType,
+                                                                            authPassCode = authPassCode,
+                                                                            roNo = roNo,
+                                                                            customerCode = customerCode,
+                                                                            dealerCode = dealerCode,
+                                                                            displayName = displayName,
+                                                                            userName = userName,
+                                                                            vcEndTime = vcEndTime,
+                                                                            dealerName = dealerName,
+                                                                            callType = workType,
+                                                                            customerName = customerName,
+                                                                            customerPhoneNumber = customerPhoneNumber
+                                                                        )
+                                                                    }else {
+                                                                        Toast.makeText(activity,"Customer Phone cannot be Null",Toast.LENGTH_SHORT).show()
+                                                                    }
+                                                                }else {
+                                                                    Toast.makeText(activity,"Customer Name cannot be NUll",Toast.LENGTH_SHORT).show()
+                                                                }
+                                                            }else {
+                                                                Toast.makeText(activity,"Call type cannot be Null",Toast.LENGTH_SHORT).show()
+                                                            }
                                                         }else {
                                                             Toast.makeText(activity,"Base Url cannot be empty",Toast.LENGTH_SHORT).show()
                                                         }
@@ -211,7 +232,10 @@ public class VCLaunchConfiguration(
         displayName: String?,
         userName: String?,
         vcEndTime: String?,
-        dealerName: String?
+        dealerName: String?,
+        callType: String?,
+        customerName: String?,
+        customerPhoneNumber: String?
     ) {
         val intent = Intent(activity, DealerValidationActivity::class.java)
         intent.putExtra("room", meetingCode)
@@ -225,6 +249,9 @@ public class VCLaunchConfiguration(
         intent.putExtra("userName", userName)
         intent.putExtra("vcEndTime",vcEndTime)
         intent.putExtra("dealerName",dealerName)
+        intent.putExtra("callType",callType)
+        intent.putExtra("customerName", customerName)
+        intent.putExtra("customerPhoneNumber",customerPhoneNumber)
 
 
         activity?.startActivity(intent)
