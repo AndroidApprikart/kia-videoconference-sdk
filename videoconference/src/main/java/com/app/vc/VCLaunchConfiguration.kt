@@ -24,9 +24,9 @@ public class VCLaunchConfiguration(
     private val vcEndTime: String?,
     private val dealerName:String?,
     private val baseUrl:String?,
-    private val workType:String?,
-    private val customerName:String?,
-    private val customerPhoneNumber:String?
+    private val workType:String? = "",
+    private val customerName:String? = "",
+    private val customerPhoneNumber:String? = ""
 ) {
 
     fun launchVCScreen() {
@@ -46,24 +46,6 @@ public class VCLaunchConfiguration(
                                                             if(workType!=null) {
                                                                 if(customerName!=null) {
                                                                     if(customerPhoneNumber!=null) {
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: activity : ${activity.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: meetingCode : ${meetingCode.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: servicePersonId : ${servicePersonId.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: userType : ${userType.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: authPassCode : ${authPassCode.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: roNo : ${roNo.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: customerCode : ${customerCode.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: dealerCode : ${dealerCode.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: displayName : ${displayName.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: estimateToken : ${estimateToken.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: userName : ${userName.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: vcEndTime : ${vcEndTime.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: dealerName : ${dealerName.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${baseUrl.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${workType.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${customerName.toString()} ")
-                                                                        Log.d("VCLaunchConfiguration", "launchVCScreen: baseUrl : ${customerPhoneNumber.toString()} ")
-
                                                                         saveEstimateToken(
                                                                             context = activity,
                                                                             token = estimateToken

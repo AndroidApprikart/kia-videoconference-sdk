@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.PowerManager
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -28,6 +29,7 @@ class DealerValidationActivity : AppCompatActivity() {
     private var isScreenSmallOrNormal: Boolean = false
 
     private lateinit var dealerValidationDialog: Dialog
+    private var isPowerSavingModeOn:Boolean = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +37,7 @@ class DealerValidationActivity : AppCompatActivity() {
         setContentView(R.layout.activity_dealer_validation)
         Log.d("DealerValidation: ", "onCreate: ")
 
+        checkIfPowerSavingModeIsOn()
         init()
         initializeObservers()
         initializeApiResponseObservers()
@@ -43,6 +46,10 @@ class DealerValidationActivity : AppCompatActivity() {
         getIntentValues()
 
 
+    }
+    private fun checkIfPowerSavingModeIsOn() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        isPowerSavingModeOn = powerManager.isPowerSaveMode
     }
 
     private fun getIntentValues() {
@@ -69,7 +76,13 @@ class DealerValidationActivity : AppCompatActivity() {
 
     private fun initializeOnClickListeners() {
         binding.btnContinueToVc.setOnClickListener {
-            viewModel.validateDealerCode()
+            checkIfPowerSavingModeIsOn()
+            if(!isPowerSavingModeOn) {
+                viewModel.validateDealerCode()
+            }else {
+                viewModel.toastString.value = "Please turn off powerSaving mode."
+            }
+
         }
     }
 

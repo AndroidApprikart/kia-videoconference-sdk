@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+
+
+    <color name="colorPrimary">#071C2C</color>
+<!--    <color name="color_vc_background">#071C2C</color>-->
+<!--    <color name="color_renderer_background">#05131F</color>-->
+    <color name="color_kia_black">#05141F</color>
+
+    <color name="red">#EA0029</color>
+    <color name="gray">#B3373737</color>
+
+    <color name="bg_color_receiver_layout_message_screen">#B3B8BB</color>
+    <color name="green">#5D7D2B</color>
+    <color name="text_color_reject">#EA0029</color>
+    <color name="grey">#E9E9E9</color>
+    <color name="text_colour1">#BB162B</color>
+    <color name="file_doc_layout_bg_color">#F3F3F3</color>
+    <color name="download_upload_img_bg_color">#4D434242</color>
+    <color name="download_upload_btn_color">#515151</color>
+    <color name="bg_message_screen">#F4F4F4</color>
+
+    <!--     message screen-->
+    <color name="color_screen_background">#E7E7E7</color>
+    <color name="receiver_layout_background">#B3B8BB</color>
+    <color name="self_layout_header_text_color">#9EA1A2</color>
+    <color name="self_name_color">#9EA1A2</color>
+    <color name="kia_after_noon_yellow">#F3c300</color>
+    <color name="remote_name_color">#05141F</color>
+    <color name="self_time_color">#A5A5A5</color>
+    <color name="color_pink">#E91E63</color>
+
+</resources>

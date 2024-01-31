@@ -34,6 +34,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
@@ -99,6 +101,7 @@ import io.antmedia.webrtcandroidframework.StreamInfo
 import io.antmedia.webrtcandroidframework.WebRTCClient
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager.AudioDevice
 import io.antmedia.webrtcandroidframework.apprtc.CallActivity
+import io.sentry.Sentry
 import org.json.JSONException
 import org.json.JSONObject
 import org.webrtc.DataChannel
@@ -271,7 +274,7 @@ class VCDynamicActivity4 : BaseActivity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate: ")
 
-//        Sentry.captureException(RuntimeException("This app uses Sentry! :)"))
+        Sentry.captureException(RuntimeException("This app uses Sentry. added on 31Jan2024:)"))
         if (intent.hasExtra("intent_for_reconnect")) {
             isIntentForReconnect = intent.getBooleanExtra("intent_for_reconnect", false)
 //            streamId = intent.getStringExtra("stream_id_in_use")
@@ -285,7 +288,7 @@ class VCDynamicActivity4 : BaseActivity() {
         isScreenSmallOrNormal = resources.getBoolean(R.bool.is_device_normal) or resources.getBoolean(R.bool.is_device_small)
         // Set window styles for fullscreen-window size. Needs to be done before
         // adding content.
-        requestWindowFeature(Window.FEATURE_NO_TITLE)
+//        requestWindowFeature(Window.FEATURE_NO_TITLE)
         window.addFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                     or WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
@@ -4179,6 +4182,9 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun closeMessageFragment() {
+        // nbg_31Jan2024_Added functionality to hide keyborad when the message fragment is hidden.
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(currentFocus?.windowToken, 0)
         fragmentManager.beginTransaction()
             .hide(messageFragment)
             .commit()
