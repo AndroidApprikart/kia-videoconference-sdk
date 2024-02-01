@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Rect
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -262,6 +263,8 @@ class VCDynamicActivity4 : BaseActivity() {
     private var webSocketNotConnectedThread: Thread? = null
     private var isAudioDisableDueToPhoneCall = false
 
+    private var isKeyboardOpen = false
+
     /*callbakc handling*/
     private val onBackPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -314,7 +317,39 @@ class VCDynamicActivity4 : BaseActivity() {
         setUpVcDetails()
 
         initializeOnbackPressedListener()
+        initKeyboardListener()
 
+    }
+    // Function to check is keyboard is open or close when onBackPressed is triggered.
+    private fun initKeyboardListener() {
+        binding.keyboardListener.viewTreeObserver?.addOnGlobalLayoutListener {
+            val r = Rect()
+            binding.keyboardListener.getWindowVisibleDisplayFrame(r)
+            val screenHeight = binding.keyboardListener.rootView.height
+            val keypadHeight = screenHeight - r.bottom
+
+            if (keypadHeight > screenHeight * 0.15) { // 0.15 ratio is a reasonable threshold
+                if (!isKeyboardOpen) {
+                    isKeyboardOpen = true
+                    onKeyboardOpened()
+                }
+            } else {
+                if (isKeyboardOpen) {
+                    isKeyboardOpen = false
+                    onKeyboardClosed()
+                }
+            }
+        }
+    }
+
+    private fun onKeyboardOpened() {
+        // Handle keyboard open event
+        Log.d("Keyboard", "Keyboard opened")
+    }
+
+    private fun onKeyboardClosed() {
+        // Handle keyboard close event
+        Log.d("Keyboard", "Keyboard closed")
     }
 
     private fun initializeOnbackPressedListener() {
@@ -2015,8 +2050,12 @@ class VCDynamicActivity4 : BaseActivity() {
 //                }
 
                 if(isConnectedToWifi(this)) {
-                    viewModel.toastMessage.value = getWifiSignalStrength(this).toString()
-                    printCurrentInternetSpeedInMbps()
+                    if(viewModel.isDevMode) {
+                        viewModel.toastMessage.value = getWifiSignalStrength(this).toString()
+                    }
+                    if(viewModel.isDevMode) {
+                        printCurrentInternetSpeedInMbps()
+                    }
                     if(isGoodInternetConnection(this,-67))  {
                         rejoinConferenceRestartConference()
                         reconnectionVCDialog.dismiss()
@@ -2024,7 +2063,9 @@ class VCDynamicActivity4 : BaseActivity() {
                         viewModel.toastMessage.value = "Please connect to wifi with good strength"
                     }
                 }else {
-                    printCurrentInternetSpeedInMbps()
+                    if(viewModel.isDevMode) {
+                        printCurrentInternetSpeedInMbps()
+                    }
                     if(checkForValidInternetSpeed()) {
                         rejoinConferenceRestartConference()
                         reconnectionVCDialog.dismiss()
@@ -4490,6 +4531,12 @@ class VCDynamicActivity4 : BaseActivity() {
             dismissParticipantsFragment()
             return
         }
+        if(viewModel.messageFragVisible) {
+            if(isKeyboardOpen) {
+                hideKeyboard()
+                return
+            }
+        }
         if (viewModel.messageFragVisible) {
             dismissMessageFragment()
             return
@@ -4502,6 +4549,10 @@ class VCDynamicActivity4 : BaseActivity() {
         }
     }
 
+    fun hideKeyboard() {
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(currentFocus?.windowToken, 0)
+    }
     private fun dismissScreenShareFragment() {
         removeFragment(SCREEN_SHARE_FRAG)
     }

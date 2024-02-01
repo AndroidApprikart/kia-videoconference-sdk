@@ -11,7 +11,7 @@
     <color name="color_kia_black">#05141F</color>
 
     <color name="red">#EA0029</color>
-    <color name="gray">#B3373737</color>
+    <color name="gray_mic_background">#B3373737</color>
 
     <color name="bg_color_receiver_layout_message_screen">#B3B8BB</color>
     <color name="green">#5D7D2B</color>
