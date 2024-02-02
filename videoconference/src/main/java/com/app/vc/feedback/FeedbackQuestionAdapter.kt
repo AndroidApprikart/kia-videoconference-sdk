@@ -95,8 +95,7 @@ class FeedbackQuestionAdapter(
             }
 
             override fun afterTextChanged(p0: Editable?) {
-                Log.d(TAG, "afterTextChanged: position:  ${position}")
-                dataList[position].comment = p0.toString()
+                currentItem.comment = p0.toString()
 
             }
 
