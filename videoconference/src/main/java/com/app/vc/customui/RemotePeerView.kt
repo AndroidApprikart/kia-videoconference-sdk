@@ -5,15 +5,11 @@ import android.content.res.TypedArray
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.ShapeDrawable
-import android.graphics.drawable.shapes.OvalShape
 import android.graphics.drawable.shapes.RectShape
 import android.util.AttributeSet
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,7 +17,6 @@ import android.widget.ImageView
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import androidx.core.view.marginRight
 import com.app.vc.R
 import org.webrtc.SurfaceViewRenderer
 
@@ -54,7 +49,7 @@ class RemotePeerView @JvmOverloads constructor(
         videoActive = attributes.getBoolean(R.styleable.RemotePeerView_video_active,false)
         attributes.recycle()
         //Added background color to differentiate between the renderers
-        view.setBackgroundColor(resources.getColor(R.color.colorPrimary))
+        view.setBackgroundColor(resources.getColor(R.color.colorPrimary_kia_kandid))
         micImage = view.findViewById(R.id.mic_img)
         micImageTop = view.findViewById(R.id.mic_img_top)
 
@@ -144,7 +139,7 @@ class RemotePeerView @JvmOverloads constructor(
 
     fun createLayerDrawable(context: Context,character: String): LayerDrawable {
         val rectangleDrawable = ShapeDrawable(RectShape())
-        rectangleDrawable.paint.color = ContextCompat.getColor(context, R.color.colorPrimary)
+        rectangleDrawable.paint.color = ContextCompat.getColor(context, R.color.colorPrimary_kia_kandid)
 
         val customLayout = LayoutInflater.from(context).inflate(R.layout.layout_renderer_background, null) as ViewGroup
         val customTextView = customLayout.findViewById<TextView>(R.id.tv_first_char)

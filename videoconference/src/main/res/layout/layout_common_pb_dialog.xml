@@ -10,7 +10,7 @@
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_margin="5dp"
-        android:indeterminateTint="@color/colorPrimary" />
+        android:indeterminateTint="@color/colorPrimary_kia_kandid" />
 
     <!--    <TextView-->
     <!--        android:id="@+id/pbMessage"-->

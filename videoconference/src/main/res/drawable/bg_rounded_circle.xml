@@ -3,7 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
     <solid
-        android:color="@color/colorPrimary"/>
+        android:color="@color/colorPrimary_kia_kandid"/>
 
     <corners
         android:radius="@dimen/_10sdp"/>

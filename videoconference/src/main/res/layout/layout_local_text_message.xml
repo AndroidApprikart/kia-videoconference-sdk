@@ -38,7 +38,7 @@
             android:maxLines="1"
             android:minLines="1"
             android:text="gggggggggggggggggggggggg"
-            android:textColor="@color/colorPrimary"
+            android:textColor="@color/colorPrimary_kia_kandid"
             android:textSize="14sp"
             app:layout_constrainedWidth="true"
             app:layout_constraintHorizontal_bias="1.0"

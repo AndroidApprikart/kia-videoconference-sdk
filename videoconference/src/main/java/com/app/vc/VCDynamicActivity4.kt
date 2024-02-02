@@ -36,7 +36,6 @@ import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
@@ -428,7 +427,7 @@ class VCDynamicActivity4 : BaseActivity() {
         binding.fContainer.addView(publisherContainer)
 
 
-        binding.fContainer.setBackgroundColor(resources.getColor(R.color.colorPrimary))
+        binding.fContainer.setBackgroundColor(resources.getColor(R.color.colorPrimary_kia_kandid))
 
         if (isScreenLargeOrXlarge) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -2152,7 +2151,7 @@ class VCDynamicActivity4 : BaseActivity() {
 
 //        k.translationZ = 3F
 
-        binding.sContainer.setBackgroundColor(resources.getColor(R.color.colorPrimary))
+        binding.sContainer.setBackgroundColor(resources.getColor(R.color.colorPrimary_kia_kandid))
         for (i in binding.sContainer.children) {
             i.visibility = View.VISIBLE
             val k = i
