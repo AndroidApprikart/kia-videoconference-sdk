@@ -1,5 +1,6 @@
 package com.kia.vc.feedback
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build.VERSION_CODES.P
 import android.text.Editable
@@ -18,6 +19,7 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.R
+import kotlin.math.log
 
 
 private const val TAG = "FeedbackQuestionAdapter:"
@@ -79,7 +81,7 @@ class FeedbackQuestionAdapter(
 
                 dataList[position].comment = ""
                 holder.etComments.text.clear()
-                notifyItemChanged(position)
+//                notifyItemChanged(position)
 
             }
         }
@@ -93,7 +95,8 @@ class FeedbackQuestionAdapter(
             }
 
             override fun afterTextChanged(p0: Editable?) {
-                currentItem.comment = p0.toString()
+                Log.d(TAG, "afterTextChanged: position:  ${position}")
+                dataList[position].comment = p0.toString()
 
             }
 

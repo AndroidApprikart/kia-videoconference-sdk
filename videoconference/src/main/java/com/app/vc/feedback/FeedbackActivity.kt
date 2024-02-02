@@ -1,8 +1,12 @@
 package com.kia.vc.feedback
 
 import android.app.Dialog
+import android.content.Context
 import android.graphics.Color
+import android.graphics.Point
+import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.InputFilter
@@ -12,9 +16,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import android.window.OnBackInvokedCallback
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,6 +29,7 @@ import com.app.vc.utils.AndroidUtils
 import com.app.vc.R
 import com.app.vc.databinding.ActivityFeedbackBinding
 import com.app.vc.feedback.SurveyData
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.button.MaterialButton
 
 
@@ -36,6 +44,7 @@ class FeedbackActivity : AppCompatActivity() {
     var questionList  = ArrayList<ModifiedSurveyData>()
 
     val commentsMap: HashMap<Int, String> = HashMap()
+    private var isKeyboardOpen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,7 +75,87 @@ class FeedbackActivity : AppCompatActivity() {
         
         initializeRatingListener()
         initializeOnclickListener()
+        initializeOnbackPressedListener()
 
+        initKeyboardListener()
+
+    }
+
+
+    private fun initKeyboardListener() {
+        binding.keyboardListener.viewTreeObserver?.addOnGlobalLayoutListener {
+            val r = Rect()
+            binding.keyboardListener.getWindowVisibleDisplayFrame(r)
+            val screenHeight = binding.keyboardListener.rootView.height
+            val keypadHeight = screenHeight - r.bottom
+
+            if (keypadHeight > screenHeight * 0.15) { // 0.15 ratio is a reasonable threshold
+                if (!isKeyboardOpen) {
+                    isKeyboardOpen = true
+                    onKeyboardOpened()
+                }
+            } else {
+                if (isKeyboardOpen) {
+                    isKeyboardOpen = false
+                    onKeyboardClosed()
+                }
+            }
+        }
+    }
+
+    private fun onKeyboardOpened() {
+        // Handle keyboard open event
+        Log.d("Keyboard", "Keyboard opened")
+    }
+
+    private fun onKeyboardClosed() {
+        // Handle keyboard close event
+        Log.d("Keyboard", "Keyboard closed")
+    }
+    private fun initializeOnbackPressedListener() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+//                OnBackInvokedDispatcher.PRIORITY_DEFAULT
+//            ) {
+//                val id = navController.currentDestination?.id
+//                if (id == R.id.navi_home || id == R.id.nav_new_user_home)
+//                    CommonUtils.popToRoot(navController)
+//                else navController.popBackStack()
+//            }
+
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(1000, object:
+                OnBackInvokedCallback {
+                override fun onBackInvoked() {
+                    processVCActivityBackPress()
+                }
+            })
+
+        } else {
+            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    processVCActivityBackPress()
+                }
+            })
+        }
+    }
+
+    private fun processVCActivityBackPress() {
+        /*1.bottom menu dialog
+        * 2.screen share frag
+        * 3.sound device frag
+        * 4.participants frag
+        * 5.message frag
+        * 6.end vc call*/
+
+        if(isKeyboardOpen) {
+            hideKeyboard()
+            return
+        }
+    }
+
+    fun hideKeyboard() {
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(currentFocus?.windowToken, 0)
     }
 
 

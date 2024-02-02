@@ -17,6 +17,13 @@
         android:gravity="center_vertical"
         tools:context=".vc.feedback.FeedbackActivity">
 
+
+        <View
+            android:id="@+id/keyboard_listener"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"/>
+
         <ProgressBar
             android:id="@+id/pb_feed_back"
             android:layout_width="wrap_content"

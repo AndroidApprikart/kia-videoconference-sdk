@@ -102,7 +102,6 @@ import io.antmedia.webrtcandroidframework.StreamInfo
 import io.antmedia.webrtcandroidframework.WebRTCClient
 import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager.AudioDevice
 import io.antmedia.webrtcandroidframework.apprtc.CallActivity
-import io.sentry.Sentry
 import org.json.JSONException
 import org.json.JSONObject
 import org.webrtc.DataChannel
@@ -277,7 +276,7 @@ class VCDynamicActivity4 : BaseActivity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate: ")
 
-        Sentry.captureException(RuntimeException("This app uses Sentry. added on 31Jan2024:)"))
+//        Sentry.captureException(RuntimeException("This app uses Sentry. added on 31Jan2024:)"))
         if (intent.hasExtra("intent_for_reconnect")) {
             isIntentForReconnect = intent.getBooleanExtra("intent_for_reconnect", false)
 //            streamId = intent.getStringExtra("stream_id_in_use")
