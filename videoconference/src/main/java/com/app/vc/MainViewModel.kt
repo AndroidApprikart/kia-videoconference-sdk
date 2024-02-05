@@ -188,6 +188,8 @@ class MainViewModel : ViewModel() {
     var tempRoomInfo = ArrayList<String>()
     var unwantedStreams = ArrayList<String>()
 
+    var tempStreamIdToClearUI:String? = null
+
     //Added 09Jan2024
     var apiCallToSendWelcomeMessage = MutableLiveData<Boolean>(false)
     var isSendWelcomeMessageEnabled = MutableLiveData<Boolean>(true)
@@ -1164,6 +1166,7 @@ class MainViewModel : ViewModel() {
 
             override fun onFailure(call: Call<ResponseModelDeleteBroadcast?>, t: Throwable) {
                 toastMessage.value = "Failure.. deleteBroadcast.. ${t.message}"
+                Log.d(TAG, "onFailure: deleteBroadCast:  ${t.message}")
             }
         })
     }

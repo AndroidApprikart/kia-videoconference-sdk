@@ -9,7 +9,8 @@ import javax.crypto.spec.SecretKeySpec
 object VCConstants {
 
     // List of mandatory application permissions to be checked before starting VC conference
-    const val version = "3.8_test"
+//    const val version = "3.8_test"
+    const val version = "V_1.5_I"
 
 
 

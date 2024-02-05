@@ -14,7 +14,6 @@
         android:layout_width="match_parent"
         android:paddingVertical="@dimen/_10sdp"
         android:layout_height="wrap_content"
-
         android:theme="@style/Base.Theme.VideoConference">
 
         <com.google.android.material.textview.MaterialTextView

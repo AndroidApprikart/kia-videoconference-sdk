@@ -933,6 +933,11 @@ class VCDynamicActivity4 : BaseActivity() {
                     if (viewModel.screenShareStatus == false) {
                         viewModel.frontCamera = !viewModel.frontCamera
                         conferenceManager!!.switchCamera()
+                        if(viewModel.frontCamera) {
+                            publisherContainer!!.surfaceViewRenderer.setMirror(true)
+                        }else {
+                            publisherContainer!!.surfaceViewRenderer.setMirror(false)
+                        }
                     }
                 }
             }
@@ -2175,6 +2180,7 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun removeEndedContainer(leftContainer: RemotePeerView) {
+        Log.d(TAG, "removeEndedContainer: rejoinTest: ")
         var containerMargin = resources.getDimension(com.intuit.sdp.R.dimen._2sdp).toInt()
         if (leftContainer.parent == binding.fContainer) {
             Log.d(TAG, "removeEndedContainer: in the fContainer")
@@ -3422,8 +3428,11 @@ class VCDynamicActivity4 : BaseActivity() {
     }
 
     private fun rejoinConferenceRestartConference() {
+        Log.d(TAG, "rejoinConferenceRestartConference: testRejoin: publisherStreamId ${conferenceManager!!.streamId}")
+
         viewModel.isRejoinClicked = true
         viewModel.unwantedStreams.add(conferenceManager?.streamId!!)
+        viewModel.tempStreamIdToClearUI = conferenceManager?.streamId!!
         Log.d(TAG, "rejoinConferenceRestartConference: ")
         
         viewModel.rejoinInProgress = true
@@ -3513,6 +3522,89 @@ class VCDynamicActivity4 : BaseActivity() {
             }
         } else {
             internetLogHandler.removeCallbacks(logInternetSpeedRunnable)
+        }
+    }
+
+//    private fun removeHangingStateUI(streamId: String) {
+//        for(topEntry in trackRelMap) {
+////            Log.d(TAG, "removingHangingStateUI: streamId: ${streamId} : trackId:  ${entry.value}")
+//
+////            Log.d(TAG, "removeHangingStateUI: trackId:  ${entry.value}")
+////            Log.d(TAG, "removeHangingStateUI: streamId:  ${streamId}")
+////            Log.d(TAG, "removeHangingStateUI:       ")
+//            if(topEntry.value.toString().contains(streamId)!!) {
+//
+//
+//                for(trackObjectEntry in trackObjectRelMap) {
+//                    Log.d(TAG, "removeHangingStateUI: trackIdFromObject: ${trackObjectEntry.value?.id()}")
+//
+//                    if(topEntry.value.toString() == trackObjectEntry.value?.id()) {
+//                        Log.d(TAG, "removeHangingStateUI:  found:Track: true: ")
+//                        viewModel.tracks.remove(trackObjectEntry.value)
+//                        runOnUiThread {
+//                            var remotePeerViewFound: RelativeLayout? = null
+//                            for (entry in trackRelMap) {
+//                                if (trackObjectEntry.value!!.id().equals(entry.value)) {
+//                                    //remove this renderer
+//                                    remotePeerViewFound = entry.key
+//                                    removeEndedContainer(entry.key)//onVideoTrackEnded
+//                                    Log.d(TAG, "testRejoin: clearUI: onVideoTrackEnded: ")
+//                                    removeParticipant(trackObjectEntry.value!!)
+//                                    break
+//                                }
+//                            }
+//                            if (remotePeerViewFound != null) {
+//                                trackRelMap.remove(remotePeerViewFound)
+//                                trackObjectRelMap.remove(remotePeerViewFound)
+//                            }
+//                            displayRendererMap()
+//                        }
+//                    }
+//
+//                }
+//            }
+//        }
+//    }
+
+
+    private fun removeHangingStateUI(streamId: String) {
+        val topIterator = trackRelMap.iterator()
+
+        while (topIterator.hasNext()) {
+            val topEntry = topIterator.next()
+
+            if (topEntry.value.toString().contains(streamId)!!) {
+                val trackObjectIterator = trackObjectRelMap.iterator()
+
+                while (trackObjectIterator.hasNext()) {
+                    val trackObjectEntry = trackObjectIterator.next()
+                    Log.d(TAG, "removeHangingStateUI: trackIdFromObject: ${trackObjectEntry.value?.id()}")
+
+                    if (topEntry.value.toString() == trackObjectEntry.value?.id()) {
+                        Log.d(TAG, "removeHangingStateUI: found:Track: true:")
+                        viewModel.tracks.remove(trackObjectEntry.value)
+
+                        runOnUiThread {
+                            var remotePeerViewFound: RelativeLayout? = null
+                            for (entry in trackRelMap) {
+                                if (trackObjectEntry.value!!.id().equals(entry.value)) {
+                                    // remove this renderer
+                                    remotePeerViewFound = entry.key
+                                    removeEndedContainer(entry.key) // onVideoTrackEnded
+                                    Log.d(TAG, "testRejoin: clearUI: onVideoTrackEnded: ")
+                                    removeParticipant(trackObjectEntry.value!!)
+                                    break
+                                }
+                            }
+                            if (remotePeerViewFound != null) {
+                                topIterator.remove()
+                                trackObjectIterator.remove()
+                            }
+                            displayRendererMap()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -3650,8 +3742,21 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
                 
                 if(viewModel.isRejoinClicked) {
+                    Log.d(TAG, "onPublishStarted: childCount: fcontainer: childCount: ${binding.fContainer.childCount}")
+                    Log.d(TAG, "onPublishStarted: childCount: sContainer: childCount: ${binding.sContainer.childCount}")
+                    Log.d(TAG, "onPublishStarted: childCount: roomSize: ${viewModel.tempRoomInfo.size}")
+                    Log.d(TAG, "onPublishStarted: childCount: tracksSize: ${viewModel.tracks.size}")
+                    Log.d(TAG, "onPublishStarted: childCount: trackRelMapSize: ${trackRelMap.size}")
+                    removeHangingStateUI(viewModel.tempStreamIdToClearUI!!)
+
+//                    showProgressDialog()
+                    
                     //call a function handle unwnated streams
                     handleUnwnatedStreams(viewModel.unwantedStreams)
+//                    Handler().postDelayed( {
+//                       dismissProgressDialog()
+//                    },17000)
+
                 }
             }
 
@@ -3778,6 +3883,7 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun onNewVideoTrack(track: VideoTrack?) {
+                Log.d(TAG, "onNewVideoTrack: testRejoin: trackId: ${track?.id()}")
                 Log.d(TAG, "onNewVideoTrack: already in vm ${Gson().toJson(viewModel.tracks)}")
                 if(viewModel.isDevMode) {
                     runOnUiThread { viewModel.toastMessage.value = "New video track received" }
@@ -3878,6 +3984,7 @@ class VCDynamicActivity4 : BaseActivity() {
             }
 
             override fun onVideoTrackEnded(track: VideoTrack?) {
+                Log.d(TAG, "onVideoTrackEnded: testRejoin: ${track?.id()}")
                 viewModel.tracks.remove(track)
                 if(viewModel.isDevMode) {
                     viewModel.toastMessage.value = "Video track ended - ${track!!.id()}"
@@ -3905,7 +4012,8 @@ class VCDynamicActivity4 : BaseActivity() {
                         if (track!!.id().equals(entry.value)) {
                             //remove this renderer
                             remotePeerViewFound = entry.key
-                            removeEndedContainer(entry.key)
+                            removeEndedContainer(entry.key)//onVideoTrackEnded
+                            Log.d(TAG, "testRejoin: clearUI: onVideoTrackEnded: ")
                             removeParticipant(track)
                             break
                         }
@@ -4004,6 +4112,44 @@ class VCDynamicActivity4 : BaseActivity() {
 //        Log.d(TAG, "onCameraError: on camera error received -> CAM_TEST")
 //    }
         }
+    }
+    private fun clearUIForAStream(stream:String) {
+        Log.d(TAG, "clearUIForAStream: ")
+        try {
+            Log.d(TAG, "clearUIForAStream: trackSize: ${viewModel.tracks.size}")
+            for (track in viewModel.tracks) {
+                if (track.id().contains(stream)) {
+                    Log.d(TAG, "clearTrackList: track ID test100:  -> ${track.id()}")
+                    Log.d(TAG, "clearUIForAStream: contains track: ${track.id()}")
+
+                    viewModel.tracks.remove(track)
+
+                    Log.w(TAG, "onVideoTrackEnded - ${Gson().toJson(track)}")
+                    runOnUiThread {
+                        var remotePeerViewFound: RelativeLayout? = null
+                        for (entry in trackRelMap) {
+                            if (track!!.id().equals(entry.value)) {
+                                //remove this renderer
+                                remotePeerViewFound = entry.key
+                                removeEndedContainer(entry.key)//commented out
+                                removeParticipant(track)
+                                break
+                            }
+                        }
+                        if (remotePeerViewFound != null) {
+                            trackRelMap.remove(remotePeerViewFound)
+                            trackObjectRelMap.remove(remotePeerViewFound)
+                        }
+                        displayRendererMap()
+                    }
+                }else {
+                    Log.d(TAG, "clearUIForAStream: doesnotContainStream:")
+                }
+            }
+        }catch (e:Exception) {
+            Log.d(TAG, "clearUIForAStream: exception: found")
+        }
+        
     }
 
     private fun initDataChannelListener() {
@@ -4104,7 +4250,8 @@ class VCDynamicActivity4 : BaseActivity() {
             for (i in tempRemoteViews) {
                 viewModel.tracks.remove(trackObjectRelMap[i])
                 trackObjectRelMap[i]?.let { removeParticipant(it) }
-                removeEndedContainer(i)
+                removeEndedContainer(i) // remove only remove UIs
+                Log.d(TAG, "testRejoin: removeOnlyRemoteViews:")
                 trackObjectRelMap.remove(i)
 
             }
@@ -4165,7 +4312,7 @@ class VCDynamicActivity4 : BaseActivity() {
         for (i in extraStreams) {
             viewModel.tracks.remove(trackObjectRelMap[i])
             trackObjectRelMap[i]?.let { removeParticipant(it) }
-            removeEndedContainer(i)
+            removeEndedContainer(i)//commented out
             trackObjectRelMap.remove(i)
             trackRelMap.remove(i)
 

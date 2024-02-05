@@ -42,7 +42,8 @@
             android:name="com.app.vc.VCDynamicActivity4"
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Base.Theme.VideoConference">
 <!--                            <intent-filter>-->
 <!--                                <action android:name="android.intent.action.MAIN" />-->
 
