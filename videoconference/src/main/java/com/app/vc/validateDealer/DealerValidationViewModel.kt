@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit
 private const val TAG = "DealerValidationViewModel:"
 class DealerValidationViewModel:ViewModel() {
     var toastString = MutableLiveData<String>()
+    var isProgressBarVisible = MutableLiveData<Boolean>(false)
+    var isContinueButtonClickable = MutableLiveData<Boolean>(true)
 
     var roomId:String? = null
     var serviceAdvisorID:String? = null
@@ -69,6 +71,8 @@ class DealerValidationViewModel:ViewModel() {
                 if(response.code() in 200 .. 299) {
                     validateDealerCodeResponse.value = response.body()
                 }else {
+                    isProgressBarVisible.value = false
+                    isContinueButtonClickable.value = true
                     toastString.value = "Something went wrong.responseCode.DealerCodeValidation"
                 }
             }
@@ -76,6 +80,8 @@ class DealerValidationViewModel:ViewModel() {
             override fun onFailure(call: Call<ResponseModelValidateDealerCode?>, t: Throwable) {
                 Log.d(TAG, "onFailure: validateDealerCode: ")
                 toastString.value = "Something went wrong.Failure.DealerCodeValidation."
+                isProgressBarVisible.value = false
+                isContinueButtonClickable.value = true
             }
         })
     }

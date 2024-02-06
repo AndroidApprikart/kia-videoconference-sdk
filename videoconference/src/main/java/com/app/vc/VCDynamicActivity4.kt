@@ -20,10 +20,12 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.net.wifi.WifiManager
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
@@ -143,6 +145,7 @@ class VCDynamicActivity4 : BaseActivity() {
     private var count = 0
 
     private lateinit var reconnectionVCDialog: Dialog
+    private lateinit var powerSavingDialog:Dialog
 
     /*for bottom more options bar*/
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<LinearLayout>
@@ -182,6 +185,20 @@ class VCDynamicActivity4 : BaseActivity() {
 //                        }
                     }
                 }
+            }
+        }
+    }
+    private var powerSavingModeChangeListner = object :BroadcastReceiver() {
+        override fun onReceive(p0: Context?, p1: Intent?) {
+            val isPowerSavingEnabled = intent.getBooleanExtra(BatteryManager.EXTRA_PLUGGED, false)
+            // Update your activity based on the power saving mode change
+            Log.d(TAG, "onReceive: powerSavingMode : ${checkIfPowerSavingModeIsOn()}")
+//            checkIfPowerSavingModeIsOn()
+
+            if(checkIfPowerSavingModeIsOn()) {
+                showPowerSavingDialog()
+            }else {
+                dismissPowerSavingDialog()
             }
         }
     }
@@ -232,8 +249,9 @@ class VCDynamicActivity4 : BaseActivity() {
 
             // Network connection is lost. You might want to handle this event and stop your video conference.
             Log.d(TAG, "onLost: NETWORK_TEST")
-            showInternetLostDialog()
-
+            runOnUiThread {
+                showInternetLostDialog()
+            }
         }
 
         // Network is no longer valid, such as the user turning off cellular data or the network disappearing from under the device.
@@ -318,6 +336,10 @@ class VCDynamicActivity4 : BaseActivity() {
         initKeyboardListener()
 
     }
+    private fun checkIfPowerSavingModeIsOn():Boolean {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return powerManager.isPowerSaveMode
+    }
     // Function to check is keyboard is open or close when onBackPressed is triggered.
     private fun initKeyboardListener() {
         binding.keyboardListener.viewTreeObserver?.addOnGlobalLayoutListener {
@@ -379,6 +401,9 @@ class VCDynamicActivity4 : BaseActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     private fun init() {
         progressDialog = AndroidUtils.progressDialog(this)
+        var intentFilterPowerSave= IntentFilter()
+        intentFilterPowerSave.addAction("android.os.action.POWER_SAVE_MODE_CHANGED")
+        registerReceiver(powerSavingModeChangeListner,intentFilterPowerSave, Context.RECEIVER_NOT_EXPORTED)
 
 
 
@@ -1077,6 +1102,9 @@ class VCDynamicActivity4 : BaseActivity() {
         conferenceManager =null
         if (customSDKBroadcastReceiver != null) {
             unregisterReceiver(customSDKBroadcastReceiver)
+        }
+        if(powerSavingModeChangeListner!=null) {
+            unregisterReceiver(powerSavingModeChangeListner)
         }
         viewModel.isInitialConferenceStarted = false
         clearSendStatusSchedule()
@@ -1992,7 +2020,41 @@ class VCDynamicActivity4 : BaseActivity() {
         Log.d(TAG, "initTelephonyManagerListener: end")
 
     }
+    private fun showPowerSavingDialog() {
+        if(this::powerSavingDialog.isInitialized){
+            if(powerSavingDialog.isShowing) {
+                powerSavingDialog.dismiss()
+            }
+        }
+        powerSavingDialog = Dialog(this)
+        powerSavingDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
+        powerSavingDialog.setContentView(dialogBinding.root)
+        powerSavingDialog.setCancelable(false)
+        powerSavingDialog.setCanceledOnTouchOutside(false)
+        powerSavingDialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialogBinding.tvDialogTitle.text  = "Power Saving Mode: ON!!!!"
+        dialogBinding.tvDialogMessage.text = "Please disable power saving mode as it might effect the normal functionalties of VC"
+        dialogBinding.btnNegative.visibility = View.GONE
+        dialogBinding.btnPositive.text = "Okay"
+        dialogBinding.btnPositive.setOnClickListener {
+            powerSavingDialog.dismiss()
+        }
 
+        powerSavingDialog.show()
+
+    }
+
+    private fun dismissPowerSavingDialog() {
+        if(this::powerSavingDialog.isInitialized){
+            if(powerSavingDialog.isShowing) {
+                powerSavingDialog.dismiss()
+            }
+        }
+    }
 
     private fun showReconnectionVCDialog() {
         Log.d(TAG, "showReconnectionVCDialog: ")

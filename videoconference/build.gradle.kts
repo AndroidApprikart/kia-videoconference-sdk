@@ -59,7 +59,7 @@ dependencies {
     implementation ("com.squareup.okhttp3:logging-interceptor:4.9.1")
     implementation ("com.squareup.retrofit2:retrofit:2.9.0")
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
-//    implementation ("io.sentry:sentry-android:5.0.1")
+    implementation ("io.sentry:sentry-android:5.0.1")
     implementation("com.intuit.ssp:ssp-android:1.1.0")
 
 //    Differences in version

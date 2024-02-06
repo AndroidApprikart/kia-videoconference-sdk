@@ -17,12 +17,14 @@ import androidx.core.view.isVisible
 import androidx.databinding.DataBindingUtil
 import com.app.vc.R
 import com.app.vc.VCDynamicActivity4
+import com.app.vc.baseui.BaseActivity
 import com.app.vc.databinding.ActivityDealerValidationBinding
 import com.app.vc.databinding.LayoutDialogConfirmationBinding
 import com.app.vc.databinding.LayoutUniversalDialogBinding
+import com.app.vc.utils.AndroidUtils
 
 
-class DealerValidationActivity : AppCompatActivity() {
+class DealerValidationActivity : BaseActivity() {
     lateinit var viewModel: DealerValidationViewModel
     lateinit var binding: ActivityDealerValidationBinding
     private var isScreenLargeOrXlarge: Boolean = false
@@ -76,11 +78,23 @@ class DealerValidationActivity : AppCompatActivity() {
 
     private fun initializeOnClickListeners() {
         binding.btnContinueToVc.setOnClickListener {
+            viewModel.isProgressBarVisible.value = true
+            viewModel.isContinueButtonClickable.value = false
             checkIfPowerSavingModeIsOn()
             if(!isPowerSavingModeOn) {
-                viewModel.validateDealerCode()
+                if(AndroidUtils.isNetworkOnLine(this)) {
+                    viewModel.validateDealerCode()
+                }else {
+                    viewModel.isProgressBarVisible.value = false
+                    viewModel.isContinueButtonClickable.value = true
+                    viewModel.toastString.value = "No Internet Connection"
+                }
+
             }else {
+                viewModel.isProgressBarVisible.value = false
+                viewModel.isContinueButtonClickable.value = true
                 viewModel.toastString.value = "Please turn off powerSaving mode."
+
             }
 
         }
@@ -90,9 +104,26 @@ class DealerValidationActivity : AppCompatActivity() {
         viewModel.toastString.observe(this) {
             Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
         }
+        viewModel.isProgressBarVisible.observe(this) {
+            if(it) {
+                showProgressDialog()
+            }else {
+                dismissProgressDialog()
+            }
+        }
+        viewModel.isContinueButtonClickable.observe(this) {
+            if(true) {
+                binding.btnContinueToVc.isEnabled = true
+                binding.btnContinueToVc.isClickable= true
+            }else {
+                binding.btnContinueToVc.isEnabled = false
+                binding.btnContinueToVc.isClickable= false
+            }
+        }
     }
 
     private fun init() {
+        progressDialog = AndroidUtils.progressDialog(this)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_dealer_validation)
         viewModel = DealerValidationViewModel()
         binding.dealerValidationVM = viewModel
@@ -105,6 +136,7 @@ class DealerValidationActivity : AppCompatActivity() {
             if (it != null) {
                 when (it.status) {
                     "success" -> {
+
                         startVCScreen(
                             context = this,
                             meetingCode =viewModel.roomId ,
@@ -121,6 +153,8 @@ class DealerValidationActivity : AppCompatActivity() {
                         )
                     }
                     else -> {
+                        viewModel.isProgressBarVisible.value = false
+                        viewModel.isContinueButtonClickable.value = true
                         showDealerValidationResponseDialog()
 //                        showConfirmationDialog(
 //                            this,
@@ -134,6 +168,8 @@ class DealerValidationActivity : AppCompatActivity() {
                     }
                 }
             } else {
+                viewModel.isProgressBarVisible.value = false
+                viewModel.isContinueButtonClickable.value = true
                 viewModel.toastString.value = "Something went wrong.NullResponse.DealerValidation"
             }
         }
@@ -279,6 +315,7 @@ class DealerValidationActivity : AppCompatActivity() {
         intent.putExtra("customerName", viewModel.customerName)
         intent.putExtra("customerPhoneNumber",viewModel.customerPhoneNumber)
 
+        viewModel.isProgressBarVisible.value = false
         finish()
         startActivity(intent)
 
