@@ -177,7 +177,7 @@ class MainViewModel : ViewModel() {
 
 
     var saveMessageList  =  MutableLiveData<kotlin.collections.ArrayList<ChatModelItem>>()
-    var isInPhoneCall = MutableLiveData<Boolean>()
+    var isInPhoneCall = MutableLiveData<Boolean>(false)
     var isPhoneCallEnded = MutableLiveData<Boolean>()
     var isPhoneCallStarted = MutableLiveData<Boolean>()
 
@@ -942,6 +942,10 @@ class MainViewModel : ViewModel() {
                         toastMessage.value = "Something went wrong.responseCode.UpdateVcStatus"
                     }
                 } else {
+                    updateVcStatusResponse.value = ModifiedResponseUpdateVcStatus(
+                        null,
+                        false
+                    )
                     isProgressBarVisible.value = false
                     toastMessage.value = "Null Response.UpdateVCStatus"
                 }
@@ -1083,7 +1087,13 @@ class MainViewModel : ViewModel() {
                     if(response.body()!=null) {
                         Log.d(TAG, "updateStatusResponse: onResponse: ")
                         updateEstimationStatusResponse.value = response.body()
+                    }else {
+                        isProgressBarVisible.value = false
+                        toastMessage.value = "Null response. update Estimation Status."
                     }
+                }else {
+                    isProgressBarVisible.value = false
+                    toastMessage.value = "Response Code. update Estimation Status."
                 }
             }
 

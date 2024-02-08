@@ -1501,7 +1501,7 @@ public class WebRTCClient implements IWebRTCClient, AntMediaSignallingEvents, ID
                     disableVideo();
                     enableVideo();
                 }
-            }, 2000);
+            }, 1000);
         }
     }
 

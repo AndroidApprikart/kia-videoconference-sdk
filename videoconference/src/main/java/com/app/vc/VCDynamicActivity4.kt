@@ -2,8 +2,11 @@ package com.app.vc
 
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlarmManager
 import android.app.Dialog
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -51,6 +54,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.app.vc.utils.VCConstants.CAMERA_STATUS
 import com.app.vc.utils.VCConstants.CAM_TURNED_OFF
 import com.app.vc.utils.VCConstants.CAM_TURNED_ON
@@ -112,6 +116,9 @@ import org.webrtc.VideoTrack
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
 
 
 class VCDynamicActivity4 : BaseActivity() {
@@ -288,6 +295,49 @@ class VCDynamicActivity4 : BaseActivity() {
         }
     }
 
+    private val receiver = object : BroadcastReceiver() {
+        @SuppressLint("RestrictedApi")
+        override fun onReceive(context: Context, intent: Intent) {
+            // Display the Snackbar or perform UI-related tasks
+//            val rootView = findViewById<View>(android.R.id.content)
+//            val snackbar = Snackbar.make(rootView, "Your VC is about to end in 5 mins.", Snackbar.LENGTH_SHORT)
+//            snackbar.show()
+
+
+//            Working logic for snackbar commented
+
+
+            val rootView = findViewById<View>(android.R.id.content)
+
+            // Inflate the custom layout for the Snackbar
+            val customView = LayoutInflater.from(applicationContext).inflate(R.layout.layout_snack_bar_message_item, null)
+
+            // Find the TextView in the custom layout and set the message
+            val messageTextView: TextView = customView.findViewById(R.id.tv_snack_bar_message)
+            messageTextView.text = "Your VC is about to end in 5 mins."
+
+            // Create a Snackbar with a long duration (you can adjust the duration as needed)
+            val snackbar = Snackbar.make(rootView, "", Snackbar.LENGTH_LONG)
+
+            // Set the custom view as the Snackbar's view
+            val snackbarLayout = snackbar.view as Snackbar.SnackbarLayout
+            snackbarLayout.addView(customView, 0)
+
+            snackbar.show()
+
+//            showConfirmationDialog(
+//                context = context,
+//                isCancelable = false,
+//                isCancelButtonVisible = false,
+//                title = "Warning",
+//                message = "Your VC is about to end in 5 mins."
+//            ) {
+//                Log.d(TAG, "onReceive: ")
+//            }
+
+
+        }
+    }
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -326,6 +376,8 @@ class VCDynamicActivity4 : BaseActivity() {
 
         sContainerSizePortrait= resources.getDimension(com.intuit.sdp.R.dimen._100sdp).toInt()
         sContainerSizeLandscape= resources.getDimension(com.intuit.sdp.R.dimen._70sdp).toInt()
+
+        binding.groupPipHide.visibility = View.VISIBLE
         init()
         showProgressDialog()
         viewModelObservers()
@@ -463,6 +515,77 @@ class VCDynamicActivity4 : BaseActivity() {
         }
 
 
+
+
+    }
+    private fun calculateNotificationTime(endTime:Long): Pair<Int, Int> {
+        Log.d(TAG, "endVcNotification: calculateNotificationTime: ")
+        Log.d(TAG, "endVcNotification: calculateNotificationTime: endTime: Long : ${endTime} ")
+        val hours = (endTime / (60 * 60 * 1000)).toInt()
+        val minutes = ((endTime % (60 * 60 * 1000)) / (60 * 1000)).toInt()
+
+        Log.d(TAG, "endVcNotification: calculateNotificationTime: endTime: hours&mins: ${hours} : ${minutes}")
+
+
+        val notificationTime = endTime - (5 * 60 * 1000) // Subtract 5 minutes
+        Log.d(TAG, "endVcNotification: calculateNotificationTime: notificationTime: long : ${notificationTime}")
+
+        val notificationHours = (notificationTime / (60 * 60 * 1000)).toInt()
+        val notificationMins = ((notificationTime % (60 * 60 * 1000)) / (60 * 1000)).toInt()
+        Log.d(TAG, "endVcNotification: calculateNotificationTime: notificationTime: hours&mins: ${notificationHours}: ${notificationMins}")
+        return Pair(notificationHours,notificationMins)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun convertTimeToMilliseconds(timeString: String): Long {
+        val formatter = DateTimeFormatter.ofPattern("HH:mm")
+        val localTime = LocalTime.parse(timeString, formatter)
+        val totalSeconds = (localTime.hour * 3600) + (localTime.minute * 60) + localTime.second
+        return totalSeconds * 1000L
+    }
+
+    class AlarmReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            // Display the toast message
+//            Log.d("test45:", "onReceive: Its Time ")
+//            Toast.makeText(context, "VC is about to end in 5 minutes", Toast.LENGTH_SHORT).show()
+//          val broadcastIntent = Intent("MY_ACTION")
+//        LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent)
+
+
+            val broadcastIntent = Intent("MY_ACTION")
+            LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent)
+
+//            // Display the snackbar
+//            val snackbar = Snackbar.make(rootView, "VC is about to end in 5 minutes", Snackbar.LENGTH_SHORT)
+//            snackbar.show()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun setUpVcEndNotification(hours:Int, minutes:Int) {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(this, AlarmReceiver::class.java)
+
+        val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, hours)
+        calendar.set(Calendar.MINUTE, minutes)
+        calendar.set(Calendar.SECOND, 0)
+
+        val currentTime = Calendar.getInstance()
+        if (calendar.before(currentTime)) {
+            // If the specified time has already passed for today,
+            // schedule the alarm for the next day.
+            calendar.add(Calendar.DATE, 1)
+        }
+
+        alarmManager.setExact(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            pendingIntent
+        )
     }
 
     private fun viewModelObservers() {
@@ -1085,6 +1208,7 @@ class VCDynamicActivity4 : BaseActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume: ")
+        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, IntentFilter("MY_ACTION"))
     }
 
     override fun onPause() {
@@ -1529,6 +1653,7 @@ class VCDynamicActivity4 : BaseActivity() {
             if (isForRejoin) { //if rejoining conference
                 viewModel.rejoinInProgress = false
                 joinConference()
+                setUpEndTimeListener()
                 Log.d(TAG, "initConferenceManager: afterrejoin: conferenceManagerVideoOn : ${conferenceManager!!.isPublisherVideoOn}")
                 Log.d(TAG, "initConferenceManager: afterrejoin: localVideoON : ${viewModel.localVideo}")
                 Log.d(TAG, "initConferenceManager: afterrejoin: conferenceManagerAudioOn : ${conferenceManager!!.isPublisherAudioOn}")
@@ -1685,6 +1810,20 @@ class VCDynamicActivity4 : BaseActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun setUpEndTimeListener() {
+        if(!viewModel.vcEndTime.isNullOrEmpty()) {
+            var hoursAndMinutes = calculateNotificationTime(
+                convertTimeToMilliseconds(viewModel.vcEndTime!!)
+            )
+            Log.d(TAG, "joinConference: testVCEndTime : ${hoursAndMinutes.first}")
+            Log.d(TAG, "joinConference: testVCEndTime : ${hoursAndMinutes.second}")
+            setUpVcEndNotification(hoursAndMinutes.first,hoursAndMinutes.second)
+        }else {
+            Log.d(TAG, "testVCEndTime: ${viewModel.vcEndTime}")
+        }
+    }
+
 //    private fun showJoinVCRoomDialog() {
 //        Log.d(TAG, "showJoinVCRoomDialog: ")
 //        if (this::joinVCDialog.isInitialized) {
@@ -1782,6 +1921,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 Log.d(TAG, "openJoinVCRoomDialog: internetPresent: ")
                 joinVCDialog.dismiss()
                 joinConference()
+                setUpEndTimeListener()
                 showProgressDialog()
             } else {
                 Log.d(TAG, "openJoinVCRoomDialog: internetNotPresent: ")
@@ -4540,12 +4680,16 @@ class VCDynamicActivity4 : BaseActivity() {
         }
         val textMessage = json.getString(VCConstants.TEXT_MESSAGE_VALUE)?:""
 //                var displayName = ""
-        val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+        val displayName = json.optString(VCConstants.DISPLAY_NAME)?:""
         viewModel.toastMessage.value = "${displayName} messaged You"
         val remoteMessageId = AndroidUtils.getCurrentTimeInMill()
         Log.d(TAG, "onMessage: displayName: $displayName")
         val tempRemoteMessage = MessageModel(
-            displayName,
+            if(displayName.isNotEmpty()) {
+                displayName
+            }else {
+                getDisplayNameFromParticipantList(streamId!!)?:""
+            },
             textMessage,
             false,
             TEXT_MESSAGE,
@@ -4568,14 +4712,18 @@ class VCDynamicActivity4 : BaseActivity() {
 
         val textMessage = json.optString(VCConstants.TEXT_MESSAGE_VALUE)
 //                var displayName = ""
-        val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+        val displayName = json.optString(VCConstants.DISPLAY_NAME)?:""
         viewModel.toastMessage.value = "${displayName} messaged You"
         val fileName = json.getString(VCConstants.FILE_NAME)?:""
         val serverFilePath = json.getString(VCConstants.SERVER_FILE_PATH)?:""
         Log.d(TAG, "onMessage: displayName: $displayName")
         val remoteMessageId = AndroidUtils.getCurrentTimeInMill()
         val tempRemoteMessage = MessageModel(
-            displayName,
+            if(displayName.isNotEmpty()) {
+                displayName
+            }else {
+                getDisplayNameFromParticipantList(streamId!!)?:""
+            },
             textMessage,
             false,
             FILE_MESSAGE,
@@ -4607,11 +4755,15 @@ class VCDynamicActivity4 : BaseActivity() {
 // Use Gson to parse the JSON string into ResponseModelEstimateData
 
 
-            val displayName = json.getString(VCConstants.DISPLAY_NAME)?:""
+            val displayName = json.optString(VCConstants.DISPLAY_NAME)?:""
             viewModel.toastMessage.value = "${displayName} messaged You"
             val remoteMessageId = AndroidUtils.getCurrentTimeInMill()
             val tempRemoteMessage = MessageModel(
-                displayName,
+                if(displayName.isNotEmpty()) {
+                    displayName
+                }else {
+                    getDisplayNameFromParticipantList(streamId!!)?:""
+                },
                 "",
                 false,
                 ESTIMATION_MESSAGE,
@@ -4630,6 +4782,19 @@ class VCDynamicActivity4 : BaseActivity() {
             Log.d(TAG, "processEstimationMessageFromDataChannel: testRemoteEstimate: ${e.message}")
         }
         
+    }
+
+    private fun getDisplayNameFromParticipantList(streamId: String):String? {
+        var displayName: String? = null
+
+        for(participant in viewModel.participants){
+            if(participant.streamId == streamId) {
+                displayName = participant.displayName
+                break
+            }
+        }
+
+        return displayName
     }
 
 
