@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -22,9 +23,11 @@ import io.antmedia.webrtcandroidframework.apprtc.AppRTCAudioManager
 class SoundDeviceFragment : BottomSheetDialogFragment() {
 
     val TAG= "SoundDeviceFragment::"
-    private val viewModel: SoundDeviceViewModel by viewModels()
-    private val sharedViewModel: MainViewModel by activityViewModels()
+//    private val viewModel: SoundDeviceViewModel by viewModels()
+//    private val sharedViewModel: MainViewModel by activityViewModels()
 
+    lateinit var viewModel: SoundDeviceViewModel
+    lateinit var sharedViewModel: MainViewModel
 
     private lateinit var binding: FragmentSoundDeviceBinding
 
@@ -57,6 +60,12 @@ class SoundDeviceFragment : BottomSheetDialogFragment() {
 //
         binding =
             DataBindingUtil.inflate(inflater, R.layout.fragment_sound_device, container, false)
+
+//        fragmentViewModel = ViewModelProvider(this).get(MyFragmentViewModel::class.java)
+//        sharedViewModel = ViewModelProvider(requireActivity()).get(MySharedViewModel::class.java)
+
+        viewModel = ViewModelProvider(this).get(SoundDeviceViewModel::class.java)
+        sharedViewModel = ViewModelProvider(requireActivity()).get(MainViewModel::class.java)
         binding.soundDeviceVM = viewModel
         binding.lifecycleOwner = this
 

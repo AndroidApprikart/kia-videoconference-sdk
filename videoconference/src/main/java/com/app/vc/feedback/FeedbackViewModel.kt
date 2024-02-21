@@ -54,7 +54,7 @@ class FeedbackViewModel:ViewModel() {
     private var service: ApiInterface =
         Retrofit.Builder()
             .baseUrl(ApiDetails.BASE_URL)
-            .client(okhttp)
+//            .client(okhttp)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(ApiInterface::class.java)
@@ -132,7 +132,7 @@ class FeedbackViewModel:ViewModel() {
         var service: ApiInterface =
             Retrofit.Builder()
                 .baseUrl(baseUrl)
-                .client(okhttp)
+//                .client(okhttp)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build()
                 .create(ApiInterface::class.java)

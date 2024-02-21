@@ -5173,30 +5173,30 @@ class VCDynamicActivity4 : BaseActivity() {
 //                         viewModel.userName = "9136388890"
 //                    }
 
-//                    VCConstants.UserType.SERVICE_PERSON.value -> {
-//                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
-//                         viewModel.roomID = "QF2O5ZIVYN"
-//                         viewModel.serviceAdvisorID = "EUP3070025"
-//                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
-//                        viewModel.meetingPasscode = "17498"
-//                         viewModel.customerCode = "C2019070005"
-//                         viewModel.dealerCode = "UP307"
-//                         viewModel.roNo = "R202300212"
-//                         viewModel.displayName = "Android Service Advisor 2"
-//                    }
-//
-//                    else -> {
-//                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
-//                         viewModel.roomID = "QF2O5ZIVYN"
-//                         viewModel.serviceAdvisorID = "EUP3070025"
-//                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
-//                        viewModel.meetingPasscode = "17498"
-//                         viewModel.customerCode = "C2019070005"
-//                         viewModel.dealerCode = "UP307"
-//                         viewModel.roNo = "R202300212"
-//                         viewModel.displayName = "Android Customer"
-//                         viewModel.userName = "9136388890"
-//                    }
+                    VCConstants.UserType.SERVICE_PERSON.value -> {
+                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
+                         viewModel.roomID = "QF2O5ZIVYN"
+                         viewModel.serviceAdvisorID = "EUP3070025"
+                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+                        viewModel.meetingPasscode = "17498"
+                         viewModel.customerCode = "C2019070005"
+                         viewModel.dealerCode = "UP307"
+                         viewModel.roNo = "R202300212"
+                         viewModel.displayName = "Android Service Advisor 2"
+                    }
+
+                    else -> {
+                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
+                         viewModel.roomID = "QF2O5ZIVYN"
+                         viewModel.serviceAdvisorID = "EUP3070025"
+                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
+                        viewModel.meetingPasscode = "17498"
+                         viewModel.customerCode = "C2019070005"
+                         viewModel.dealerCode = "UP307"
+                         viewModel.roNo = "R202300212"
+                         viewModel.displayName = "Android Customer"
+                         viewModel.userName = "9136388890"
+                    }
 
 
 //                    VCConstants.UserType.SERVICE_PERSON.value -> {
@@ -5224,36 +5224,36 @@ class VCDynamicActivity4 : BaseActivity() {
 //                        viewModel.userName = "9136388890"
 //                    }
 
-                    VCConstants.UserType.SERVICE_PERSON.value -> {
-                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
-                        viewModel.roomID = "DWYCQUNC0T"
-                        viewModel.serviceAdvisorID = "EUP3070025"
-                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
-                        viewModel.meetingPasscode = "34232"
-                        viewModel.customerCode = "C2019070005"
-                        viewModel.dealerCode = "UP307"
-                        viewModel.roNo = "R202300212"
-                        viewModel.displayName = "Android Service Advisor 2"
-                        viewModel.callType = "WC"
-                        viewModel.customerName = "Suneel"
-                        viewModel.customerPhoneNumber = "8105082480"
-                    }
-
-                    else -> {
-                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
-                        viewModel.roomID = "DWYCQUNC0T"
-                        viewModel.serviceAdvisorID = "EUP3070025"
-                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
-                        viewModel.meetingPasscode = "34232"
-                        viewModel.customerCode = "C2019070005"
-                        viewModel.dealerCode = "UP307"
-                        viewModel.roNo = "R202300212"
-                        viewModel.displayName = "Android Customer 2"
-                        viewModel.userName = "9136388890"
-                        viewModel.callType = ""
-                        viewModel.customerName = ""
-                        viewModel.customerPhoneNumber = ""
-                    }
+//                    VCConstants.UserType.SERVICE_PERSON.value -> {
+//                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
+//                        viewModel.roomID = "DWYCQUNC0T"
+//                        viewModel.serviceAdvisorID = "EUP3070025"
+//                        viewModel.userType = VCConstants.UserType.SERVICE_PERSON.value
+//                        viewModel.meetingPasscode = "34232"
+//                        viewModel.customerCode = "C2019070005"
+//                        viewModel.dealerCode = "UP307"
+//                        viewModel.roNo = "R202300212"
+//                        viewModel.displayName = "Android Service Advisor 2"
+//                        viewModel.callType = "WC"
+//                        viewModel.customerName = "Suneel"
+//                        viewModel.customerPhoneNumber = "8105082480"
+//                    }
+//
+//                    else -> {
+//                        PreferenceManager.setBaseUrl("http://10.107.11.242:7001/kiakandit/")
+//                        viewModel.roomID = "DWYCQUNC0T"
+//                        viewModel.serviceAdvisorID = "EUP3070025"
+//                        viewModel.userType = VCConstants.UserType.CUSTOMER.value
+//                        viewModel.meetingPasscode = "34232"
+//                        viewModel.customerCode = "C2019070005"
+//                        viewModel.dealerCode = "UP307"
+//                        viewModel.roNo = "R202300212"
+//                        viewModel.displayName = "Android Customer 2"
+//                        viewModel.userName = "9136388890"
+//                        viewModel.callType = ""
+//                        viewModel.customerName = ""
+//                        viewModel.customerPhoneNumber = ""
+//                    }
 
 //                    VCConstants.UserType.SERVICE_PERSON.value -> {
 //                        PreferenceManager.setBaseUrl("https://kialinkd-qa.kiaindia.net/dev/")
@@ -5337,6 +5337,9 @@ class VCDynamicActivity4 : BaseActivity() {
              viewModel.kecName = viewModel.userType!!
         }
         PreferenceManager.setUserType(viewModel.userType!!)
+        if(viewModel.userType== VCConstants.UserType.CUSTOMER.value) {
+            binding.btnScreenShare?.visibility = View.GONE
+        }
 
         Log.d(TAG, "room ID :: ${ viewModel.roomID}")
         Log.d(TAG, "server URL :: ${viewModel.serverUrl}")
@@ -5346,6 +5349,7 @@ class VCDynamicActivity4 : BaseActivity() {
         Log.d(TAG, "customerCode :: ${ viewModel.customerCode}")
         Log.d(TAG, "dealerCode :: ${ viewModel.dealerCode}")
         Log.d(TAG, "roNo :: ${ viewModel.roNo.toString()}")
+
 
         /*saving roomID in viewModel*/
 //         viewModel.roomId =  viewModel.roomID!!

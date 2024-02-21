@@ -10,7 +10,7 @@ object VCConstants {
 
     // List of mandatory application permissions to be checked before starting VC conference
 //    const val version = "3.8_test"
-    const val version = "v_3.9_08Feb2024_debug"
+    const val version = "v_4.0"
 
 
 

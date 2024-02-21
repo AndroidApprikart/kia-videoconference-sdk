@@ -17,6 +17,7 @@ import androidx.core.view.isVisible
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.app.vc.utils.AndroidUtils
 import com.app.vc.MainViewModel
@@ -27,6 +28,7 @@ import com.app.vc.baseui.BaseFragment
 import com.app.vc.databinding.FragmentMessageBinding
 import com.app.vc.databinding.LayoutUniversalDialogBinding
 import com.app.vc.models.MessageModel
+import com.app.vc.soundDevice.SoundDeviceViewModel
 import com.app.vc.utils.ApiDetails
 import com.google.gson.Gson
 import com.kia.vc.message.Labour
@@ -41,8 +43,11 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
     PartListAdapter.OnPartCheckboxSelectedListener {
 
     override val TAG= "MessageFragment::"
-    private val viewModel: MessageViewModel by viewModels()
-    private val sharedViewModel: MainViewModel by activityViewModels()
+//    private val viewModel: MessageViewModel by viewModels()
+//    private val sharedViewModel: MainViewModel by activityViewModels()
+
+    lateinit var viewModel: MessageViewModel
+    lateinit var sharedViewModel: MainViewModel
 
 
     private lateinit var binding: FragmentMessageBinding
@@ -89,6 +94,9 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
 //
         binding =
             DataBindingUtil.inflate(inflater, R.layout.fragment_message, container, false)
+
+        viewModel = ViewModelProvider(this).get(MessageViewModel::class.java)
+        sharedViewModel = ViewModelProvider(requireActivity()).get(MainViewModel::class.java)
         binding.messageVM = viewModel
         binding.lifecycleOwner = this
 
@@ -141,6 +149,16 @@ class MessageFragment : BaseFragment(), MessageClickListener, LabourListAdapter.
             }
         }else {
             sharedViewModel.toastMessage.value = "Call type is null"
+            binding.ivSendWelcomeMessage?.visibility = View.GONE
+            binding.es.visibility = View.VISIBLE
+            if(PreferenceManager.getuserType() == "customer") {
+                binding.btnSaveChat?.visibility = View.GONE
+                binding.es.visibility = View.GONE
+            }else if(PreferenceManager.getuserType() == "SERVICE_PERSON") {
+                if(sharedViewModel.roNo.isNullOrEmpty()) {
+                    binding.es.visibility = View.GONE
+                }
+            }
         }
 
         sharedViewModel.isSendWelcomeMessageEnabled.observe(viewLifecycleOwner) {

@@ -41,7 +41,7 @@ class RetrofitClient {
     fun <Api> buildApi(api: Class<Api>):Api {
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .client(okhttp)
+//            .client(okhttp)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(api)
@@ -50,7 +50,7 @@ class RetrofitClient {
     fun getRetrofitClient(baseURL:String): Retrofit {
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .client(okhttp)
+//            .client(okhttp)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }

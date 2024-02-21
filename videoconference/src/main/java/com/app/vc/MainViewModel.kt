@@ -1195,7 +1195,7 @@ class MainViewModel : ViewModel() {
         var service: ApiInterface =
             Retrofit.Builder()
                 .baseUrl(baseUrl)
-                .client(okhttp)
+//                .client(okhttp)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build()
                 .create(ApiInterface::class.java)

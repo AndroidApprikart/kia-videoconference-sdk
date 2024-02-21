@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -24,8 +25,11 @@ import com.app.vc.models.ParticipantsModel
 class ParticipantFragment : BottomSheetDialogFragment() {
 
     val TAG= "ParticipantFragment::"
-    private val viewModel: ParticipantsViewModel by viewModels()
-    private val sharedViewModel: MainViewModel by activityViewModels()
+//    private val viewModel: ParticipantsViewModel by viewModels()
+//    private val sharedViewModel: MainViewModel by activityViewModels()
+
+        lateinit var sharedViewModel: MainViewModel
+//    var sharedViewModel:MainViewModel? = null
 
 
     private lateinit var binding: FragmentParticipantsBinding
@@ -61,6 +65,7 @@ class ParticipantFragment : BottomSheetDialogFragment() {
         binding =
             DataBindingUtil.inflate(inflater, R.layout.fragment_participants, container, false)
 //        binding.viewModel = viewModel
+        sharedViewModel = ViewModelProvider(requireActivity()).get(MainViewModel::class.java)
         binding.lifecycleOwner = this
 
         return binding.root
@@ -74,7 +79,7 @@ class ParticipantFragment : BottomSheetDialogFragment() {
 
         viewModelObservers()
         setUpRecyclerView()
-        processParticipantData(sharedViewModel.participants)
+        processParticipantData(sharedViewModel!!.participants)
     }
 
     private fun init() {
@@ -87,11 +92,11 @@ class ParticipantFragment : BottomSheetDialogFragment() {
     }
 
     private fun viewModelObservers(){
-        sharedViewModel.updateParticipants.observe(viewLifecycleOwner){
+        sharedViewModel!!.updateParticipants.observe(viewLifecycleOwner){
             it?.let {
                 if(true)
                 {
-                    processParticipantData(sharedViewModel.participants)
+                    processParticipantData(sharedViewModel!!.participants)
                 }else
                 {
                     /*do nothing*/
@@ -125,7 +130,7 @@ class ParticipantFragment : BottomSheetDialogFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        sharedViewModel.participantFragVisible=false
+        sharedViewModel!!.participantFragVisible=false
     }
 
 }

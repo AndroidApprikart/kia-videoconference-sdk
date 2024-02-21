@@ -10,12 +10,14 @@ import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.app.vc.MainViewModel
 import com.app.vc.R
 import com.app.vc.databinding.FragmentScreenShareBinding
+import com.app.vc.soundDevice.SoundDeviceViewModel
 
 /* created by Naghma 27/09/23*/
 
@@ -23,8 +25,11 @@ import com.app.vc.databinding.FragmentScreenShareBinding
 class ScreenShareFragment : BottomSheetDialogFragment() {
 
     val TAG = "ScrnShareFragment::"
-    private val viewModel: ScreenShareViewModel by viewModels()
-    private val sharedViewModel: MainViewModel by activityViewModels()
+//    private val viewModel: ScreenShareViewModel by viewModels()
+//    private val sharedViewModel: MainViewModel by activityViewModels()
+
+    lateinit var  viewModel: ScreenShareViewModel
+    lateinit var  sharedViewModel: MainViewModel
 
 
     private lateinit var binding: FragmentScreenShareBinding
@@ -57,6 +62,8 @@ class ScreenShareFragment : BottomSheetDialogFragment() {
         //
         binding =
             DataBindingUtil.inflate(inflater, R.layout.fragment_screen_share, container, false)
+        viewModel = ViewModelProvider(this).get(ScreenShareViewModel::class.java)
+        sharedViewModel = ViewModelProvider(requireActivity()).get(MainViewModel::class.java)
         binding.screenShareVM = viewModel
         binding.lifecycleOwner = this
 
