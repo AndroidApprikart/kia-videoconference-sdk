@@ -112,7 +112,7 @@ class DealerValidationActivity : BaseActivity() {
             }
         }
         viewModel.isContinueButtonClickable.observe(this) {
-            if(true) {
+            if(it) {
                 binding.btnContinueToVc.isEnabled = true
                 binding.btnContinueToVc.isClickable= true
             }else {

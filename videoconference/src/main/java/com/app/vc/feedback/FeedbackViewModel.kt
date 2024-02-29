@@ -38,6 +38,7 @@ class FeedbackViewModel:ViewModel() {
     var postSurveyListResponse = MutableLiveData<CreateSurvey>()
     var isFailureMessageVisible = MutableLiveData<Boolean>()
     var isRatingListVisible = MutableLiveData<Boolean>(false)
+    var isSubmitButtonClicked = false
 
 
     var gson = GsonBuilder()
@@ -104,6 +105,7 @@ class FeedbackViewModel:ViewModel() {
         call.enqueue(object : Callback<CreateSurvey>{
             override fun onFailure(call: Call<CreateSurvey>, t: Throwable) {
                 toastString.value = "Something went wrong.Failure.PostSurvey."
+                isSubmitButtonClicked = false
                 Log.d(TAG, "onFailure: postServeyList message ${t.message}")
                 Log.d(TAG, "onFailure: postServeyList cause ${t.cause}")
                 Log.d(TAG, "onFailure: postServeyList localizedMessage ${t.localizedMessage}")
@@ -117,6 +119,7 @@ class FeedbackViewModel:ViewModel() {
                 if(response.code() in 200 .. 299) {
                     postSurveyListResponse.value = response.body()
                 }else {
+                    isSubmitButtonClicked = false
                     toastString.value = "Something went wrong.responseCode.PostSurvey"
                 }
                 Log.d(TAG, "onResponse: postServeyList: ${response.body()}")

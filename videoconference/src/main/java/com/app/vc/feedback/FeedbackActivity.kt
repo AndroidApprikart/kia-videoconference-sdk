@@ -168,26 +168,34 @@ class FeedbackActivity : AppCompatActivity() {
     }
     private fun initializeOnclickListener() {
         binding.btnSubmitFeedBack.setOnClickListener {
-            if(AndroidUtils.isNetworkAvailable(this)) {
-                if(feedbackQuestionAdapter.dataList.isNotEmpty()) {
-                    if(!checkIfRatingIsNotProvided(feedbackQuestionAdapter.dataList)) {
-                        if(!checkIfCommentsAreEmpty(feedbackQuestionAdapter.dataList)) {
-                            Log.d(TAG, "initializeOnclickListener: dataList: ${feedbackQuestionAdapter.dataList}")
+            if(!feedBackViewModel.isSubmitButtonClicked) {
+                feedBackViewModel.isSubmitButtonClicked = true
+                if(AndroidUtils.isNetworkAvailable(this)) {
+                    if(feedbackQuestionAdapter.dataList.isNotEmpty()) {
+                        if(!checkIfRatingIsNotProvided(feedbackQuestionAdapter.dataList)) {
+                            if(!checkIfCommentsAreEmpty(feedbackQuestionAdapter.dataList)) {
+                                Log.d(TAG, "initializeOnclickListener: dataList: ${feedbackQuestionAdapter.dataList}")
 //                            newImplementation_20Sep2023
 //                            feedBackViewModel.postSurveyDetails(getCreateSurveyRequestObject())
-                            feedBackViewModel.postSurveyDetailsNew(getCreateSurveyRequestObject())
+                                feedBackViewModel.postSurveyDetailsNew(getCreateSurveyRequestObject())
+                            }else {
+                                feedBackViewModel.isSubmitButtonClicked = false
+                                feedBackViewModel.toastString.value = "Comments cannot be empty"
+                            }
                         }else {
-                            feedBackViewModel.toastString.value = "Comments cannot be empty"
+                            feedBackViewModel.isSubmitButtonClicked = false
+                            feedBackViewModel.toastString.value = "Rating cannot be left empty"
                         }
                     }else {
-                        feedBackViewModel.toastString.value = "Rating cannot be left empty"
+                        feedBackViewModel.isSubmitButtonClicked = false
+                        feedBackViewModel.toastString.value = "Something went wrong. SubmitFeedback"
                     }
                 }else {
-                    feedBackViewModel.toastString.value = "Something went wrong. SubmitFeedback"
+                    feedBackViewModel.isSubmitButtonClicked = false
+                    feedBackViewModel.toastString.value = "No Internet connection."
                 }
-            }else {
-                feedBackViewModel.toastString.value = "No Internet connection."
             }
+
         }
 
         binding.btnCancelFeedBack.setOnClickListener {
@@ -338,8 +346,10 @@ class FeedbackActivity : AppCompatActivity() {
                     Log.d(TAG, "initializeApiResponseObservers: Feedback submitted successfully.")
                     openFeedbackFinishDialog()
                 }else if(it.status=="E") {
+                    feedBackViewModel.isSubmitButtonClicked = false
                     feedBackViewModel.toastString.value = "Something went wrong.Error.CreateSurvey."
                 }else {
+                    feedBackViewModel.isSubmitButtonClicked = false
                     feedBackViewModel.toastString.value = "Something went wrong.CreateSurvey."
                 }
             }
