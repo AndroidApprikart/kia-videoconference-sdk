@@ -22,12 +22,12 @@
 <!--    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />-->
 
     <!--    extras from kia kandid-->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />-->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
+<!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>-->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
 
     <application
@@ -65,13 +65,13 @@
         </activity>
 
 <!--        for screen sharing-->
-        <service
-            android:name=".screenshare.MediaProjectionService"
-            android:foregroundServiceType="mediaProjection"
-            android:enabled="true"
-            android:stopWithTask="true"
-            android:exported="true"
-            />
+<!--        <service-->
+<!--            android:name=".screenshare.MediaProjectionService"-->
+<!--            android:foregroundServiceType="mediaProjection"-->
+<!--            android:enabled="true"-->
+<!--            android:stopWithTask="true"-->
+<!--            android:exported="true"-->
+<!--            />-->
 
         <receiver
             android:name="com.app.vc.VCDynamicActivity4$AlarmReceiver"
