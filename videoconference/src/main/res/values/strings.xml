@@ -260,6 +260,28 @@
     <string name="pref_tracing_dlg">Debug performance tracing.</string>
     <string name="pref_tracing_default" translatable="false">false</string>
 
+    <!-- Virtual chat room strings -->
+    <string name="vc_title_virtual_chat_room_customer">Virtual Chat Room</string>
+    <string name="vc_title_virtual_chat_room_service_advisor">Virtual Chat Room - Service Advisor</string>
+    <string name="vc_title_virtual_chat_room_manager">Virtual Chat Room - Manager</string>
+    <string name="vc_back_to_home">Back to Home</string>
+    <string name="vc_new_rooms_today">1 New Room created today</string>
+    <string name="vc_hint_search_customer_or_ro">Search Customer by name or RO number</string>
+    <string name="vc_label_all_rooms">All Rooms</string>
+    <string name="vc_col_customer_name">Customer Name</string>
+    <string name="vc_col_ro_no">RO No</string>
+    <string name="vc_col_contact_number">Contact Number</string>
+    <string name="vc_col_status">Status</string>
+    <string name="vc_btn_view_room">View Room</string>
+    <string name="vc_role_service_advisor">Service Advisor</string>
+    <string name="vc_role_manager">Manager</string>
+
+    <string name="vc_chat_breadcrumb">Home &gt; Chat room</string>
+    <string name="vc_chat_welcome_title">Welcome, %1$s!</string>
+    <string name="vc_chat_welcome_body">Your appointment has been booked under Repair Order (RO) %1$s.</string>
+    <string name="vc_chat_sample_message">Hello, Thankyou.</string>
+    <string name="vc_chat_ro_status_value">Car is in the inspection stage</string>
+
     <string name="pref_enable_rtceventlog_key">enable_rtceventlog_key</string>
     <string name="pref_enable_rtceventlog_title">Enable RtcEventLog.</string>
     <string name="pref_enable_rtceventlog_default">false</string>
@@ -270,5 +292,6 @@
     <string name="header_labour_list"><u>Labour List</u></string>
     <string name="send_message">send message</string>
     <string name="type_a_message">Type a message</string>
+
 
 </resources>

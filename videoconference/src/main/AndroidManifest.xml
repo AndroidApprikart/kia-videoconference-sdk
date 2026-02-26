@@ -52,6 +52,14 @@
         </activity>
 
         <activity
+            android:name="com.app.vc.VirtualRoomListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name="com.app.vc.VirtualChatRoomActivity"
+            android:exported="false" />
+
+        <activity
             android:name="com.kia.vc.feedback.FeedbackActivity"
             android:supportsPictureInPicture="false"
             android:exported="true">

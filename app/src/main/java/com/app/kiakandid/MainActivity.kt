@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.app.kiakandid.databinding.ActivityMainBinding
 import com.app.vc.VCDynamicActivity4
+import com.app.vc.VirtualRoomListActivity
 
 class MainActivity : AppCompatActivity() {
     lateinit var button: Button
@@ -28,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var  password:android.widget.EditText
     lateinit var  deviceToken:android.widget.EditText
     lateinit var  vcEndTime:android.widget.EditText
+    lateinit var  btnOpenVirtualChat:android.widget.Button
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         password = findViewById<EditText>(R.id.et_password)as EditText
         deviceToken = findViewById<EditText>(R.id.et_device_Token_login)as EditText
         vcEndTime = findViewById<EditText>(R.id.et_vc_end_time)as EditText
+        btnOpenVirtualChat = findViewById<Button>(R.id.btn_open_virtual_chat) as Button
 
         button.setOnClickListener(View.OnClickListener { //                if(kec_name.equals("SERVICE_PERSON")){
             //                    Intent intent=new Intent(MainActivity.this\n vCScreenServiceAdviosor.class);
@@ -106,5 +109,10 @@ class MainActivity : AppCompatActivity() {
             intent.putExtra("vcEndTime",vcEndTime.getText().toString())
             startActivity(intent)
         })
+
+        btnOpenVirtualChat.setOnClickListener {
+            val intent = Intent(this@MainActivity, VirtualRoomListActivity::class.java)
+            startActivity(intent)
+        }
     }
 }

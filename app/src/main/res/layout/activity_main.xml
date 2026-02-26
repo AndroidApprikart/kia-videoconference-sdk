@@ -127,24 +127,37 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:layout_below="@id/ll_details"
                     android:padding="5dp">
 
-                    <Button
-                        android:id="@+id/btn_service_person"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:text="Service_Person"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="5dp" />
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btn_service_person"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:text="Service_Person"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="5dp" />
+
+                        <Button
+                            android:id="@+id/btn_customer"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Customer" />
+                    </LinearLayout>
 
                     <Button
-                        android:id="@+id/btn_customer"
-                        android:layout_width="0dp"
+                        android:id="@+id/btn_open_virtual_chat"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Customer" />
+                        android:layout_marginTop="12dp"
+                        android:text="Open Virtual Chat Rooms" />
                 </LinearLayout>
             </RelativeLayout>
         </androidx.core.widget.NestedScrollView>

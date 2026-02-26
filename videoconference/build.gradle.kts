@@ -4,7 +4,8 @@ plugins {
 //    id("com.android.application")
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id ("io.sentry.android.gradle")version("4.6.0")
+    // Sentry Gradle plugin disabled for demo to avoid Android 14 receiver crash
+    // id ("io.sentry.android.gradle")version("4.6.0")
 
 }
 
@@ -59,12 +60,15 @@ dependencies {
     implementation ("com.squareup.okhttp3:logging-interceptor:4.9.1")
     implementation ("com.squareup.retrofit2:retrofit:2.9.0")
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation ("io.sentry:sentry-android:7.8.0")
+    // Sentry runtime disabled for demo to avoid Android 14 receiver crash
+    // implementation ("io.sentry:sentry-android:7.8.0")
     implementation("com.intuit.ssp:ssp-android:1.1.0")
 
 //    Differences in version
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.cardview:cardview:1.0.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

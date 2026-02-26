@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">KiaKandidNewSDK</string>
+
+    <string name="title_virtual_chat_room_customer">Virtual Chat Room</string>
+    <string name="title_virtual_chat_room_service_advisor">Virtual Chat Room - Service Advisor</string>
+    <string name="title_virtual_chat_room_manager">Virtual Chat Room - Manager</string>
+
+    <string name="hint_search_customer_or_ro">Search customer name or RO number</string>
+    <string name="label_all_rooms">All Rooms</string>
+
+    <string name="role_service_advisor">Service Advisor</string>
+    <string name="role_manager">Manager</string>
 </resources>
