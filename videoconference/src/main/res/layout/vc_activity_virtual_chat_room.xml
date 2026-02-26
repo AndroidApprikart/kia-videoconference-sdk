@@ -37,12 +37,14 @@
             <ImageView
                 android:layout_width="50dp"
                 android:layout_height="50dp"
-                android:src="@drawable/ic_messages" />
+                android:padding="@dimen/_10sdp"
+                android:src="@drawable/sms" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
+                android:id="@+id/repairOrderLayout"
                 android:orientation="vertical">
 
                 <TextView
@@ -79,9 +81,10 @@
             android:id="@+id/btnVideoCall"
             android:layout_width="50dp"
             android:layout_height="50dp"
+            android:padding="@dimen/_10sdp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:src="@drawable/ic_video_call" />
+            android:src="@drawable/videocam" />
 
     </RelativeLayout>
 
@@ -157,7 +160,7 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:layout_marginStart="8dp"
-                    android:src="@drawable/ic_attach"
+                    android:src="@drawable/screen_share"
                     app:tint="@color/black" />
 
                 <LinearLayout

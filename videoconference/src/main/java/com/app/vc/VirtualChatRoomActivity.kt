@@ -1,6 +1,7 @@
 package com.app.vc
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.media.MediaPlayer
 import android.media.MediaRecorder
@@ -23,6 +24,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContentProviderCompat.requireContext
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -114,6 +116,7 @@ class VirtualChatRoomActivity : AppCompatActivity() {
         scrollToLast()
     }
 
+    @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.vc_activity_virtual_chat_room)
@@ -123,6 +126,25 @@ class VirtualChatRoomActivity : AppCompatActivity() {
             UserRole.SERVICE_ADVISOR.name -> UserRole.SERVICE_ADVISOR
             UserRole.MANAGER.name -> UserRole.MANAGER
             else -> UserRole.CUSTOMER
+        }
+
+        var repairOrderLayout=findViewById<LinearLayout>(R.id.repairOrderLayout)
+        var btnVideoCall=findViewById<ImageView>(R.id.btnVideoCall)
+
+        repairOrderLayout.setOnClickListener {
+
+
+            val intent=Intent(this@VirtualChatRoomActivity,RepairOrderActivity::class.java)
+            startActivity(intent)
+
+        }
+        btnVideoCall.setOnClickListener {
+
+            btnVideoCall.setOnClickListener {
+
+                val dialog = RequestVideoCallDialog(this)
+                dialog.show()
+            }
         }
 
         val roomJson = intent.getStringExtra(EXTRA_ROOM_JSON)

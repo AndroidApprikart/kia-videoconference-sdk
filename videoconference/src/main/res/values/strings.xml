@@ -40,7 +40,7 @@
     <string name="you">" You "</string>
 
 
-<!--    ant media web rtc strings start-->
+    <!--    ant media web rtc strings start-->
     <string name="settings_name" translatable="false">AppRTC Settings</string>
     <string name="disconnect_call">Disconnect Call</string>
     <string name="room_description">
@@ -286,12 +286,16 @@
     <string name="pref_enable_rtceventlog_title">Enable RtcEventLog.</string>
     <string name="pref_enable_rtceventlog_default">false</string>
 
-<!--    ant media web rtc strings end-->
+    <!--    ant media web rtc strings end-->
     <!--    Message Screen-->
     <string name="header_part_list"><u>Part List</u></string>
     <string name="header_labour_list"><u>Labour List</u></string>
     <string name="send_message">send message</string>
     <string name="type_a_message">Type a message</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="startvc">Do you want to request for a video call</string>
 
 
 </resources>

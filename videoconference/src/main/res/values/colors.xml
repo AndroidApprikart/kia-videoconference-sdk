@@ -22,6 +22,7 @@
     <color name="download_upload_img_bg_color">#4D434242</color>
     <color name="download_upload_btn_color">#515151</color>
     <color name="bg_message_screen">#F4F4F4</color>
+    <color name="grey_text_color">#666666</color>
 
     <!--     message screen-->
     <color name="color_screen_background">#E7E7E7</color>

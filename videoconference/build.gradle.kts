@@ -11,12 +11,12 @@ plugins {
 
 android {
     namespace = "com.app.vc"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
 //        applicationId = "com.app.vc"
         minSdk = 24
-        targetSdk = 33
+        targetSdk = 34
 //        versionCode = 1
 //        versionName = "1.0"
 
@@ -66,6 +66,7 @@ dependencies {
 
 //    Differences in version
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.cardview:cardview:1.0.0")
@@ -74,13 +75,13 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     implementation("androidx.annotation:annotation:1.5.0")
 
-
+    implementation("androidx.activity:activity:1.8.2")
+    implementation("androidx.activity:activity-ktx:1.8.2")
 
 //    Not present in the old library
     //Gson
     implementation("com.google.code.gson:gson:2.9.0")
     //for shared vm and vm
-    implementation("androidx.activity:activity-ktx:1.7.1")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("androidx.fragment:fragment-ktx:1.5.7")
     testImplementation("org.mockito:mockito-core:1.10.19")

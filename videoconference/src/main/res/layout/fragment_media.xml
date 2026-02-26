@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card_view="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Root linear layout: header (constraintLayout1) stays fixed at top -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+       >
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            card_view:layout_constraintTop_toTopOf="parent"
+            android:padding="@dimen/_10sdp"
+            app:layout_constraintStart_toStartOf="parent"
+            android:id="@+id/tabSwitcher"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tabPhotoVideos"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingHorizontal="@dimen/_15sdp"
+                android:text="Photos &amp; Videos"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:textSize="14sp"
+                android:textColor="@color/black"
+                android:textStyle="bold"
+                />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tabDocuments"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingHorizontal="@dimen/_15sdp"
+                android:text="Docs"
+                android:fontFamily="@font/kia_signature_fix_regular"
+                android:textSize="14sp"
+                android:textColor="#343434"
+                android:textStyle="bold"
+                />
+
+
+
+        </LinearLayout>
+
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:id="@+id/line"
+            app:layout_constraintTop_toBottomOf="@+id/tabSwitcher"
+            android:background="@color/grey"/>
+
+        <View
+            android:id="@+id/tabIndicator"
+            android:layout_width="0dp"
+            android:layout_height="4dp"
+            android:background="@color/colorPrimary_kia_kandid"
+            app:layout_constraintBottom_toBottomOf="@id/line"
+            app:layout_constraintStart_toStartOf="parent"/>
+        <FrameLayout
+            android:id="@+id/FragmentContainer"
+            android:layout_width="match_parent"
+            app:layout_constraintTop_toBottomOf="@+id/line"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_height="0dp" />
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

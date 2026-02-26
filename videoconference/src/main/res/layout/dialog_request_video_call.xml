@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+        <!-- Optional ViewModel later -->
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:backgroundTint="@color/white"
+        android:padding="@dimen/_15sdp"
+        android:background="@drawable/background_cornerradius_medium"
+        android:layout_height="wrap_content">
+        
+        <ImageView
+            android:layout_width="@dimen/_50sdp"
+            android:layout_height="@dimen/_50sdp"
+            android:id="@+id/videoIcon"
+            android:padding="@dimen/_5sdp"
+            app:layout_constraintTop_toTopOf="parent"
+            android:src="@drawable/ic_video_on"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/kia_signature_fix_regular"
+            app:layout_constraintTop_toBottomOf="@+id/videoIcon"
+            app:layout_constraintStart_toStartOf="parent"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:id="@+id/textTv"
+            android:paddingHorizontal="@dimen/_30sdp"
+            android:textColor="@color/colorPrimary_kia_kandid"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:text="@string/startvc"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            app:layout_constraintTop_toBottomOf="@+id/textTv"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:id="@+id/buttonLayout"
+            android:layout_marginTop="@dimen/_10sdp"
+            android:background="@color/white"
+            android:paddingBottom="@dimen/_10sdp"
+            android:paddingTop="20dp">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnCancel"
+                android:layout_width="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/_5sdp"
+                android:layout_height="wrap_content"
+                android:textAllCaps="false"
+                android:gravity="center"
+                android:background="@android:color/transparent"                android:layout_gravity="center"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:layout_marginEnd="@dimen/_5sdp"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                android:text="@string/cancel"/>
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnSave"
+                android:layout_width="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/_5sdp"
+                android:layout_height="wrap_content"
+                android:textAllCaps="false"
+                android:gravity="center"
+                android:paddingVertical="@dimen/_10sdp"
+                android:layout_gravity="center"
+                android:visibility="visible"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:layout_marginEnd="@dimen/_5sdp"
+                android:background="@color/colorPrimary_kia_kandid"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:text="Request"/>
+
+
+
+        </LinearLayout>
+
+
+        
+        
+        
+        
+        
+    </androidx.constraintlayout.widget.ConstraintLayout>
+        
+
+</layout>
