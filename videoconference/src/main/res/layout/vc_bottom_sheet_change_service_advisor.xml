@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/_16sdp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Change Service Advisor"
+                android:textSize="16sp"
+                android:textColor="@color/black"
+                android:fontFamily="@font/kia_signature_fix_bold" />
+
+            <TextView
+                android:id="@+id/btnClose"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Close"
+                android:textSize="14sp"
+                android:textColor="@color/black" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvCurrentAdvisor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/_8sdp"
+            android:text="Ajay  •  Current"
+            android:textSize="14sp"
+            android:textColor="@color/black" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/_12sdp"
+            android:text="Select"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:fontFamily="@font/kia_signature_fix_bold" />
+
+        <RadioGroup
+            android:id="@+id/rgAdvisors"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/_8sdp">
+
+            <RadioButton
+                android:id="@+id/rbHanumanth"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Hanumanth" />
+
+            <RadioButton
+                android:id="@+id/rbAnil"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Anil"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/rbSuresh"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Suresh" />
+
+            <RadioButton
+                android:id="@+id/rbHareesh"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Hareesh" />
+
+            <RadioButton
+                android:id="@+id/rbHania"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Hania" />
+        </RadioGroup>
+
+    </LinearLayout>
+</layout>
+
