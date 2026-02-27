@@ -5,9 +5,11 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.app.vc.databinding.FragmentDocumentsBinding
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.app.vc.databinding.FragmentParticipants2Binding
-import com.app.vc.databinding.FragmentParticipantsBinding
+import com.app.vc.models.ParticipantsModel
+import com.app.vc.participants.ParticipantsAdapter
+import com.google.android.material.bottomsheet.BottomSheetDialog
 
 
 class ParticipantsFragment : Fragment() {
@@ -32,10 +34,47 @@ class ParticipantsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-
+        setupParticipantsList()
+        setupManageParticipants()
     }
 
+    private fun setupParticipantsList() {
+        val staticParticipants = arrayListOf(
+            ParticipantsModel("V", "Vijaykumar", true, true, true, null).apply { displayName = "Vijaykumar (You)" },
+            ParticipantsModel("L", "Lata", false, true, true, null).apply { displayName = "Lata (Customer)" },
+            ParticipantsModel("A", "Ajay", false, true, true, null).apply { displayName = "Ajay (Service Advisor)" },
+            ParticipantsModel("B", "Bhagat", false, true, true, null).apply { displayName = "Bhagat (Service Manager)" },
+        )
+        binding.rvParticipants.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = ParticipantsAdapter(staticParticipants)
+        }
+    }
 
+    private fun setupManageParticipants() {
+        binding.btnManageParticipants.setOnClickListener {
+            showManageParticipantsSheet()
+        }
+    }
 
+    private fun showManageParticipantsSheet() {
+        val dialog = BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.vc_bottom_sheet_manage_participants, null)
+        dialog.setContentView(view)
 
+        view.findViewById<View>(R.id.btnChangeAdvisor)?.setOnClickListener {
+            dialog.dismiss()
+            showChangeAdvisorSheet()
+        }
+
+        dialog.show()
+    }
+
+    private fun showChangeAdvisorSheet() {
+        val dialog = BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.vc_bottom_sheet_change_service_advisor, null)
+        dialog.setContentView(view)
+        view.findViewById<View>(R.id.btnClose)?.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
 }

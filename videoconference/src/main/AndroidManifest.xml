@@ -46,9 +46,9 @@
         <activity
             android:name=".RepairOrderActivity"
             android:exported="false" />
-        <activity
-            android:name=".views.RepairOrderActivity"
-            android:exported="false" />
+<!--        <activity-->
+<!--            android:name=".RepairOrderActivity"-->
+<!--            android:exported="false" />-->
         <activity
             android:name=".VCDynamicActivity4"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
@@ -64,10 +64,10 @@
             <!-- </intent-filter> -->
         </activity>
         <activity
-            android:name=".VirtualRoomListActivity"
+            android:name=".virtualroomlist.VirtualRoomListActivity"
             android:exported="false" />
         <activity
-            android:name=".VirtualChatRoomActivity"
+            android:name=".virtualchatroom.VirtualChatRoomActivity"
             android:exported="false" />
         <activity
             android:name="com.kia.vc.feedback.FeedbackActivity"

@@ -10,7 +10,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.app.kiakandid.databinding.ActivityMainBinding
 import com.app.vc.VCDynamicActivity4
-import com.app.vc.VirtualRoomListActivity
+import com.app.vc.virtualroomlist.VirtualRoomListActivity
 
 class MainActivity : AppCompatActivity() {
     lateinit var button: Button
