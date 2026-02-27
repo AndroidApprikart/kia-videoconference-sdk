@@ -26,6 +26,7 @@
     <string name="end_the_call">Do you want to end call ?</string>
     <string name="join_now">Join now</string>
     <string name="participants">Participants</string>
+    <string name="roDetails">RO Details</string>
     <string name="sound_device">Sound Device</string>
 
     <string name="cancel">Cancel</string>

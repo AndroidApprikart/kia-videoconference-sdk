@@ -129,7 +129,6 @@ class VirtualChatMessageAdapter(
                     txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
                     val amps = parseWaveformData(message.waveformData)
                     if (amps.isNotEmpty()) {
-                        voiceWaveformView?.amplitudes = amps
                         voiceWaveformView?.visibility = View.VISIBLE
                     } else {
                         voiceWaveformView?.visibility = View.GONE
@@ -202,7 +201,6 @@ class VirtualChatMessageAdapter(
                     txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
                     val amps = parseWaveformData(message.waveformData)
                     if (amps.isNotEmpty()) {
-                        voiceWaveformView?.amplitudes = amps
                         voiceWaveformView?.visibility = View.VISIBLE
                     } else {
                         voiceWaveformView?.visibility = View.GONE
