@@ -9,10 +9,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.app.vc.databinding.FragmentParticipants2Binding
 import com.app.vc.models.ParticipantsModel
 import com.app.vc.participants.ParticipantsAdapter
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 
 
-class ParticipantsFragment : Fragment() {
+class ParticipantsListFragment : Fragment() {
 
     private var _binding: FragmentParticipants2Binding? = null
     private val binding get() = _binding!!
@@ -35,6 +36,7 @@ class ParticipantsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupParticipantsList()
+
         setupManageParticipants()
     }
 
@@ -58,8 +60,11 @@ class ParticipantsFragment : Fragment() {
     }
 
     private fun showManageParticipantsSheet() {
+
         val dialog = BottomSheetDialog(requireContext())
-        val view = layoutInflater.inflate(R.layout.vc_bottom_sheet_manage_participants, null)
+        val view = layoutInflater
+            .inflate(R.layout.vc_bottom_sheet_manage_participants, null)
+
         dialog.setContentView(view)
 
         view.findViewById<View>(R.id.btnChangeAdvisor)?.setOnClickListener {
@@ -68,13 +73,55 @@ class ParticipantsFragment : Fragment() {
         }
 
         dialog.show()
+
+        val bottomSheet =
+            dialog.findViewById<View>(
+                com.google.android.material.R.id.design_bottom_sheet
+            )
+
+        bottomSheet?.let {
+
+            val behavior =
+                BottomSheetBehavior.from(it)
+
+            it.layoutParams.height =
+                ViewGroup.LayoutParams.MATCH_PARENT
+
+            behavior.state =
+                BottomSheetBehavior.STATE_EXPANDED
+            behavior.skipCollapsed = true
+            behavior.isDraggable = true
+        }
     }
 
     private fun showChangeAdvisorSheet() {
+
         val dialog = BottomSheetDialog(requireContext())
-        val view = layoutInflater.inflate(R.layout.vc_bottom_sheet_change_service_advisor, null)
+        val view = layoutInflater
+            .inflate(R.layout.vc_bottom_sheet_change_service_advisor, null)
+
         dialog.setContentView(view)
-        view.findViewById<View>(R.id.btnClose)?.setOnClickListener { dialog.dismiss() }
+
+        view.findViewById<View>(R.id.btnClose)
+            ?.setOnClickListener { dialog.dismiss() }
+
         dialog.show()
+
+        val bottomSheet =
+            dialog.findViewById<View>(
+                com.google.android.material.R.id.design_bottom_sheet
+            )
+
+        bottomSheet?.let {
+
+            val behavior = BottomSheetBehavior.from(it)
+
+            it.layoutParams.height =
+                ViewGroup.LayoutParams.MATCH_PARENT
+
+            behavior.state =
+                BottomSheetBehavior.STATE_EXPANDED
+            behavior.skipCollapsed = true
+        }
     }
 }

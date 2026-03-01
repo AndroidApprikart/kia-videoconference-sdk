@@ -48,7 +48,7 @@ class ParticipantsAdapter(
                participantsList[position].displayName.plus(localParticipant) /*display only You*/*/
             holder.tvParticipantName.text = localParticipant
         else
-            holder.tvParticipantName.text = participantsList[position].trackId
+            holder.tvParticipantName.text = participantsList[position].displayName
 
 
         Log.d(
@@ -62,14 +62,14 @@ class ParticipantsAdapter(
 
 
 
-        if (participantsList[position].isMicOn) {
-//            holder.imgParticipant.setImageResource(R.drawable.icon_mic_enable)
-            holder.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_on)
-
-        } else {
-//            holder.imgParticipant.setImageResource(R.drawable.icon_mic_disable)
-            holder.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_off)
-        }
+//        if (participantsList[position].isMicOn) {
+////            holder.imgParticipant.setImageResource(R.drawable.icon_mic_enable)
+//            holder.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_on)
+//
+//        } else {
+////            holder.imgParticipant.setImageResource(R.drawable.icon_mic_disable)
+//            holder.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_off)
+//        }
 //        (holder.imgParticipantMic.background as AnimationDrawable).start()
     }
 

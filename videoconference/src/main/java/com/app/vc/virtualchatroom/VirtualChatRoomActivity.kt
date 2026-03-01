@@ -3,6 +3,7 @@ package com.app.vc.virtualchatroom
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
@@ -29,20 +30,17 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.content.ContextCompat
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.MediaFragment
-import com.app.vc.ParticipantsFragment
+import com.app.vc.ParticipantsListFragment
 import com.app.vc.R
 import com.app.vc.RepairOrderActivity
 import com.app.vc.RequestVideoCallDialog
 import com.app.vc.databinding.VcActivityVirtualChatRoomBinding
-import com.app.vc.virtualroomlist.RoomStatus
 import com.app.vc.virtualroomlist.UserRole
 import com.app.vc.virtualroomlist.VirtualRoomUiModel
 import com.google.gson.Gson
@@ -165,10 +163,22 @@ class VirtualChatRoomActivity : AppCompatActivity() {
 
         // Tablet-only UI (left panel with tabs) – present only on sw600dp layout
         val hasTabletPanels = binding.tabParticipants != null
+
         if (hasTabletPanels) {
-            loadFragment(ParticipantsFragment())
+
+            // ✅ Lock landscape for tablet
+            requestedOrientation =
+                ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+
+            loadFragment(ParticipantsListFragment())
             setupTabs()
             selectParticipantsTab()
+
+        } else {
+
+            // ✅ Phone behaves normally
+            requestedOrientation =
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
 
         binding.repairOrderLayout?.setOnClickListener {
@@ -737,7 +747,7 @@ class VirtualChatRoomActivity : AppCompatActivity() {
 
         tabParticipants.setOnClickListener {
 
-            loadFragment(ParticipantsFragment())
+            loadFragment(ParticipantsListFragment())
 
             selectParticipantsTab()
 

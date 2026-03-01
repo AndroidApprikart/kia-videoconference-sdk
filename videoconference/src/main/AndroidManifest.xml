@@ -65,10 +65,12 @@
         </activity>
         <activity
             android:name=".virtualroomlist.VirtualRoomListActivity"
-            android:exported="false" />
+            android:exported="false"
+            />
         <activity
             android:name=".virtualchatroom.VirtualChatRoomActivity"
-            android:exported="false" />
+            android:exported="false"
+            />
         <activity
             android:name="com.kia.vc.feedback.FeedbackActivity"
             android:exported="true"

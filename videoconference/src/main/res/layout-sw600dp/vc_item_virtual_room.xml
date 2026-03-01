@@ -11,6 +11,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="2"
+        android:layout_gravity="center"
         android:text="Lata"
         android:textColor="@color/color_kia_black"
         android:textSize="14sp" />
@@ -21,6 +22,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="RO R02401012"
+        android:layout_gravity="center"
         android:textColor="@color/color_kia_black"
         android:textSize="14sp" />
 
@@ -29,6 +31,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+
+        android:layout_gravity="center"
         android:text="9876543210"
         android:textColor="@color/color_kia_black"
         android:textSize="14sp" />
@@ -42,15 +46,21 @@
         android:paddingTop="2dp"
         android:paddingRight="8dp"
         android:paddingBottom="2dp"
+        android:layout_gravity="center"
+
         android:text="OPEN"
         android:textColor="@color/white"
         android:textSize="12sp" />
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnViewRoom"
         android:layout_width="wrap_content"
         android:layout_height="32dp"
         android:layout_marginStart="12dp"
+        android:layout_gravity="center"
+        android:backgroundTint="@color/black"
+        android:textColor="@color/white"
+        android:padding="@dimen/_5sdp"
         android:text="@string/vc_btn_view_room" />
 
 </LinearLayout>

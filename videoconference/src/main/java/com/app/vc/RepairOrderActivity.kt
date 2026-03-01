@@ -31,7 +31,7 @@ class RepairOrderActivity : AppCompatActivity() {
             moveIndicator(binding.tabParticipants)
         }
 
-        loadFragment(ParticipantsFragment())
+        loadFragment(ParticipantsListFragment())
         setupTabs()
         selectParticipantsTab()
 
@@ -49,7 +49,7 @@ class RepairOrderActivity : AppCompatActivity() {
 
         binding.tabParticipants.setOnClickListener {
 
-            loadFragment(ParticipantsFragment())
+            loadFragment(ParticipantsListFragment())
 
             selectParticipantsTab()
             moveIndicator(binding.tabParticipants)
