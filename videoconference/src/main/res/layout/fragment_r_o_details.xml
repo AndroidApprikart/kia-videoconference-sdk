@@ -10,6 +10,173 @@
         android:orientation="vertical"
         >
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            card_view:layout_constraintTop_toTopOf="parent"
+            card_view:layout_constraintStart_toStartOf="parent"
+            android:orientation="vertical"
+            android:padding="@dimen/_10sdp">
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_5sdp"
+                android:background="@drawable/bg_comment_box">
+
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textColor="#999999"
+                    android:textSize="14sp"
+                    android:textFontWeight="800"
+                    android:text="Status :"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textColor="@color/black"
+                    android:id="@+id/statusDescription"
+                    android:textSize="14sp"
+                    android:text="Car is in the inspection stage"/>
+
+
+
+
+
+
+
+            </LinearLayout>
+
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_5sdp"
+                >
+
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_regular"
+                    android:textColor="#999999"
+                    android:textSize="14sp"
+
+                    android:text="RO No"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textColor="@color/black"
+                    android:id="@+id/roDescription"
+                    android:textSize="14sp"
+                    android:text="R202401012"/>
+
+
+
+
+
+
+
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_5sdp"
+                >
+
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_regular"
+                    android:textColor="#999999"
+                    android:textSize="14sp"
+                    android:text="VIN Number"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textColor="@color/black"
+                    android:id="@+id/vinNumDescription"
+                    android:textSize="14sp"
+                    android:text="MZBFF813MPN280101"/>
+
+
+
+            </LinearLayout>
+
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/_5sdp"
+                >
+
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_regular"
+                    android:textColor="#999999"
+                    android:textSize="14sp"
+                    android:text="Registration Number"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textColor="@color/black"
+                    android:id="@+id/regNumberDescription"
+                    android:textSize="14sp"
+                    android:text="UP14fq1521"/>
+
+
+
+            </LinearLayout>
+
+
+
+
+        </LinearLayout>
+
+
+
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -6,12 +6,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.app.vc.databinding.FragmentPhotosAndVideosBinding
+import com.app.vc.databinding.FragmentRODetailsBinding
 
 class RODetailsFragment : Fragment() {
 
-    private var _binding: FragmentPhotosAndVideosBinding? = null
+    private var _binding: FragmentRODetailsBinding? = null
     private val binding get() = _binding!!
-    var TAG = "MediaFragment"
+    var TAG = "RODetailsFragment"
 
 
 
@@ -23,7 +24,7 @@ class RODetailsFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentPhotosAndVideosBinding.inflate(inflater, container, false)
+        _binding = FragmentRODetailsBinding.inflate(inflater, container, false)
         return binding.root
     }
 

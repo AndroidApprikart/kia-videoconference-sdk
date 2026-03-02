@@ -9,7 +9,6 @@
         android:background="@color/bg_message_screen">
 
 
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -90,37 +89,154 @@
             android:orientation="vertical"
             >
 
-            <TextView
-                android:id="@+id/txtLeftCustomerName"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Lata"
-                android:textColor="@color/color_kia_black"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:orientation="horizontal"
+                android:layout_gravity="center_vertical"
+                android:padding="@dimen/_5sdp"
+                >
 
-            <TextView
-                android:id="@+id/txtLeftRoNumber"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="RO R02401012"
-                android:textColor="@color/self_time_color"
-                android:textSize="12sp" />
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/homeTv"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Media"
+                    android:fontFamily="@font/kia_signature_fix_regular"
+                    android:textSize="16sp"
+                    android:layout_gravity="center_vertical"
+                    android:textColor="#101010"
+                    android:textStyle="bold"
+                    />
 
-            <TextView
-                android:id="@+id/txtLeftStatus"
-                android:layout_width="wrap_content"
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/homeIcon"
+                    android:layout_width="@dimen/_10sdp"
+                    android:layout_height="@dimen/_10sdp"
+                    android:layout_gravity="center|center_horizontal"
+                    android:src="@drawable/keyboard_arrow_down__2_" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/chatRoomtv"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Chat Room"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textSize="16sp"
+                    android:textFontWeight="800"
+                    android:layout_gravity="center_vertical"
+                    android:textColor="@color/black"
+                    android:textStyle="bold"
+                    />
+
+
+
+
+
+
+
+
+
+            </LinearLayout>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                app:layout_constraintTop_toBottomOf="@+id/tabSwitcher"
+                android:background="@color/grey"/>
+
+
+            <LinearLayout
+                android:paddingHorizontal="@dimen/_5sdp"
+                android:layout_gravity="center"
+                android:paddingVertical="@dimen/_4sdp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/vc_bg_status_chip"
-                android:paddingLeft="8dp"
-                android:paddingTop="2dp"
-                android:paddingRight="8dp"
-                android:paddingBottom="2dp"
-                android:text="OPEN"
-                android:textColor="@color/white"
-                android:textSize="12sp" />
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/txtInitial"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:gravity="center"
+                    android:text="L"
+                    android:layout_gravity="center"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp"
+                    android:background="@drawable/bg_rounded_circle"
+                    android:fontFamily="@font/kia_signature_fix_bold"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginStart="10dp">
+
+                    <TextView
+                        android:id="@+id/txtLeftCustomerName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lata"
+                        android:textSize="18sp"
+                        android:textColor="@color/black"
+                        android:fontFamily="@font/kia_signature_fix_bold"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:id="@+id/txtLeftRoNumber"
+                            android:layout_gravity="center"
+                            android:gravity="center"
+                            android:letterSpacing="0.1"
+                            android:text="RO R202401012"
+                            android:textColor="@color/grey_text_color"
+                            android:fontFamily="@font/kia_signature_fix_bold"
+                            android:textSize="12sp"/>
+
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"/>
+
+                        <TextView
+                            android:id="@+id/txtLeftStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/vc_bg_status_chip"
+                            android:layout_gravity="center"
+                            android:text="Open"
+                            android:paddingVertical="@dimen/_2sdp"
+                            android:paddingHorizontal="@dimen/_5sdp"
+                            android:fontFamily="@font/kia_signature_fix_regular"
+                            android:textColor="@color/white"
+                            android:textSize="12sp" />
+
+
+                    </LinearLayout>
+
+
+                </LinearLayout>
+
+
+
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                app:layout_constraintTop_toBottomOf="@+id/tabSwitcher"
+                android:background="@color/grey"/>
+
+
+
+
 
             <!-- Tabs -->
             <LinearLayout
@@ -129,8 +245,8 @@
                 app:layout_constraintTop_toBottomOf="@+id/repairOrderLayout1"
                 app:layout_constraintStart_toStartOf="parent"
                 android:id="@+id/tabSwitcher"
+                android:padding="@dimen/_5sdp"
                 android:gravity="center"
-                android:layout_marginTop="@dimen/_4sdp"
                 android:orientation="horizontal">
 
 
@@ -182,6 +298,13 @@
 
             </LinearLayout>
 
+            <View
+                android:id="@+id/tabIndicator"
+                android:layout_width="0dp"
+                android:layout_height="4dp"
+                android:background="@color/colorPrimary_kia_kandid"
+                />
+
 
             <View
                 android:layout_width="match_parent"
@@ -189,12 +312,7 @@
                 android:id="@+id/line1"
                 android:background="@color/grey"/>
 
-            <View
-                android:id="@+id/tabIndicator"
-                android:layout_width="0dp"
-                android:layout_height="4dp"
-                android:background="@color/colorPrimary_kia_kandid"
- />
+
             <FrameLayout
                 android:id="@+id/FragmentContainer"
                 android:layout_width="match_parent"
@@ -205,64 +323,48 @@
                 android:layout_height="0dp" />
 
             <!-- Simple RO details on left -->
-
         </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="@color/grey"/>
 
         <!-- Right panel -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_marginStart="16dp"
             android:layout_weight="2"
             android:orientation="vertical">
 
-            <!-- Welcome card -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@color/white"
-                android:padding="16dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/txtWelcomeHeaderTablet"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Welcome"
-                        android:textColor="@color/color_kia_black"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/txtWelcomeBodyTablet"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Welcome, Lata! Your appointment has been booked under Repair Order (RO) R02401012."
-                        android:textColor="@color/color_kia_black"
-                        android:textSize="13sp" />
-                </LinearLayout>
-            </LinearLayout>
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:paddingHorizontal="@dimen/_5sdp"
+                android:paddingVertical="@dimen/_5sdp">
 
             <!-- Messages list -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerMessages"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_marginTop="16dp"
                 android:layout_weight="1" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:layout_marginTop="8dp"
+                android:background="@color/grey"/>
+
             <!-- Bottom unified container -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
+                app:cardElevation="0dp"
                 android:backgroundTint="@color/white">
 
                 <LinearLayout
@@ -281,44 +383,64 @@
                         android:scrollbars="none">
 
                         <LinearLayout
+                            android:padding="@dimen/_5sdp"
                             android:id="@+id/quickReplyContainerTablet"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal" />
+
                     </HorizontalScrollView>
 
                     <View
                         android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/light_gray_bg" />
+                        android:layout_height="2dp"
+                        android:background="@color/grey"/>
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:padding="8dp"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="@dimen/_5sdp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/_20sdp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:paddingHorizontal="@dimen/_5sdp"
+                            android:paddingVertical="@dimen/_5sdp"
+                            android:background="@drawable/bg_comment_box"
+                            android:backgroundTint="#F7F7F7"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
                         <EditText
                             android:id="@+id/edtMessageTablet"
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="match_parent"
                             android:layout_weight="1"
-                            android:background="@null"
+                            android:fontFamily="@font/kia_signature_fix_regular"
                             android:hint="Text here"
-                            android:textSize="15sp"
+                            android:textSize="14sp"
+                            android:background="@null"
                             android:textColor="@color/black"
                             android:gravity="center_vertical"
                             />
 
                         <ImageView
                             android:id="@+id/imgAttachmentTablet"
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="@dimen/_12sdp"
+                            android:layout_height="@dimen/_12sdp"
                             android:layout_marginStart="8dp"
-                            android:src="@drawable/ic_attach"
-                            app:tint="@color/light_gray_bg" />
+                            android:visibility="visible"
+                            android:src="@drawable/screen_share"
+                           />
 
+</LinearLayout>
                         <LinearLayout
                             android:layout_width="40dp"
                             android:layout_height="40dp"
@@ -328,30 +450,36 @@
                           >
 
                             <ImageView
+                                android:background="@drawable/bg_small_cornerradius"
                                 android:id="@+id/imgrecordTablet"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:src="@drawable/bg_record_button"
+                                android:layout_width="@dimen/_15sdp"
+                                android:layout_height="@dimen/_15sdp"
+                                android:padding="@dimen/_3sdp"
+                                android:src="@drawable/mic__2_"
                                />
                         </LinearLayout>
+
                         <LinearLayout
                             android:layout_width="40dp"
                             android:id="@+id/sendLayout"
                             android:layout_height="40dp"
                             android:layout_marginStart="8dp"
                             android:visibility="gone"
-
                             android:gravity="center"
                             >
 
                             <ImageView
+                                android:background="@drawable/bg_small_cornerradius"
                                 android:id="@+id/imgSendTablet"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:src="@drawable/bg_send_button"
+                                android:layout_width="@dimen/_15sdp"
+                                android:layout_height="@dimen/_15sdp"
+                                android:padding="@dimen/_3sdp"
+                                android:src="@drawable/send"
                                 />
+
                         </LinearLayout>
 
+                    </LinearLayout>
                     </LinearLayout>
 
                 </LinearLayout>

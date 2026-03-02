@@ -18,8 +18,10 @@ import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.view.WindowManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -38,6 +40,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.MediaFragment
 import com.app.vc.ParticipantsListFragment
 import com.app.vc.R
+import com.app.vc.RODetailsFragment
 import com.app.vc.RepairOrderActivity
 import com.app.vc.RequestVideoCallDialog
 import com.app.vc.databinding.VcActivityVirtualChatRoomBinding
@@ -45,6 +48,7 @@ import com.app.vc.virtualroomlist.UserRole
 import com.app.vc.virtualroomlist.VirtualRoomUiModel
 import com.google.gson.Gson
 import com.app.vc.views.WaveformView
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
@@ -169,10 +173,12 @@ class VirtualChatRoomActivity : AppCompatActivity() {
             // ✅ Lock landscape for tablet
             requestedOrientation =
                 ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            val tabRoDetails = binding.tabRoDetails ?: return
 
-            loadFragment(ParticipantsListFragment())
+            loadFragment(RODetailsFragment())
             setupTabs()
-            selectParticipantsTab()
+            selectRoDetailsTab()
+            moveIndicator(tabRoDetails)
 
         } else {
 
@@ -219,9 +225,17 @@ class VirtualChatRoomActivity : AppCompatActivity() {
     private fun bindStaticPhoneHeader() {
         val room = room ?: return
         val txtRoomTitle = binding.txtRoomTitle
-        txtRoomTitle?.text = "${room.roNumber} | ${room.subject}"
-    }
 
+        val subject = room.subject ?: ""
+
+        val trimmedSubject =
+            if (subject.length > 20)
+                subject.substring(0, 20) + "..."
+            else
+                subject
+
+        txtRoomTitle?.text = "${room.roNumber} | $trimmedSubject"
+    }
     private fun bindStaticTabletPanels() {
         val room = room ?: return
         val txtLeftCustomerName = binding.txtLeftCustomerName
@@ -230,10 +244,11 @@ class VirtualChatRoomActivity : AppCompatActivity() {
         txtLeftCustomerName?.text = room.customerName
         txtLeftRoNumber?.text = room.roNumber
         txtLeftStatus?.text = room.status.name
-        val txtWelcomeHeader = binding.txtWelcomeHeaderTablet
-        val txtWelcomeBody = binding.txtWelcomeBodyTablet
-        txtWelcomeHeader?.text = getString(R.string.vc_chat_welcome_title, room.customerName)
-        txtWelcomeBody?.text = getString(R.string.vc_chat_welcome_body, room.roNumber)
+//        val txtWelcomeHeader = binding.txtWelcomeHeaderTablet
+//        val txtWelcomeBody = binding.txtWelcomeBodyTablet
+//        txtWelcomeHeader?.text = getString(R.string.vc_chat_welcome_title, room.customerName)
+//        txtWelcomeBody?.text = getString(R.string.vc_chat_welcome_body, room.roNumber)
+//
     }
 
     private fun setupMessageList() {
@@ -302,27 +317,80 @@ class VirtualChatRoomActivity : AppCompatActivity() {
     }
 
     private fun setupAttachmentAndMedia() {
+        binding.imgAttachmentTablet.visibility=View.VISIBLE
         val attachmentBtn: ImageView? = binding.imgAttachmentTablet
         attachmentBtn?.setOnClickListener { showAttachmentOptionsDialog() }
     }
+//
+//    private fun showAttachmentOptionsDialog() {
+//        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_attachment_options, null)
+//        val dialog = AlertDialog.Builder(this).setView(view).create()
+//        view.findViewById<LinearLayout>(R.id.optionGallery).setOnClickListener {
+//            dialog.dismiss()
+//            requestPermission.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_MEDIA_IMAGES))
+//            galleryLauncher.launch("image/*")
+//        }
+//        view.findViewById<LinearLayout>(R.id.optionCamera).setOnClickListener {
+//            dialog.dismiss()
+//            requestCameraPermission.launch(Manifest.permission.CAMERA)
+//        }
+//        view.findViewById<LinearLayout>(R.id.optionFile).setOnClickListener {
+//            dialog.dismiss()
+//            fileLauncher.launch(arrayOf("*/*"))
+//        }
+//        dialog.show()
+//    }
 
     private fun showAttachmentOptionsDialog() {
-        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_attachment_options, null)
-        val dialog = AlertDialog.Builder(this).setView(view).create()
-        view.findViewById<LinearLayout>(R.id.optionGallery).setOnClickListener {
+
+        val dialogView = LayoutInflater.from(this)
+            .inflate(R.layout.vc_dialog_attachment_options, null)
+
+        val dialog = AlertDialog.Builder(this, R.style.FloatingDialogStyle)
+            .setView(dialogView)
+            .create()
+
+        dialog.show()
+
+        dialog.window?.apply {
+
+            setBackgroundDrawableResource(android.R.color.transparent)
+
+            val params = attributes
+            params.gravity = Gravity.BOTTOM or Gravity.END   // Bottom Right
+
+            params.y = 140   // height above message box
+            params.x = 20    // small right margin
+
+            attributes = params
+
+            setLayout(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+
+        dialogView.findViewById<LinearLayout>(R.id.optionGallery).setOnClickListener {
             dialog.dismiss()
-            requestPermission.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_MEDIA_IMAGES))
+            requestPermission.launch(
+                arrayOf(
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_MEDIA_IMAGES
+                )
+            )
             galleryLauncher.launch("image/*")
         }
-        view.findViewById<LinearLayout>(R.id.optionCamera).setOnClickListener {
+
+        dialogView.findViewById<LinearLayout>(R.id.optionCamera).setOnClickListener {
             dialog.dismiss()
             requestCameraPermission.launch(Manifest.permission.CAMERA)
         }
-        view.findViewById<LinearLayout>(R.id.optionFile).setOnClickListener {
+
+        dialogView.findViewById<LinearLayout>(R.id.optionFile).setOnClickListener {
             dialog.dismiss()
             fileLauncher.launch(arrayOf("*/*"))
         }
-        dialog.show()
     }
 
     private fun launchCamera() {
@@ -744,6 +812,7 @@ class VirtualChatRoomActivity : AppCompatActivity() {
 
         val tabParticipants = binding.tabParticipants ?: return
         val tabMedia = binding.tabMedia ?: return
+        val tabRoDetails = binding.tabRoDetails ?: return
 
         tabParticipants.setOnClickListener {
 
@@ -761,6 +830,14 @@ class VirtualChatRoomActivity : AppCompatActivity() {
             selectMediaTab()
             moveIndicator(tabMedia)
         }
+        tabRoDetails.setOnClickListener {
+
+            loadFragment(RODetailsFragment())
+
+            selectRoDetailsTab()
+            moveIndicator(tabRoDetails)
+        }
+
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -768,6 +845,7 @@ class VirtualChatRoomActivity : AppCompatActivity() {
 
         val tabParticipants = binding.tabParticipants ?: return
         val tabMedia = binding.tabMedia ?: return
+        val tabRodetails=binding.tabRoDetails?: return
 
         tabParticipants.setTextColor(
             getColor(R.color.colorPrimary_kia_kandid)
@@ -782,10 +860,49 @@ class VirtualChatRoomActivity : AppCompatActivity() {
 
         tabMedia.typeface =
             resources.getFont(R.font.kia_signature_fix_regular)
+
+        tabRodetails.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabRodetails.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
+
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun selectRoDetailsTab() {
+
+        val tabParticipants = binding.tabParticipants ?: return
+        val tabMedia = binding.tabMedia ?: return
+        val tabRodetails=binding.tabRoDetails?: return
+
+        tabRodetails.setTextColor(
+            getColor(R.color.colorPrimary_kia_kandid)
+        )
+
+        tabRodetails.typeface =
+            resources.getFont(R.font.kia_signature_fix_bold)
+
+
+   tabParticipants.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabParticipants.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
+
+        tabMedia.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabMedia.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun selectMediaTab() {
+        val tabRodetails=binding.tabRoDetails?: return
 
         val tabParticipants = binding.tabParticipants ?: return
         val tabMedia = binding.tabMedia ?: return
@@ -802,6 +919,13 @@ class VirtualChatRoomActivity : AppCompatActivity() {
         )
 
         tabParticipants.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
+
+        tabRodetails.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabRodetails.typeface =
             resources.getFont(R.font.kia_signature_fix_regular)
     }
 

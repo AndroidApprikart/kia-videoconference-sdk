@@ -4,50 +4,64 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="?actionBarSize"
+        android:layout_height="wrap_content"
         android:background="@color/white">
 
-
-        <ImageView
-            android:id="@+id/img_participant"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:padding="@dimen/_5sdp"
-            android:src="@drawable/ic_participant"
-            app:tint = "@color/black"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/tv_participant_name"
+        <LinearLayout
+            android:gravity="center"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+          android:paddingVertical="@dimen/_5sdp"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
 
         <TextView
-            android:id="@+id/tv_participant_name"
-            android:fontFamily="@font/kia_signature_fix_regular"
-            android:layout_width="0dp"
-            android:textColor="@color/color_kia_black"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/_10sdp"
-            android:layout_toEndOf="@id/img_participant"
-            android:text="Participant"
-            android:textAlignment="viewStart"
-            app:layout_constraintBottom_toBottomOf="@+id/img_participant"
-            app:layout_constraintEnd_toStartOf="@id/img_participant_mic"
-            app:layout_constraintStart_toEndOf="@id/img_participant"
-            app:layout_constraintTop_toTopOf="@+id/img_participant" />
+            android:id="@+id/txtInitial"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="L"
+            android:layout_gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:background="@drawable/bg_rounded_circle"
+            android:fontFamily="@font/kia_signature_fix_bold"/>
 
-        <ImageView
-            android:id="@+id/img_participant_mic"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:scaleType="fitCenter"
-android:visibility="gone"
-            app:tint= "@color/black"
-            app:layout_constraintBottom_toBottomOf="@+id/tv_participant_name"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/tv_participant_name" />
-        <!--        android:src="@drawable/icon_mic_enable"-->
+            <TextView
+                android:id="@+id/tctParticipantName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:gravity="start"
+                android:layout_gravity="center"
+                android:text="Participant"
+                android:textColor="#06141F"
+                android:textSize="16sp"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/_10sdp"
+                android:fontFamily="@font/kia_signature_fix_bold"/>
 
+
+
+
+            <TextView
+                android:id="@+id/txtLeftStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/vc_bg_status_chip"
+                android:layout_gravity="center"
+                android:text="Open"
+                android:backgroundTint="#F2F2F2"
+                android:paddingVertical="@dimen/_4sdp"
+                android:paddingHorizontal="@dimen/_8sdp"
+                android:fontFamily="@font/kia_signature_fix_regular"
+                android:textColor="@color/black"
+                android:textSize="12sp" />
+
+
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

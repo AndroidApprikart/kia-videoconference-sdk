@@ -28,26 +28,33 @@ class ParticipantAdapterNew(
         fun bind(data: ParticipantsModel) {
             Log.d("test444", "bind: s: ${data.streamId} t: ${data.track} mic: ${data.isMicOn} ")
             val blackTint = ColorStateList.valueOf(Color.BLACK)
-            ViewCompat.setBackgroundTintList(binding.imgParticipantMic, blackTint)
+            ViewCompat.setBackgroundTintList(binding.txtInitial, blackTint)
             if (data.isLocal)
             /*            holder.tvParticipantName.text =
                            participantsList[position].displayName.plus(localParticipant) /*display only You*/*/
-                binding.tvParticipantName.text =  data.displayName +"\n"+localParticipant
+                binding.tctParticipantName.text =  data.displayName +"\n"+localParticipant
             else
-                binding .tvParticipantName.text = data.displayName
+                binding .tctParticipantName.text = data.displayName
 
 
+            val initial = data.displayName
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?.substring(0, 1)
+                ?.uppercase()
 
-            if (data.isMicOn) {
-//            holder.imgParticipant.setImageResource(R.drawable.icon_mic_enable)
-                binding.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_enabled)
+            binding.txtInitial.text = initial ?: "?"
 
-            } else {
-//            holder.imgParticipant.setImageResource(R.drawable.icon_mic_disable)
-                binding.imgParticipantMic.background = null
-                binding.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
-
-            }
+//            if (data.isMicOn) {
+////            holder.imgParticipant.setImageResource(R.drawable.icon_mic_enable)
+//                binding.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_enabled)
+//
+//            } else {
+////            holder.imgParticipant.setImageResource(R.drawable.icon_mic_disable)
+//                binding.imgParticipantMic.background = null
+//                binding.imgParticipantMic.setBackgroundResource(R.drawable.ic_mic_disabled_wighout_bg_tint)
+//
+//            }
 //        (holder.imgParticipantMic.background as AnimationDrawable).start()
         }
     }

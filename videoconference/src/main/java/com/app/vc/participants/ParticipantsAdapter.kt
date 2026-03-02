@@ -22,8 +22,8 @@ class ParticipantsAdapter(
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
 
-        var tvParticipantName = itemView.findViewById(R.id.tv_participant_name) as TextView
-        var imgParticipantMic = itemView.findViewById(R.id.img_participant_mic) as ImageView
+        var tvParticipantName = itemView.findViewById(R.id.tctParticipantName) as TextView
+        var imgParticipantMic = itemView.findViewById(R.id.txtInitial) as TextView
 
 
     }
@@ -59,6 +59,13 @@ class ParticipantsAdapter(
             "PARTICIPANT_SCREEN",
             "in adapter :: displayName on ${participantsList[position].streamId}"
         )
+        val initial = participantsList[position].displayName
+            .trim()
+            .firstOrNull()
+            ?.toString()
+            ?.uppercase()
+
+        holder.imgParticipantMic.text = initial ?: "?"
 
 
 

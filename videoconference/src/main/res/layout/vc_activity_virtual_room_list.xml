@@ -8,7 +8,7 @@
     <!-- Top app bar -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="@dimen/_56sdp"
         android:background="@color/color_kia_black"
         android:gravity="center_vertical"
         android:paddingStart="16dp"
@@ -16,19 +16,21 @@
 
         <ImageView
             android:id="@+id/btnBack"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@android:drawable/ic_media_previous"
-            android:tint="@color/white" />
+            android:layout_width="@dimen/_25sdp"
+            android:layout_height="@dimen/_25sdp"
+            android:src="@drawable/arrow_back__1_"
+           />
 
         <TextView
             android:id="@+id/txtTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="-15dp"
             android:text="@string/vc_title_virtual_chat_room_customer"
+            android:gravity="center"
             android:textColor="@color/white"
             android:textSize="18sp"
+            android:fontFamily="@font/kia_signature_fix_regular"
             android:textStyle="bold" />
     </LinearLayout>
 
