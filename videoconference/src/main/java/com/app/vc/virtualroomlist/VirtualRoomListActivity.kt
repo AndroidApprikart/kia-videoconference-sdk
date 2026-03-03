@@ -30,36 +30,36 @@ class VirtualRoomListActivity : AppCompatActivity() {
             else -> UserRole.CUSTOMER
         }
 
-        setupRoleSelectionIfAvailable()
+//        setupRoleSelectionIfAvailable()
         setupRecycler()
         applyRoleTitle()
     }
 
-    private fun setupRoleSelectionIfAvailable() {
-        val roleContainer = findViewById<View?>(R.id.roleSelectionContainer)
-        val btnServiceAdvisor = findViewById<View?>(R.id.btnServiceAdvisor)
-        val btnManager = findViewById<View?>(R.id.btnManager)
-
-        if (roleContainer != null && btnServiceAdvisor != null && btnManager != null) {
-            roleContainer.visibility = View.VISIBLE
-
-            btnServiceAdvisor.setOnClickListener {
-                currentRole = UserRole.SERVICE_ADVISOR
-                roleContainer.visibility = View.GONE
-                applyRoleTitle()
-                adapter.updateRooms(loadRoomsFromJson())
-            }
-
-            btnManager.setOnClickListener {
-                currentRole = UserRole.MANAGER
-                roleContainer.visibility = View.GONE
-                applyRoleTitle()
-                adapter.updateRooms(loadRoomsFromJson())
-            }
-        } else {
-            currentRole = UserRole.CUSTOMER
-        }
-    }
+//    private fun setupRoleSelectionIfAvailable() {
+//        val roleContainer = findViewById<View?>(R.id.roleSelectionContainer)
+//        val btnServiceAdvisor = findViewById<View?>(R.id.btnServiceAdvisor)
+//        val btnManager = findViewById<View?>(R.id.btnManager)
+//
+//        if (roleContainer != null && btnServiceAdvisor != null && btnManager != null) {
+//            roleContainer.visibility = View.VISIBLE
+//
+//            btnServiceAdvisor.setOnClickListener {
+//                currentRole = UserRole.SERVICE_ADVISOR
+//                roleContainer.visibility = View.GONE
+//                applyRoleTitle()
+//                adapter.updateRooms(loadRoomsFromJson())
+//            }
+//
+//            btnManager.setOnClickListener {
+//                currentRole = UserRole.MANAGER
+//                roleContainer.visibility = View.GONE
+//                applyRoleTitle()
+//                adapter.updateRooms(loadRoomsFromJson())
+//            }
+//        } else {
+//            currentRole = UserRole.CUSTOMER
+//        }
+//    }
 
     private fun setupRecycler() {
         recyclerView = findViewById(R.id.recyclerVirtualRooms)

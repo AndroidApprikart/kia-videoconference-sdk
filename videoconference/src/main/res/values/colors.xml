@@ -9,6 +9,7 @@
 <!--    <color name="color_vc_background">#071C2C</color>-->
 <!--    <color name="color_renderer_background">#05131F</color>-->
     <color name="color_kia_black">#05141F</color>
+    <color name="grey_txt_color">#999999</color>
 
     <color name="red">#EA0029</color>
     <color name="gray_mic_background">#B3373737</color>

@@ -6,4 +6,21 @@
     </style>
 
 
+    <style name="PageNumberStyle">
+        <item name="android:layout_width">32dp</item>
+        <item name="android:layout_height">32dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">#444444</item>
+    </style>
+
+    <style name="PageNumberStyleSelected">
+        <item name="android:layout_width">32dp</item>
+        <item name="android:layout_height">32dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:background">@drawable/bg_page_selected</item>
+    </style>
+
 </resources>

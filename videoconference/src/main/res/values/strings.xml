@@ -263,10 +263,11 @@
 
     <!-- Virtual chat room strings -->
     <string name="vc_title_virtual_chat_room_customer">Virtual Chat Room</string>
-    <string name="vc_title_virtual_chat_room_service_advisor">Virtual Chat Room - Service Advisor</string>
+    <string name="vc_title_virtual_chat_room_service_advisor">Virtual Chat Room</string>
     <string name="vc_title_virtual_chat_room_manager">Virtual Chat Room - Manager</string>
     <string name="vc_back_to_home">Back to Home</string>
-    <string name="vc_new_rooms_today">1 New Room created today</string>
+    <string name="vc_new_rooms_today">1 New Room </string>
+    <string name="vc_new_rooms_todaycreated">created today </string>
     <string name="vc_hint_search_customer_or_ro">Search Customer by name or RO number</string>
     <string name="vc_label_all_rooms">All Rooms</string>
     <string name="vc_col_customer_name">Customer Name</string>

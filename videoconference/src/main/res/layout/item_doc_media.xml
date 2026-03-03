@@ -6,6 +6,107 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/white">
+        
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="@dimen/_8sdp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            >
+
+            <ImageView
+                android:layout_width="@dimen/_30sdp"
+                android:layout_height="@dimen/_30sdp"
+                android:id="@+id/docImg"
+                android:layout_gravity="center"
+                android:padding="@dimen/_5sdp"
+                android:src="@drawable/file_pdf_color_red_icon_1"/>
+            
+            
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/_5sdp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/fileName"
+                    android:fontFamily="@font/kia_signature_fix_bold"
+                    android:textColor="@color/black"
+                    android:text="Invoice126.pdf"
+                    android:textSize="16sp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    >
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/pages"
+                        android:fontFamily="@font/kia_signature_fix_bold"
+                        android:textColor="#666666"
+                        android:text="1page"
+                        android:textSize="12sp"/>
+
+                    <View
+                        android:layout_width="@dimen/_3sdp"
+                        android:layout_height="@dimen/_3sdp"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="@dimen/_5sdp"
+                        android:background="@drawable/bg_dot_circle"
+                        android:layout_marginEnd="@dimen/_5sdp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/fileType"
+                        android:fontFamily="@font/kia_signature_fix_bold"
+                        android:textColor="#666666"
+                        android:text="Pdf"
+                        android:textSize="12sp"/>
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/date"
+                        android:fontFamily="@font/kia_signature_fix_bold"
+                        android:textColor="#666666"
+                        android:text="03/10/2025"
+                        android:textSize="12sp"/>
+
+
+
+
+
+
+                </LinearLayout>
+
+
+
+
+            </LinearLayout>
+
+
+            
+            
+        </LinearLayout>
+
+
+        
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>
