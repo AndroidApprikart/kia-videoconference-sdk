@@ -5,7 +5,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:background="@color/white"
         android:padding="@dimen/_16sdp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
         <TextView
             android:id="@+id/tvManageTitle"
@@ -16,71 +22,29 @@
             android:textColor="@color/black"
             android:fontFamily="@font/kia_signature_fix_bold" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/_4sdp"
-            android:text="Participants"
-            android:textSize="14sp"
-            android:textColor="@color/black" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/_12sdp"
-            android:orientation="vertical">
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
 
-            <!-- Vijaykumar (You) -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Vijaykumar  •  You"
-                android:textSize="14sp"
-                android:textColor="@color/black"
-                android:paddingVertical="@dimen/_4sdp" />
 
-            <!-- Lata (Customer) -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Lata  •  Customer"
-                android:textSize="14sp"
-                android:textColor="@color/black"
-                android:paddingVertical="@dimen/_4sdp" />
+            <ImageView
+                android:layout_width="@dimen/_25sdp"
+                android:layout_height="@dimen/_25sdp"
+                android:id="@+id/crossIcon"
+                android:src="@drawable/close__1_"/>
 
-            <!-- Ajay (Service Advisor) with Change button -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:paddingVertical="@dimen/_4sdp"
-                android:orientation="horizontal">
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Ajay  •  Service Advisor"
-                    android:textSize="14sp"
-                    android:textColor="@color/black" />
-
-                <Button
-                    android:id="@+id/btnChangeAdvisor"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Change"
-                    android:textAllCaps="false" />
-            </LinearLayout>
-
-            <!-- Bhagat (Service Manager) -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Bhagat  •  Service Manager"
-                android:textSize="14sp"
-                android:textColor="@color/black"
-                android:paddingVertical="@dimen/_4sdp" />
         </LinearLayout>
+
+
+
+       <androidx.recyclerview.widget.RecyclerView
+           android:layout_width="match_parent"
+           android:layout_height="wrap_content"
+           android:layout_marginTop="@dimen/_5sdp"
+           android:id="@+id/manageParticipantsList"/>
 
     </LinearLayout>
 </layout>

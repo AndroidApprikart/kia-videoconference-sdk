@@ -5,87 +5,113 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:background="@color/white"
         android:padding="@dimen/_16sdp">
+
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="0dp"
+                android:id="@+id/tvManageTitle"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:text="Change Service Advisor"
                 android:textSize="16sp"
                 android:textColor="@color/black"
                 android:fontFamily="@font/kia_signature_fix_bold" />
 
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+
+
+            <ImageView
+                android:layout_width="@dimen/_25sdp"
+                android:layout_height="@dimen/_25sdp"
+                android:id="@+id/crossIcon"
+                android:src="@drawable/close__1_"/>
+
+
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:gravity="center"
+            android:layout_marginTop="@dimen/_15sdp"
+             android:paddingVertical="@dimen/_5sdp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+
             <TextView
-                android:id="@+id/btnClose"
+                android:id="@+id/txtInitial"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:gravity="center"
+                android:text="L"
+                android:layout_gravity="center"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:background="@drawable/bg_rounded_circle"
+                android:fontFamily="@font/kia_signature_fix_bold"/>
+
+            <TextView
+                android:id="@+id/tctParticipantName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:gravity="start"
+                android:layout_gravity="center"
+                android:text="Participant"
+                android:textColor="#06141F"
+                android:textSize="16sp"
+                android:layout_weight="1"
+                android:layout_marginStart="@dimen/_10sdp"
+                android:fontFamily="@font/kia_signature_fix_bold"/>
+
+
+
+
+            <TextView
+                android:id="@+id/txtLeftStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Close"
-                android:textSize="14sp"
-                android:textColor="@color/black" />
+                android:background="@drawable/vc_bg_status_chip"
+                android:layout_gravity="center"
+                android:text="current"
+                android:backgroundTint="#F2F2F2"
+                android:paddingVertical="@dimen/_4sdp"
+                android:paddingHorizontal="@dimen/_8sdp"
+                android:fontFamily="@font/kia_signature_fix_regular"
+                android:textColor="@color/black"
+                android:textSize="12sp" />
+
+
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tvCurrentAdvisor"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/_8sdp"
-            android:text="Ajay  •  Current"
-            android:textSize="14sp"
-            android:textColor="@color/black" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/_12sdp"
-            android:text="Select"
-            android:textSize="14sp"
-            android:textColor="@color/black"
-            android:fontFamily="@font/kia_signature_fix_bold" />
-
-        <RadioGroup
-            android:id="@+id/rgAdvisors"
+            android:id="@+id/selectTv"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/_8sdp">
+            android:gravity="start"
+            android:layout_gravity="center"
+            android:text="Select"
+            android:textColor="#06141F"
+            android:textSize="19sp"
+            android:layout_marginTop="@dimen/_10sdp"
+            android:fontFamily="@font/kia_signature_fix_bold"/>
 
-            <RadioButton
-                android:id="@+id/rbHanumanth"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Hanumanth" />
 
-            <RadioButton
-                android:id="@+id/rbAnil"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Anil"
-                android:checked="true" />
-
-            <RadioButton
-                android:id="@+id/rbSuresh"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Suresh" />
-
-            <RadioButton
-                android:id="@+id/rbHareesh"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Hareesh" />
-
-            <RadioButton
-                android:id="@+id/rbHania"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Hania" />
-        </RadioGroup>
+      <androidx.recyclerview.widget.RecyclerView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:id="@+id/listParticipants"
+          android:layout_marginTop="@dimen/_10sdp"/>
 
     </LinearLayout>
 </layout>

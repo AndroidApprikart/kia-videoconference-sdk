@@ -16,7 +16,6 @@ class PhotosAndVideosFragment : Fragment() {
     var TAG = "MediaFragment"
 
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
     }
