@@ -8,7 +8,6 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.app.vc.databinding.ActivityLoginKiaKrystalBinding
 import com.app.vc.utils.PreferenceManager
-import com.app.vc.virtualchatroom.VirtualChatRoomActivity
 import com.app.vc.virtualroomlist.VirtualRoomListActivity
 
 class LoginKiaKrystal : AppCompatActivity() {
@@ -21,9 +20,8 @@ class LoginKiaKrystal : AppCompatActivity() {
 
         // Check if user is already logged in
         if (!PreferenceManager.getAccessToken().isNullOrEmpty()) {
-            Toast.makeText(this, "Already logged in", Toast.LENGTH_SHORT).show()
             navigateToRoomList()
-            return // Skip login screen setup
+            return 
         }
 
         binding = ActivityLoginKiaKrystalBinding.inflate(layoutInflater)
@@ -41,7 +39,7 @@ class LoginKiaKrystal : AppCompatActivity() {
 
         viewModel.isVerified.observe(this) { isVerified ->
             if (isVerified) {
-                Toast.makeText(this, "Login success and verified", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show()
                 navigateToRoomList()
             }
         }
@@ -62,7 +60,8 @@ class LoginKiaKrystal : AppCompatActivity() {
     }
 
     private fun navigateToRoomList() {
-        startActivity(Intent(this, VirtualChatRoomActivity::class.java))
+        // FIXED: Now navigating to the List screen instead of the Chat room directly
+        startActivity(Intent(this, VirtualRoomListActivity::class.java))
         finish()
     }
 }

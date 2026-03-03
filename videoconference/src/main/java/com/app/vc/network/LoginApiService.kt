@@ -1,10 +1,13 @@
 package com.app.vc.network
 
 import com.app.vc.virtualchattoken.LoginResponse
+import com.app.vc.virtualroomlist.GroupResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
+import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 interface LoginApiService {
@@ -24,6 +27,11 @@ interface LoginApiService {
     suspend fun refreshToken(
         @Body request: TokenRefreshRequest
     ): Response<LoginResponse>
+
+    @GET("api/groups/")
+    suspend fun getGroups(
+        @Header("Authorization") token: String
+    ): Response<List<GroupResponse>>
 }
 
 data class TokenVerifyRequest(val token: String)
