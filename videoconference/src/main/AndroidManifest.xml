@@ -45,7 +45,6 @@
         android:usesCleartextTraffic="true">
         <activity
             android:name=".RepairOrderActivity"
-            android:screenOrientation="sensorLandscape"
             android:exported="false" />
 <!--        <activity-->
 <!--            android:name=".RepairOrderActivity"-->
@@ -54,7 +53,6 @@
             android:name=".VCDynamicActivity4"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:exported="true"
-            android:screenOrientation="sensorLandscape"
             android:supportsPictureInPicture="true"
             android:theme="@style/Base.Theme.VideoConference">
 
@@ -67,22 +65,18 @@
         <activity
             android:name=".virtualroomlist.VirtualRoomListActivity"
             android:exported="false"
-            android:screenOrientation="sensorLandscape"
             />
         <activity
             android:name=".virtualchatroom.VirtualChatRoomActivity"
             android:exported="false"
-            android:screenOrientation="sensorLandscape"
             />
         <activity
             android:name="com.kia.vc.feedback.FeedbackActivity"
             android:exported="true"
-            android:screenOrientation="sensorLandscape"
             android:supportsPictureInPicture="false" />
         <activity
             android:name="com.kia.vc.validateDealer.DealerValidationActivity"
             android:exported="true"
-            android:screenOrientation="sensorLandscape"
             android:supportsPictureInPicture="false" /> <!-- for screen sharing -->
         <!-- <service -->
         <!-- android:name=".screenshare.MediaProjectionService" -->
@@ -94,7 +88,6 @@
         <receiver
             android:name=".VCDynamicActivity4$AlarmReceiver"
             android:enabled="true"
-            android:screenOrientation="sensorLandscape"
             android:exported="false" /> <!-- <provider -->
         <!-- android:name="androidx.core.content.FileProvider" -->
         <!-- android:authorities="com.app.vc.provider" -->
