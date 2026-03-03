@@ -10,6 +10,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.app.kiakandid.databinding.ActivityMainBinding
 import com.app.vc.VCDynamicActivity4
+import com.app.vc.utils.PreferenceManager
+import com.app.vc.virtualchattoken.LoginKiaKrystal
 import com.app.vc.virtualroomlist.VirtualRoomListActivity
 
 class MainActivity : AppCompatActivity() {
@@ -35,6 +37,10 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        
+        // Initialize PreferenceManager
+        PreferenceManager.init(this)
+
         button = findViewById(R.id.button1) as Button
         meeting_code = findViewById(R.id.meeting_code) as EditText
         keccode = findViewById<EditText>(R.id.kec_code)as EditText
@@ -111,7 +117,7 @@ class MainActivity : AppCompatActivity() {
         })
 
         btnOpenVirtualChat.setOnClickListener {
-            val intent = Intent(this@MainActivity, VirtualRoomListActivity::class.java)
+            val intent = Intent(this@MainActivity, LoginKiaKrystal::class.java)
             startActivity(intent)
         }
     }

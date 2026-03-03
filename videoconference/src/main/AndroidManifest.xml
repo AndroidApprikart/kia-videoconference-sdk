@@ -44,11 +44,13 @@
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true">
         <activity
-            android:name=".RepairOrderActivity"
+            android:name=".virtualchattoken.LoginKiaKrystal"
             android:exported="false" />
-<!--        <activity-->
-<!--            android:name=".RepairOrderActivity"-->
-<!--            android:exported="false" />-->
+        <activity
+            android:name=".RepairOrderActivity"
+            android:exported="false" /> <!-- <activity -->
+        <!-- android:name=".RepairOrderActivity" -->
+        <!-- android:exported="false" /> -->
         <activity
             android:name=".VCDynamicActivity4"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
@@ -65,12 +67,10 @@
         </activity>
         <activity
             android:name=".virtualroomlist.VirtualRoomListActivity"
-            android:exported="false"
-            />
+            android:exported="false" />
         <activity
             android:name=".virtualchatroom.VirtualChatRoomActivity"
-            android:exported="false"
-            />
+            android:exported="false" />
         <activity
             android:name="com.kia.vc.feedback.FeedbackActivity"
             android:exported="true"

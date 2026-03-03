@@ -12,11 +12,13 @@ import com.app.vc.views.WaveformView
 import java.io.File
 
 enum class ChatMessageType { TEXT, IMAGE, FILE, VOICE_NOTE }
+enum class MessageStatus { SENDING, SENT, READ }
 
 data class ChatMessage(
     val text: String,
     val isSender: Boolean,
     val timeLabel: String,
+    var status: MessageStatus = MessageStatus.SENT,
     val type: ChatMessageType = ChatMessageType.TEXT,
     val attachmentUri: String? = null,
     val durationSeconds: Int? = null,
@@ -69,10 +71,22 @@ class VirtualChatMessageAdapter(
         messages.add(message)
         notifyItemInserted(messages.size - 1)
     }
+    
+    fun updateMessageStatus(messageId: String, newStatus: MessageStatus) {
+        // In a real app, you'd find the message by a unique ID
+        // For this demo, we'll just update the last sent message
+        val lastSentMessage = messages.lastOrNull { it.isSender }
+        if (lastSentMessage != null) {
+            lastSentMessage.status = newStatus
+            notifyItemChanged(messages.lastIndexOf(lastSentMessage))
+        }
+    }
+
 
     class OutgoingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val txtMessage: TextView? = itemView.findViewById(R.id.txtMessage)
         private val txtTime: TextView = itemView.findViewById(R.id.txtTime)
+        private val imgStatus: ImageView? = itemView.findViewById(R.id.imgStatus)
         private val imgAttachment: ImageView? = itemView.findViewById(R.id.imgAttachment)
         private val layoutText: View? = itemView.findViewById(R.id.layoutText)
         private val layoutImageContainer: View? = itemView.findViewById(R.id.layoutImageContainer)
@@ -88,6 +102,21 @@ class VirtualChatMessageAdapter(
             layoutImageContainer?.visibility = View.GONE
             layoutVoice?.visibility = View.GONE
             txtFileName?.visibility = View.GONE
+            
+            // Update status indicator
+            imgStatus?.visibility = View.VISIBLE
+            when (message.status) {
+                MessageStatus.SENDING -> {
+//                    imgStatus?.setImageResource(R.drawableble.ic_status_sending) // Replace with your sending icon
+                }
+                MessageStatus.SENT -> {
+                    imgStatus?.setImageResource(R.drawable.ic_status_sent) // Replace with your sent icon
+                }
+                MessageStatus.READ -> {
+                    imgStatus?.setImageResource(R.drawable.ic_status_read) // Replace with your read icon
+                }
+            }
+
             when (message.type) {
                 ChatMessageType.TEXT -> {
                     layoutText?.visibility = View.VISIBLE
@@ -214,4 +243,3 @@ class VirtualChatMessageAdapter(
         }
     }
 }
-

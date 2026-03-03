@@ -15,6 +15,7 @@ import com.google.gson.reflect.TypeToken
 class VirtualRoomListActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
+
     private lateinit var adapter: VirtualRoomListAdapter
 
     private var currentRole: UserRole = UserRole.CUSTOMER
@@ -24,6 +25,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
         setContentView(R.layout.vc_activity_virtual_room_list)
 
         val roleFromIntent = intent.getStringExtra(EXTRA_ROLE)
+
         currentRole = when (roleFromIntent) {
             UserRole.SERVICE_ADVISOR.name -> UserRole.SERVICE_ADVISOR
             UserRole.MANAGER.name -> UserRole.MANAGER
@@ -34,6 +36,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
         setupRecycler()
         applyRoleTitle()
     }
+
 
     private fun setupRoleSelectionIfAvailable() {
         val roleContainer = findViewById<View?>(R.id.roleSelectionContainer)
