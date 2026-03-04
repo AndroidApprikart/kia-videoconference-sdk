@@ -21,9 +21,11 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -90,6 +92,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private val messages: MutableList<ChatMessage> = mutableListOf()
     private var messageAdapter: VirtualChatMessageAdapter? = null
 
+    companion object {
+        const val EXTRA_ROLE = "extra_role"
+        const val EXTRA_ROOM_JSON = "extra_room_json"
+    }
+
+
     private var cameraPhotoPath: String? = null
     private var voiceNotePath: String? = null
     private var voiceNoteDurationSeconds: Int = 0
@@ -99,7 +107,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private val voiceTimerRunnable = object : Runnable {
         override fun run() {
             voiceNoteDurationSeconds++
-            voiceNoteDialogTimerView?.text = "%02d:%02d".format(voiceNoteDurationSeconds / 60, voiceNoteDurationSeconds % 60)
+            voiceNoteDialogTimerView?.text =
+                "%02d:%02d".format(voiceNoteDurationSeconds / 60, voiceNoteDurationSeconds % 60)
             voiceTimerHandler.postDelayed(this, 1000)
         }
     }
@@ -108,9 +117,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private val amplitudeHandler = Handler(Looper.getMainLooper())
     private val amplitudeRunnable = object : Runnable {
         override fun run() {
-            val amp = try { mediaRecorder?.maxAmplitude ?: 0 } catch (_: Exception) { 0 }
-            voiceNoteWaveformView?.addAmplitude((amp / 200).coerceIn(5,120))
-            if (isRecording) amplitudeHandler.postDelayed(this,50)
+            val amp = try {
+                mediaRecorder?.maxAmplitude ?: 0
+            } catch (_: Exception) {
+                0
+            }
+            voiceNoteWaveformView?.addAmplitude((amp / 200).coerceIn(5, 120))
+            if (isRecording) amplitudeHandler.postDelayed(this, 50)
         }
     }
     private var isRecording = false
@@ -135,46 +148,79 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         "Will share the estimation in sometime"
     )
 
-    private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        if (granted.values.any { !it }) Toast.makeText(this, "Permission needed for camera and files", Toast.LENGTH_SHORT).show()
-    }
-
-    private val requestCameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) launchCamera() else Toast.makeText(this, "Camera permission needed", Toast.LENGTH_SHORT).show()
-    }
-
-    private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && cameraPhotoPath != null) {
-            val file = File(cameraPhotoPath!!)
-            showPreviewBottomSheet(listOf(file to ChatMessageType.IMAGE))
+    private val requestPermission =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+            if (granted.values.any { !it }) Toast.makeText(
+                this,
+                "Permission needed for camera and files",
+                Toast.LENGTH_SHORT
+            ).show()
         }
-        else cameraPhotoPath = null
+
+    private val requestCameraPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) launchCamera() else Toast.makeText(
+                this,
+                "Camera permission needed",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+    private val takePictureLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && cameraPhotoPath != null) {
+                val file = File(cameraPhotoPath!!)
+                showPreviewBottomSheet(listOf(file to ChatMessageType.IMAGE))
+            } else cameraPhotoPath = null
+        }
+
+    private fun launchCamera() {
+        val photoFile = File(cacheDir, "chat_photo_${System.currentTimeMillis()}.jpg")
+        cameraPhotoPath = photoFile.absolutePath
+        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", photoFile)
+        takePictureLauncher.launch(uri)
     }
 
-    private val fileLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri>? ->
-        uris ?: return@registerForActivityResult
-        val selectedFiles = mutableListOf<Pair<File, ChatMessageType>>()
 
-        uris.forEach { uri ->
-            val file = uriToFile(uri)
-            if (file != null) {
-                val sizeInMb = file.length() / (1024 * 1024)
-                if (sizeInMb > 30) {
-                    Toast.makeText(this, "File ${file.name} exceeds 30MB", Toast.LENGTH_LONG).show()
-                } else {
-                    val mimeType = contentResolver.getType(uri) ?: ""
-                    val type = when {
-                        mimeType.startsWith("image") -> ChatMessageType.IMAGE
-                        mimeType.startsWith("video") -> ChatMessageType.VIDEO
-                        else -> ChatMessageType.FILE
+    private val fileLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri>? ->
+            uris ?: return@registerForActivityResult
+            val selectedFiles = mutableListOf<Pair<File, ChatMessageType>>()
+
+            uris.forEach { uri ->
+                val file = uriToFile(uri)
+                if (file != null) {
+                    val sizeInMb = file.length() / (1024 * 1024)
+                    if (sizeInMb > 30) {
+                        Toast.makeText(this, "File ${file.name} exceeds 30MB", Toast.LENGTH_LONG)
+                            .show()
+                    } else {
+                        val mimeType = contentResolver.getType(uri) ?: ""
+                        val type = when {
+                            mimeType.startsWith("image") -> ChatMessageType.IMAGE
+                            mimeType.startsWith("video") -> ChatMessageType.VIDEO
+                            else -> ChatMessageType.FILE
+                        }
+                        selectedFiles.add(file to type)
                     }
-                    selectedFiles.add(file to type)
                 }
+            }
+
+            if (selectedFiles.isNotEmpty()) {
+                showPreviewBottomSheet(selectedFiles)
             }
         }
 
-        if (selectedFiles.isNotEmpty()) {
-            showPreviewBottomSheet(selectedFiles)
+    private fun uriToFile(uri: Uri): File? {
+        return try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val file =
+                    File(cacheDir, "temp_file_${System.currentTimeMillis()}_${uri.lastPathSegment}")
+                file.outputStream().use { input.copyTo(it) }
+                file
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -225,6 +271,180 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         connectToWebSocket()
     }
 
+    private fun loadFragment(fragment: Fragment) {
+        supportFragmentManager.beginTransaction().replace(R.id.FragmentContainer, fragment).commit()
+    }
+
+    private fun setupVoiceNote() {
+        binding.recordLayout?.setOnClickListener { showVoiceNoteDialog() }
+    }
+
+    private fun showVoiceNoteDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_voice_note, null)
+        voiceNoteWaveformView = view.findViewById(R.id.waveformView)
+        voiceNoteDialogTimerView = view.findViewById(R.id.txtVoiceTimer)
+        val btnClose = view.findViewById<ImageView>(R.id.btnCloseVoice)
+        val btnRecord = view.findViewById<ImageView>(R.id.btnRecordVoice)
+        val btnDelete = view.findViewById<ImageView>(R.id.btnDeleteVoice)
+        val btnPlay = view.findViewById<ImageView>(R.id.btnPlayPauseVoice)
+        val pauseIcon = view.findViewById<ImageView>(R.id.pauseIcon)
+        val btnSave = view.findViewById<TextView>(R.id.btnSaveVoice)
+        val btnCancel = view.findViewById<TextView>(R.id.btnCancelVoice)
+
+        voiceNoteDurationSeconds = 0
+        voiceNotePath = null
+        voiceNoteDialogTimerView?.text = "00:00"
+
+        val dialog = AlertDialog.Builder(this).setView(view).create()
+
+        btnClose.setOnClickListener { dialog.dismiss() }
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        btnRecord.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon)
+            } else {
+                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+
+        btnSave.setOnClickListener {
+            if (isRecording) {
+                stopVoiceRecording()
+                isRecording = false
+            }
+            dialog.dismiss()
+            voiceNotePath?.let { path ->
+                val localId = "local_voice_${System.currentTimeMillis()}"
+                val tempMessage = ChatMessage(
+                    messageId = localId,
+                    text = "",
+                    isSender = true,
+                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date())
+                        .lowercase(),
+                    type = ChatMessageType.VOICE_NOTE,
+                    attachmentUri = path,
+                    durationSeconds = voiceNoteDurationSeconds,
+                    status = MessageStatus.SENDING
+                )
+                messageAdapter?.addMessage(tempMessage)
+                scrollToLast()
+                performUpload(File(path), "Voice Note", ChatMessageType.VOICE_NOTE, localId)
+            }
+        }
+
+        dialog.show()
+    }
+
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+    private fun startRecordingFlow(r: ImageView, d: ImageView, p: ImageView, pause: ImageView) {
+        startVoiceRecording()
+        isRecording = true
+        r.visibility = View.GONE
+        d.visibility = View.GONE
+        p.visibility = View.GONE
+        pause.visibility = View.VISIBLE
+    }
+
+    private val recordAudioPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) Toast.makeText(this, "Permission required", Toast.LENGTH_SHORT).show()
+        }
+
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+    private fun startVoiceRecording() {
+        val sampleRate = 44100
+        val bufferSize = AudioRecord.getMinBufferSize(
+            sampleRate,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        audioRecord = AudioRecord(
+            MediaRecorder.AudioSource.MIC,
+            sampleRate,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            bufferSize
+        )
+        pcmFile = File(cacheDir, "voice_note.pcm")
+        voiceNotePath = pcmFile?.absolutePath
+        audioRecord?.startRecording()
+        isRecording = true
+        voiceTimerHandler.post(voiceTimerRunnable)
+        Thread {
+            val buffer = ShortArray(1024)
+            val output = FileOutputStream(pcmFile!!)
+            while (isRecording) {
+                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
+                if (read > 0) {
+                    val maxAmp = buffer.take(read).maxOf { abs(it.toInt()) }
+                    runOnUiThread {
+                        voiceNoteWaveformView?.addAmplitude(
+                            (maxAmp / 300).coerceAtLeast(
+                                1
+                            )
+                        )
+                    }
+                    output.write(
+                        ByteBuffer.allocate(read * 2).order(ByteOrder.LITTLE_ENDIAN)
+                            .apply { buffer.take(read).forEach { putShort(it) } }.array()
+                    )
+                }
+            }
+            output.close()
+        }.start()
+    }
+
+    private fun stopVoiceRecording() {
+        isRecording = false
+        audioRecord?.stop()
+        audioRecord?.release()
+        audioRecord = null
+        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun setupTabs() {
+        binding.tabParticipants?.setOnClickListener {
+            loadFragment(ParticipantsListFragment())
+            selectParticipantsTab()
+            moveIndicator(it)
+        }
+        binding.tabMedia?.setOnClickListener {
+            loadFragment(MediaFragment())
+            selectMediaTab()
+            moveIndicator(it)
+        }
+    }
+
+    private fun moveIndicator(tab: View) {
+        binding.tabIndicator?.post {
+            binding.tabIndicator?.layoutParams?.width = tab.width
+            binding.tabIndicator?.requestLayout()
+            binding.tabIndicator?.x = tab.left.toFloat()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun selectParticipantsTab() {
+        binding.tabParticipants?.setTextColor(getColor(R.color.colorPrimary_kia_kandid))
+        binding.tabParticipants?.typeface = resources.getFont(R.font.kia_signature_fix_bold)
+        binding.tabMedia?.setTextColor(getColor(R.color.gray_mic_background))
+        binding.tabMedia?.typeface = resources.getFont(R.font.kia_signature_fix_regular)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun selectMediaTab() {
+        binding.tabMedia?.setTextColor(getColor(R.color.colorPrimary_kia_kandid))
+        binding.tabMedia?.typeface = resources.getFont(R.font.kia_signature_fix_bold)
+        binding.tabParticipants?.setTextColor(getColor(R.color.gray_mic_background))
+        binding.tabParticipants?.typeface = resources.getFont(R.font.kia_signature_fix_regular)
+    }
+
 
     private fun connectToWebSocket() {
         val rawRoNumber = room?.roNumber ?: "default-room"
@@ -262,14 +482,16 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             return@runOnUiThread
                         }
 
-                        val content = jsonObject.get("content")?.asString ?: jsonObject.get("message")?.asString
+                        val content = jsonObject.get("content")?.asString
+                            ?: jsonObject.get("message")?.asString
                         val attachment = jsonObject.get("attachment")?.asJsonObject
 
                         if (attachment != null) {
                             val attachmentUrl = attachment.get("file_url")?.asString ?: ""
                             val fileName = attachment.get("file_name")?.asString ?: ""
                             val mimeType = attachment.get("mime_type")?.asString ?: ""
-                            val fullUrl = if (attachmentUrl.startsWith("http")) attachmentUrl else ApiDetails.APRIK_Kia_BASE_URL + attachmentUrl
+                            val fullUrl =
+                                if (attachmentUrl.startsWith("http")) attachmentUrl else ApiDetails.APRIK_Kia_BASE_URL + attachmentUrl
 
                             val msgType = when {
                                 mimeType.startsWith("image") -> ChatMessageType.IMAGE
@@ -277,31 +499,40 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 else -> ChatMessageType.FILE
                             }
 
-                            messageAdapter?.addMessage(ChatMessage(
-                                text = "",
-                                isSender = false,
-                                timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
-                                type = msgType,
-                                attachmentUri = fullUrl,
-                                fileName = fileName,
-                                caption = content,
-                                mimeType = mimeType
-                            ))
+                            messageAdapter?.addMessage(
+                                ChatMessage(
+                                    text = "",
+                                    isSender = false,
+                                    timeLabel = SimpleDateFormat(
+                                        "hh:mma",
+                                        Locale.getDefault()
+                                    ).format(Date()).lowercase(),
+                                    type = msgType,
+                                    attachmentUri = fullUrl,
+                                    fileName = fileName,
+                                    caption = content,
+                                    mimeType = mimeType
+                                )
+                            )
                         } else if (content != null) {
                             addMessage(content, false)
                         }
                         scrollToLast()
                         sendReadReceipt(jsonObject.get("message_id")?.asString ?: "")
                     }
+
                     "chat.typing" -> {
                         val senderId = jsonObject.get("sender_id")?.asString
                         val currentUserId = PreferenceManager.getUserId()
                         if (senderId != currentUserId) {
                             val isTypingBroadcast = jsonObject.get("is_typing")?.asBoolean ?: false
-                            binding.txtTypingIndicator?.visibility = if (isTypingBroadcast) View.VISIBLE else View.GONE
-                            binding.txtTypingIndicator?.text = "${jsonObject.get("username")?.asString} is typing..."
+                            binding.txtTypingIndicator?.visibility =
+                                if (isTypingBroadcast) View.VISIBLE else View.GONE
+                            binding.txtTypingIndicator?.text =
+                                "${jsonObject.get("username")?.asString} is typing..."
                         }
                     }
+
                     "chat.read" -> {
                         messageAdapter?.updateMessageStatus("", MessageStatus.READ)
                     }
@@ -331,9 +562,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val btnCancel: View = view.findViewById(R.id.btnCancelPreview)
 
         viewPager.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            override fun onCreateViewHolder(
+                parent: ViewGroup,
+                viewType: Int
+            ): RecyclerView.ViewHolder {
                 val img = ImageView(parent.context).apply {
-                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
                     scaleType = ImageView.ScaleType.CENTER_INSIDE
                 }
                 return object : RecyclerView.ViewHolder(img) {}
@@ -361,7 +598,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             bottomSheetDialog.dismiss()
 
             selectedFiles.forEach { (file, type) ->
-                val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+                val timeLabel =
+                    SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
                 val localId = "local_${System.currentTimeMillis()}_${file.name}"
                 val tempMessage = ChatMessage(
                     messageId = localId,
@@ -379,9 +617,18 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                 lifecycleScope.launch {
                     val fileToUpload = if (type == ChatMessageType.IMAGE) {
-                        try { compressImage(file) } catch (e: Exception) { file }
+                        try {
+                            compressImage(file)
+                        } catch (e: Exception) {
+                            file
+                        }
                     } else file
-                    performUpload(fileToUpload, if (selectedFiles.size == 1) caption else "", type, localId)
+                    performUpload(
+                        fileToUpload,
+                        if (selectedFiles.size == 1) caption else "",
+                        type,
+                        localId
+                    )
                 }
             }
         }
@@ -417,10 +664,24 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             try {
                 val response = apiService.uploadFile("Bearer $token", slug, body, captionPart)
                 if (response.isSuccessful && response.body() != null) {
-                    runOnUiThread { messageAdapter?.updateMessageStatus(localId, MessageStatus.SENT) }
+                    runOnUiThread {
+                        messageAdapter?.updateMessageStatus(
+                            localId,
+                            MessageStatus.SENT
+                        )
+                    }
                 } else {
-                    runOnUiThread { messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR) }
-                    Toast.makeText(this@VirtualChatRoomActivity, "Upload failed: ${response.code()}", Toast.LENGTH_SHORT).show()
+                    runOnUiThread {
+                        messageAdapter?.updateMessageStatus(
+                            localId,
+                            MessageStatus.ERROR
+                        )
+                    }
+                    Toast.makeText(
+                        this@VirtualChatRoomActivity,
+                        "Upload failed: ${response.code()}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
                 runOnUiThread { messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR) }
@@ -468,7 +729,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun setupMessageList() {
-        binding.recyclerMessages.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
+        binding.recyclerMessages.layoutManager =
+            LinearLayoutManager(this).apply { stackFromEnd = true }
         messageAdapter = VirtualChatMessageAdapter(
             messages,
             onRetryClick = { message ->
@@ -480,7 +742,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 messageAdapter?.updateMessageStatus(localId, MessageStatus.SENDING)
                 lifecycleScope.launch {
                     val fileToUpload = if (type == ChatMessageType.IMAGE) {
-                        try { compressImage(file) } catch (e: Exception) { file }
+                        try {
+                            compressImage(file)
+                        } catch (e: Exception) {
+                            file
+                        }
                     } else file
                     performUpload(fileToUpload, caption, type, localId)
                 }
@@ -497,6 +763,19 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             .replace(R.id.FragmentContainer, fragment)
             .addToBackStack(null)
             .commit()
+    }
+
+    class MediaViewerFragment : Fragment() {
+        companion object {
+            fun newInstance(url: String, type: String): MediaViewerFragment {
+                return MediaViewerFragment().apply {
+                    arguments = Bundle().apply {
+                        putString("url", url)
+                        putString("type", type)
+                    }
+                }
+            }
+        }
     }
 
     private fun setupQuickReplies() {
@@ -526,7 +805,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun setupSendActions() {
         binding.edtMessageTablet.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) { if (s.isNullOrBlank()) sendTypingStatus(false) }
+            override fun afterTextChanged(s: Editable?) {
+                if (s.isNullOrBlank()) sendTypingStatus(false)
+            }
+
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val hasText = !s.isNullOrBlank()
@@ -552,6 +834,23 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
+    private fun scrollToLast() {
+        binding.recyclerMessages.scrollToPosition((messages.size - 1).coerceAtLeast(0))
+    }
+
+    private fun addMessage(text: String, isSender: Boolean) {
+        if (TextUtils.isEmpty(text)) return
+        val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+        messageAdapter?.addMessage(
+            ChatMessage(
+                text = text,
+                isSender = isSender,
+                timeLabel = timeLabel,
+                status = if (isSender) MessageStatus.SENDING else MessageStatus.SENT
+            )
+        )
+    }
+
     private fun sendWebSocketMessage(text: String) {
         val json = JsonObject()
         json.addProperty("type", "chat.message")
@@ -564,9 +863,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun showAttachmentOptionsDialog() {
-        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_attachment_options, null)
-        val dialog = AlertDialog.Builder(this).setView(view).create()
-        view.findViewById<LinearLayout>(R.id.optionGallery).setOnClickListener {
 
         val dialogView = LayoutInflater.from(this)
             .inflate(R.layout.vc_dialog_attachment_options, null)
@@ -578,14 +874,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         dialog.show()
 
         dialog.window?.apply {
-
             setBackgroundDrawableResource(android.R.color.transparent)
 
             val params = attributes
-            params.gravity = Gravity.BOTTOM or Gravity.END   // Bottom Right
-
-            params.y = 140   // height above message box
-            params.x = 20    // small right margin
+            params.gravity = Gravity.BOTTOM or Gravity.END
+            params.y = 140
+            params.x = 20
 
             attributes = params
 
@@ -595,333 +889,19 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             )
         }
 
-
         dialogView.findViewById<LinearLayout>(R.id.optionGallery)?.setOnClickListener {
             dialog.dismiss()
-            fileLauncher.launch(arrayOf("*/*"))
+            fileLauncher.launch(arrayOf("image/*", "video/*"))
         }
-        view.findViewById<LinearLayout>(R.id.optionCamera).setOnClickListener {
 
         dialogView.findViewById<LinearLayout>(R.id.optionCamera)?.setOnClickListener {
             dialog.dismiss()
             requestCameraPermission.launch(Manifest.permission.CAMERA)
         }
-        view.findViewById<LinearLayout>(R.id.optionFile).setOnClickListener {
 
         dialogView.findViewById<LinearLayout>(R.id.optionFile)?.setOnClickListener {
             dialog.dismiss()
             fileLauncher.launch(arrayOf("*/*"))
         }
-        dialog.show()
-    }
-
-    private fun launchCamera() {
-        val photoFile = File(cacheDir, "chat_photo_${System.currentTimeMillis()}.jpg")
-        cameraPhotoPath = photoFile.absolutePath
-        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", photoFile)
-        takePictureLauncher.launch(uri)
-    }
-
-    private fun uriToFile(uri: Uri): File? {
-        return try {
-            contentResolver.openInputStream(uri)?.use { input ->
-                val file = File(cacheDir, "temp_file_${System.currentTimeMillis()}_${uri.lastPathSegment}")
-                file.outputStream().use { input.copyTo(it) }
-                file
-            }
-        } catch (_: Exception) { null }
-    }
-
-    private fun addMessage(text: String, isSender: Boolean) {
-        if (TextUtils.isEmpty(text)) return
-        val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
-        messageAdapter?.addMessage(ChatMessage(text = text, isSender = isSender, timeLabel = timeLabel, status = if(isSender) MessageStatus.SENDING else MessageStatus.SENT))
-    }
-
-    override fun onDestroy() {
-        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
-        try { mediaRecorder?.release() } catch (_: Exception) {}
-        WebSocketManager.getInstance().disconnect()
-        super.onDestroy()
-    }
-
-    private fun setupVoiceNote() {
-        binding.recordLayout?.setOnClickListener { showVoiceNoteDialog() }
-    }
-
-    private fun showVoiceNoteDialog() {
-        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_voice_note, null)
-        voiceNoteWaveformView = view.findViewById(R.id.waveformView)
-        voiceNoteDialogTimerView = view.findViewById(R.id.txtVoiceTimer)
-        val btnClose = view.findViewById<ImageView>(R.id.btnCloseVoice)
-        val btnRecord = view.findViewById<ImageView>(R.id.btnRecordVoice)
-        val btnDelete = view.findViewById<ImageView>(R.id.btnDeleteVoice)
-        val btnPlay = view.findViewById<ImageView>(R.id.btnPlayPauseVoice)
-        val pauseIcon = view.findViewById<ImageView>(R.id.pauseIcon)
-        val btnSave = view.findViewById<TextView>(R.id.btnSaveVoice)
-        val btnCancel = view.findViewById<TextView>(R.id.btnCancelVoice)
-
-        voiceNoteDurationSeconds = 0
-        voiceNotePath = null
-        voiceNoteDialogTimerView?.text = "00:00"
-
-        val dialog = AlertDialog.Builder(this).setView(view).create()
-
-        btnClose.setOnClickListener { dialog.dismiss() }
-        btnCancel.setOnClickListener { dialog.dismiss() }
-
-        btnRecord.setOnClickListener {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon)
-            } else {
-                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        }
-
-        btnSave.setOnClickListener {
-            if (isRecording) {
-                stopVoiceRecording()
-                isRecording = false
-            }
-            dialog.dismiss()
-            voiceNotePath?.let { path ->
-                val localId = "local_voice_${System.currentTimeMillis()}"
-                val tempMessage = ChatMessage(
-                    messageId = localId,
-                    text = "",
-                    isSender = true,
-                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
-                    type = ChatMessageType.VOICE_NOTE,
-                    attachmentUri = path,
-                    durationSeconds = voiceNoteDurationSeconds,
-                    status = MessageStatus.SENDING
-                )
-                messageAdapter?.addMessage(tempMessage)
-                scrollToLast()
-                performUpload(File(path), "Voice Note", ChatMessageType.VOICE_NOTE, localId)
-            }
-        }
-
-        dialog.show()
-    }
-
-    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    private fun startRecordingFlow(r: ImageView, d: ImageView, p: ImageView, pause: ImageView) {
-        startVoiceRecording()
-        isRecording = true
-        r.visibility = View.GONE
-        d.visibility = View.GONE
-        p.visibility = View.GONE
-        pause.visibility = View.VISIBLE
-    }
-
-    private val recordAudioPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (!granted) Toast.makeText(this, "Permission required", Toast.LENGTH_SHORT).show()
-    }
-
-    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    private fun startVoiceRecording() {
-        val sampleRate = 44100
-        val bufferSize = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
-        pcmFile = File(cacheDir, "voice_note.pcm")
-        voiceNotePath = pcmFile?.absolutePath
-        audioRecord?.startRecording()
-        isRecording = true
-        voiceTimerHandler.post(voiceTimerRunnable)
-        Thread {
-            val buffer = ShortArray(1024)
-            val output = FileOutputStream(pcmFile!!)
-            while (isRecording) {
-                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-                if (read > 0) {
-                    val maxAmp = buffer.take(read).maxOf { abs(it.toInt()) }
-                    runOnUiThread { voiceNoteWaveformView?.addAmplitude((maxAmp / 300).coerceAtLeast(1)) }
-                    output.write(ByteBuffer.allocate(read*2).order(ByteOrder.LITTLE_ENDIAN).apply { buffer.take(read).forEach { putShort(it) } }.array())
-                }
-            }
-
-            output.close()
-
-        }.start()
-    }
-
-    private fun stopVoiceRecording() {
-
-        if (!isRecording) return
-
-        isRecording = false
-
-        audioRecord?.stop()
-        audioRecord?.release()
-
-        audioRecord = null
-
-        voiceTimerHandler.removeCallbacks(
-            voiceTimerRunnable
-        )
-    }
-
-    private fun scrollToLast() {
-        binding.recyclerMessages.scrollToPosition((messages.size - 1).coerceAtLeast(0))
-    }
-
-    private fun addMessage(text: String, isSender: Boolean) {
-        if (TextUtils.isEmpty(text)) return
-        val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
-        messageAdapter?.addMessage(ChatMessage(text = text, isSender = isSender, timeLabel = timeLabel, status = if(isSender) MessageStatus.SENDING else MessageStatus.SENT))
-    }
-
-    private fun uriToPath(uri: Uri): String? {
-        return try {
-            contentResolver.openInputStream(uri)?.use { input ->
-                val file = File(cacheDir, "file_${System.currentTimeMillis()}")
-                file.outputStream().use { input.copyTo(it) }
-                file.absolutePath
-            }
-        } catch (_: Exception) { null }
-    }
-
-    private fun resolveFileName(uri: Uri): String? {
-        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val idx = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
-                if (idx >= 0) return cursor.getString(idx)
-            }
-        }
-        return uri.lastPathSegment
-    }
-
-    override fun onDestroy() {
-        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
-        try { mediaRecorder?.release() } catch (_: Exception) {}
-        WebSocketManager.getInstance().disconnect()
-        super.onDestroy()
-    }
-    private fun startPlaybackTimer() {
-        playbackHandler.post(playbackRunnable)
-    }
-    private fun stopPlaybackTimer() {
-        playbackHandler.removeCallbacks(playbackRunnable)
-    }
-
-    private val playbackRunnable = object : Runnable {
-
-        override fun run() {
-
-            val player = mediaPlayer ?: return
-
-            if (!player.isPlaying) return
-
-            val position = player.currentPosition
-            val duration = player.duration.takeIf { it > 0 } ?: return
-
-            val sec = position / 1000
-
-            voiceNoteDialogTimerView?.text =
-                "%02d:%02d".format(sec / 60, sec % 60)
-
-            val progress =
-                (position.toFloat() / duration.toFloat() * 50).toInt()
-
-            voiceNoteWaveformView?.updateProgress(progress)
-
-            playbackHandler.postDelayed(this,40)
-        }
-    }
-
-    companion object {
-        const val EXTRA_ROLE = "extra_role"
-        const val EXTRA_ROOM_JSON = "extra_room_json"
-    }
-
-    private fun loadFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction().replace(R.id.FragmentContainer, fragment).commit()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun setupTabs() {
-        binding.tabParticipants?.setOnClickListener {
-            loadFragment(ParticipantsListFragment())
-            selectParticipantsTab()
-            moveIndicator(it)
-        }
-        binding.tabMedia?.setOnClickListener {
-            loadFragment(MediaFragment())
-            selectMediaTab()
-            moveIndicator(it)
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun selectParticipantsTab() {
-        binding.tabParticipants?.setTextColor(getColor(R.color.colorPrimary_kia_kandid))
-        binding.tabParticipants?.typeface = resources.getFont(R.font.kia_signature_fix_bold)
-        binding.tabMedia?.setTextColor(getColor(R.color.gray_mic_background))
-        binding.tabMedia?.typeface = resources.getFont(R.font.kia_signature_fix_regular)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun selectMediaTab() {
-        binding.tabMedia?.setTextColor(getColor(R.color.colorPrimary_kia_kandid))
-        binding.tabMedia?.typeface = resources.getFont(R.font.kia_signature_fix_bold)
-        binding.tabParticipants?.setTextColor(getColor(R.color.gray_mic_background))
-        binding.tabParticipants?.typeface = resources.getFont(R.font.kia_signature_fix_regular)
-    }
-
-    private fun moveIndicator(tab: View) {
-        binding.tabIndicator?.post {
-            binding.tabIndicator?.layoutParams?.width = tab.width
-            binding.tabIndicator?.requestLayout()
-            binding.tabIndicator?.x = tab.left.toFloat()
-        }
-    }
-
-    private fun scrollToLast() {
-        binding.recyclerMessages.scrollToPosition((messages.size - 1).coerceAtLeast(0))
-    }
-}
-
-class MediaViewerFragment : Fragment() {
-    companion object {
-        fun newInstance(url: String, type: String): MediaViewerFragment {
-            return MediaViewerFragment().apply {
-                arguments = Bundle().apply {
-                    putString("url", url)
-                    putString("type", type)
-                }
-            }
-        }
-    }
-
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val url = arguments?.getString("url")
-        val type = arguments?.getString("type")
-        val root = LinearLayout(context).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(android.graphics.Color.BLACK)
-        }
-
-        if (type == ChatMessageType.IMAGE.name) {
-            val img = ImageView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-            }
-            if (url?.startsWith("http") == true) {
-                // In real app, use Glide or similar
-            } else {
-                img.setImageURI(Uri.parse(url))
-            }
-            root.addView(img)
-        } else {
-            val txt = TextView(context).apply {
-                text = "Viewing $type: $url"
-                setTextColor(android.graphics.Color.WHITE)
-                gravity = android.view.Gravity.CENTER
-            }
-            root.addView(txt)
-        }
-        return root
     }
 }
