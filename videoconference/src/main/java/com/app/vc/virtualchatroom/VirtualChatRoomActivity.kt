@@ -19,6 +19,7 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
@@ -51,6 +52,7 @@ import com.app.vc.websocketconnection.WebSocketManager
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.app.vc.views.WaveformView
+import com.app.vc.virtualroomlist.VirtualRoomListActivity.Companion.EXTRA_ROLE
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import java.io.File
 import java.io.FileOutputStream
@@ -62,7 +64,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
-class VirtualChatRoomActivity : AppCompatActivity() {
+class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketCallback {
 
     private lateinit var binding: VcActivityVirtualChatRoomBinding
 
@@ -84,7 +86,8 @@ class VirtualChatRoomActivity : AppCompatActivity() {
     private val voiceTimerRunnable = object : Runnable {
         override fun run() {
             voiceNoteDurationSeconds++
-            voiceNoteDialogTimerView?.text = "%02d:%02d".format(voiceNoteDurationSeconds / 60, voiceNoteDurationSeconds % 60)
+            voiceNoteDialogTimerView?.text =
+                "%02d:%02d".format(voiceNoteDurationSeconds / 60, voiceNoteDurationSeconds % 60)
             voiceTimerHandler.postDelayed(this, 1000)
         }
     }
@@ -104,11 +107,11 @@ class VirtualChatRoomActivity : AppCompatActivity() {
             val amp = mediaRecorder?.maxAmplitude ?: 0
 
             voiceNoteWaveformView?.addAmplitude(
-                (amp / 200).coerceIn(5,120)
+                (amp / 200).coerceIn(5, 120)
             )
 
             if (isRecording)
-                amplitudeHandler.postDelayed(this,50)
+                amplitudeHandler.postDelayed(this, 50)
         }
     }
     private var isRecording = false
@@ -126,40 +129,57 @@ class VirtualChatRoomActivity : AppCompatActivity() {
         "Will share the estimation in sometime"
     )
 
-    private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        if (granted.values.any { !it }) Toast.makeText(this, "Permission needed for camera and files", Toast.LENGTH_SHORT).show()
-    }
+    private val requestPermission =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+            if (granted.values.any { !it }) Toast.makeText(
+                this,
+                "Permission needed for camera and files",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
 
-    private val requestCameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) launchCamera() else Toast.makeText(this, "Camera permission needed", Toast.LENGTH_SHORT).show()
-    }
+    private val requestCameraPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) launchCamera() else Toast.makeText(
+                this,
+                "Camera permission needed",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
 
-    private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && cameraPhotoPath != null) showImagePreviewDialog(cameraPhotoPath!!)
-        else cameraPhotoPath = null
-    }
+    private val takePictureLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && cameraPhotoPath != null) showImagePreviewDialog(cameraPhotoPath!!)
+            else cameraPhotoPath = null
+        }
 
-    private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri ?: return@registerForActivityResult
-        val path = uriToPath(uri) ?: uri.toString()
-        addImageMessage(path, true)
-        scrollToLast()
-    }
+    private val galleryLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uri ?: return@registerForActivityResult
+            val path = uriToPath(uri) ?: uri.toString()
+            addImageMessage(path, true)
+            scrollToLast()
+        }
 
-    private val fileLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        uri ?: return@registerForActivityResult
-        val name = resolveFileName(uri) ?: "File"
-        val path = uriToPath(uri) ?: uri.toString()
-        messageAdapter?.addMessage(ChatMessage(
-            text = "",
-            isSender = true,
-            timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
-            type = ChatMessageType.FILE,
-            attachmentUri = path,
-            fileName = name
-        ))
-        scrollToLast()
-    }
+    private val fileLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            uri ?: return@registerForActivityResult
+            val name = resolveFileName(uri) ?: "File"
+            val path = uriToPath(uri) ?: uri.toString()
+            messageAdapter?.addMessage(
+                ChatMessage(
+                    text = "",
+                    isSender = true,
+                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date())
+                        .lowercase(),
+                    type = ChatMessageType.FILE,
+                    attachmentUri = path,
+                    fileName = name
+                )
+            )
+            scrollToLast()
+        }
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingInflatedId")
@@ -220,9 +240,9 @@ class VirtualChatRoomActivity : AppCompatActivity() {
         setupSendActions()
         setupAttachmentAndMedia()
         setupVoiceNote()
-
         connectToWebSocket()
     }
+
 
     private fun connectToWebSocket() {
         val rawRoNumber = room?.roNumber ?: "default-room"
@@ -340,6 +360,7 @@ class VirtualChatRoomActivity : AppCompatActivity() {
                 subject.substring(0, 20) + "..."
             else
                 subject
+    }
 
     private fun bindStaticTabletPanels() {
         val room = room ?: return
