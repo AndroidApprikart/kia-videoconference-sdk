@@ -65,9 +65,7 @@ import java.util.Locale
 import kotlin.math.abs
 
 class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketCallback {
-
     private lateinit var binding: VcActivityVirtualChatRoomBinding
-
     private var audioRecord: AudioRecord? = null
     private var pcmFile: File? = null
     private val playbackHandler = Handler(Looper.getMainLooper())
@@ -77,7 +75,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var isPlaying = false
     private val messages: MutableList<ChatMessage> = mutableListOf()
     private var messageAdapter: VirtualChatMessageAdapter? = null
-
     private var cameraPhotoPath: String? = null
     private var voiceNotePath: String? = null
     private var voiceNoteDurationSeconds: Int = 0
@@ -91,6 +88,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             voiceTimerHandler.postDelayed(this, 1000)
         }
     }
+
     private var voiceNoteDialog: AlertDialog? = null
     private var voiceNoteDialogTimerView: TextView? = null
     private var voiceNoteWaveformView: WaveformView? = null
@@ -161,6 +159,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             scrollToLast()
         }
 
+
     private val fileLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             uri ?: return@registerForActivityResult
@@ -222,6 +221,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 Intent(this, RepairOrderActivity::class.java)
             )
         }
+
 
         binding.btnVideoCall?.setOnClickListener {
             RequestVideoCallDialog(this).show()
@@ -527,7 +527,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
 
 
-        dialogView.findViewById<LinearLayout>(R.id.optionGallery).setOnClickListener {
+        dialogView.findViewById<LinearLayout>(R.id.optionGallery)?.setOnClickListener {
             dialog.dismiss()
             requestPermission.launch(
                 arrayOf(
@@ -538,12 +538,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             galleryLauncher.launch("image/*")
         }
 
-        dialogView.findViewById<LinearLayout>(R.id.optionCamera).setOnClickListener {
+        dialogView.findViewById<LinearLayout>(R.id.optionCamera)?.setOnClickListener {
             dialog.dismiss()
             requestCameraPermission.launch(Manifest.permission.CAMERA)
         }
 
-        dialogView.findViewById<LinearLayout>(R.id.optionFile).setOnClickListener {
+        dialogView.findViewById<LinearLayout>(R.id.optionFile)?.setOnClickListener {
             dialog.dismiss()
             fileLauncher.launch(arrayOf("*/*"))
         }

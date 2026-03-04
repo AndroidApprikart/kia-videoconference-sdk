@@ -60,7 +60,7 @@ class ParticipantsListFragment : Fragment() {
     }
 
     private fun setupManageParticipants() {
-        binding.btnManageParticipants.setOnClickListener {
+        binding.btnManageParticipants?.setOnClickListener {
             showManageParticipantsSheet()
         }
     }

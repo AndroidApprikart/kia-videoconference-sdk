@@ -139,54 +139,7 @@
 
         </LinearLayout>
 
-        <!-- Estimation -->
-        <LinearLayout
-            android:id="@+id/optionFile"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="@dimen/_8sdp"
-            android:orientation="vertical"
-            android:gravity="center">
 
-            <ImageView
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:padding="@dimen/_8sdp"
-                android:src="@drawable/receipt"
-                android:background="@drawable/bg_camera_icon"/>
-
-            <TextView
-                android:fontFamily="@font/kia_signature_fix_regular"
-                android:layout_height="wrap_content"
-                android:textColor="@color/black"
-                android:textFontWeight="800"
-                android:layout_width="wrap_content"
-                android:text="Estimation"/>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/invoice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="@dimen/_8sdp"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <ImageView
-                android:layout_width="@dimen/_30sdp"
-                android:layout_height="@dimen/_30sdp"
-                android:padding="@dimen/_8sdp"
-                android:src="@drawable/receipt_long"
-                android:background="@drawable/bg_camera_icon"/>
-
-            <TextView
-                android:fontFamily="@font/kia_signature_fix_regular"
-                android:layout_height="wrap_content"
-                android:textColor="@color/black"
-                android:textFontWeight="800"
-                android:layout_width="wrap_content"
-                android:text="Invoice"/>
-        </LinearLayout>
 
     </LinearLayout>
 
