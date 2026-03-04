@@ -5,6 +5,8 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaPlayer
@@ -19,10 +21,9 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
-import android.view.WindowManager
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -36,27 +37,39 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
 import com.app.vc.MediaFragment
 import com.app.vc.ParticipantsListFragment
 import com.app.vc.R
-import com.app.vc.RODetailsFragment
 import com.app.vc.RepairOrderActivity
 import com.app.vc.RequestVideoCallDialog
 import com.app.vc.databinding.VcActivityVirtualChatRoomBinding
+import com.app.vc.network.LoginApiService
+import com.app.vc.utils.ApiDetails
 import com.app.vc.utils.PreferenceManager
 import com.app.vc.virtualroomlist.UserRole
 import com.app.vc.virtualroomlist.VirtualRoomUiModel
 import com.app.vc.websocketconnection.WebSocketManager
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.app.vc.views.WaveformView
-import com.app.vc.virtualroomlist.VirtualRoomListActivity.Companion.EXTRA_ROLE
-import com.google.android.material.bottomsheet.BottomSheetDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.SimpleDateFormat
@@ -65,6 +78,7 @@ import java.util.Locale
 import kotlin.math.abs
 
 class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketCallback {
+
     private lateinit var binding: VcActivityVirtualChatRoomBinding
     private var audioRecord: AudioRecord? = null
     private var pcmFile: File? = null
@@ -75,49 +89,43 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var isPlaying = false
     private val messages: MutableList<ChatMessage> = mutableListOf()
     private var messageAdapter: VirtualChatMessageAdapter? = null
+
     private var cameraPhotoPath: String? = null
     private var voiceNotePath: String? = null
     private var voiceNoteDurationSeconds: Int = 0
     private var mediaRecorder: MediaRecorder? = null
     private val voiceTimerHandler = Handler(Looper.getMainLooper())
+    private var voiceNoteDialogTimerView: TextView? = null
     private val voiceTimerRunnable = object : Runnable {
         override fun run() {
             voiceNoteDurationSeconds++
-            voiceNoteDialogTimerView?.text =
-                "%02d:%02d".format(voiceNoteDurationSeconds / 60, voiceNoteDurationSeconds % 60)
+            voiceNoteDialogTimerView?.text = "%02d:%02d".format(voiceNoteDurationSeconds / 60, voiceNoteDurationSeconds % 60)
             voiceTimerHandler.postDelayed(this, 1000)
         }
     }
-
     private var voiceNoteDialog: AlertDialog? = null
-    private var voiceNoteDialogTimerView: TextView? = null
     private var voiceNoteWaveformView: WaveformView? = null
-    private val voiceAmplitudes = mutableListOf<Float>()
-    private var dialogBtnRecord: ImageView? = null
-    private var dialogBtnDelete: ImageView? = null
-    private var dialogBtnPlay: ImageView? = null
-    private var dialogPauseIcon: ImageView? = null
     private val amplitudeHandler = Handler(Looper.getMainLooper())
     private val amplitudeRunnable = object : Runnable {
-
         override fun run() {
-
-            val amp = mediaRecorder?.maxAmplitude ?: 0
-
-            voiceNoteWaveformView?.addAmplitude(
-                (amp / 200).coerceIn(5, 120)
-            )
-
-            if (isRecording)
-                amplitudeHandler.postDelayed(this, 50)
+            val amp = try { mediaRecorder?.maxAmplitude ?: 0 } catch (_: Exception) { 0 }
+            voiceNoteWaveformView?.addAmplitude((amp / 200).coerceIn(5,120))
+            if (isRecording) amplitudeHandler.postDelayed(this,50)
         }
     }
     private var isRecording = false
 
     private var isTyping = false
     private val typingHandler = Handler(Looper.getMainLooper())
-    private val stopTypingRunnable = Runnable {
-        sendTypingStatus(false)
+    private val stopTypingRunnable = Runnable { sendTypingStatus(false) }
+
+    private val apiService: LoginApiService by lazy {
+        val gson = GsonBuilder().setLenient().create()
+        Retrofit.Builder()
+            .baseUrl(ApiDetails.APRIK_Kia_BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+            .create(LoginApiService::class.java)
     }
 
     private val quickReplies = listOf(
@@ -127,58 +135,48 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         "Will share the estimation in sometime"
     )
 
-    private val requestPermission =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-            if (granted.values.any { !it }) Toast.makeText(
-                this,
-                "Permission needed for camera and files",
-                Toast.LENGTH_SHORT
-            ).show()
+    private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted.values.any { !it }) Toast.makeText(this, "Permission needed for camera and files", Toast.LENGTH_SHORT).show()
+    }
+
+    private val requestCameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) launchCamera() else Toast.makeText(this, "Camera permission needed", Toast.LENGTH_SHORT).show()
+    }
+
+    private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && cameraPhotoPath != null) {
+            val file = File(cameraPhotoPath!!)
+            showPreviewBottomSheet(listOf(file to ChatMessageType.IMAGE))
+        }
+        else cameraPhotoPath = null
+    }
+
+    private val fileLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri>? ->
+        uris ?: return@registerForActivityResult
+        val selectedFiles = mutableListOf<Pair<File, ChatMessageType>>()
+
+        uris.forEach { uri ->
+            val file = uriToFile(uri)
+            if (file != null) {
+                val sizeInMb = file.length() / (1024 * 1024)
+                if (sizeInMb > 30) {
+                    Toast.makeText(this, "File ${file.name} exceeds 30MB", Toast.LENGTH_LONG).show()
+                } else {
+                    val mimeType = contentResolver.getType(uri) ?: ""
+                    val type = when {
+                        mimeType.startsWith("image") -> ChatMessageType.IMAGE
+                        mimeType.startsWith("video") -> ChatMessageType.VIDEO
+                        else -> ChatMessageType.FILE
+                    }
+                    selectedFiles.add(file to type)
+                }
+            }
         }
 
-    private val requestCameraPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) launchCamera() else Toast.makeText(
-                this,
-                "Camera permission needed",
-                Toast.LENGTH_SHORT
-            ).show()
+        if (selectedFiles.isNotEmpty()) {
+            showPreviewBottomSheet(selectedFiles)
         }
-
-    private val takePictureLauncher =
-        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-            if (success && cameraPhotoPath != null) showImagePreviewDialog(cameraPhotoPath!!)
-            else cameraPhotoPath = null
-        }
-
-    private val galleryLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            uri ?: return@registerForActivityResult
-            val path = uriToPath(uri) ?: uri.toString()
-            addImageMessage(path, true)
-            scrollToLast()
-        }
-
-
-    private val fileLauncher =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            uri ?: return@registerForActivityResult
-            val name = resolveFileName(uri) ?: "File"
-            val path = uriToPath(uri) ?: uri.toString()
-            messageAdapter?.addMessage(
-                ChatMessage(
-                    text = "",
-                    isSender = true,
-                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date())
-                        .lowercase(),
-                    type = ChatMessageType.FILE,
-                    attachmentUri = path,
-                    fileName = name
-                )
-            )
-            scrollToLast()
-        }
-
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingInflatedId")
@@ -194,34 +192,18 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             else -> UserRole.CUSTOMER
         }
 
-        // Tablet-only UI (left panel with tabs) – present only on sw600dp layout
-        val hasTabletPanels = binding.tabParticipants != null
-
-        if (hasTabletPanels) {
-
-            // ✅ Lock landscape for tablet
-            requestedOrientation =
-                ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            val tabRoDetails = binding.tabRoDetails ?: return
-
-            loadFragment(RODetailsFragment())
+        if (binding.tabParticipants != null) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            loadFragment(ParticipantsListFragment())
             setupTabs()
-            selectRoDetailsTab()
-            moveIndicator(tabRoDetails)
-
+            selectParticipantsTab()
         } else {
-
-            // ✅ Phone behaves normally
-            requestedOrientation =
-                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
 
         binding.repairOrderLayout?.setOnClickListener {
-            startActivity(
-                Intent(this, RepairOrderActivity::class.java)
-            )
+            startActivity(Intent(this, RepairOrderActivity::class.java))
         }
-
 
         binding.btnVideoCall?.setOnClickListener {
             RequestVideoCallDialog(this).show()
@@ -246,7 +228,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun connectToWebSocket() {
         val rawRoNumber = room?.roNumber ?: "default-room"
-        val roomSlug = "test-08d50b33"
+        val roomSlug = rawRoNumber.replace(" ", "_").lowercase()
         val token = PreferenceManager.getAccessToken()
 
         val url = "wss://testingchat.apprikart.com/ws/chat/$roomSlug/?token=$token"
@@ -281,24 +263,46 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         }
 
                         val content = jsonObject.get("content")?.asString ?: jsonObject.get("message")?.asString
-                        if (content != null) {
+                        val attachment = jsonObject.get("attachment")?.asJsonObject
+
+                        if (attachment != null) {
+                            val attachmentUrl = attachment.get("file_url")?.asString ?: ""
+                            val fileName = attachment.get("file_name")?.asString ?: ""
+                            val mimeType = attachment.get("mime_type")?.asString ?: ""
+                            val fullUrl = if (attachmentUrl.startsWith("http")) attachmentUrl else ApiDetails.APRIK_Kia_BASE_URL + attachmentUrl
+
+                            val msgType = when {
+                                mimeType.startsWith("image") -> ChatMessageType.IMAGE
+                                mimeType.startsWith("video") -> ChatMessageType.VIDEO
+                                else -> ChatMessageType.FILE
+                            }
+
+                            messageAdapter?.addMessage(ChatMessage(
+                                text = "",
+                                isSender = false,
+                                timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
+                                type = msgType,
+                                attachmentUri = fullUrl,
+                                fileName = fileName,
+                                caption = content,
+                                mimeType = mimeType
+                            ))
+                        } else if (content != null) {
                             addMessage(content, false)
-                            scrollToLast()
-                            // Send read receipt
-                            sendReadReceipt(jsonObject.get("message_id")?.asString ?: "")
                         }
+                        scrollToLast()
+                        sendReadReceipt(jsonObject.get("message_id")?.asString ?: "")
                     }
                     "chat.typing" -> {
                         val senderId = jsonObject.get("sender_id")?.asString
                         val currentUserId = PreferenceManager.getUserId()
                         if (senderId != currentUserId) {
-                            val isTyping = jsonObject.get("is_typing")?.asBoolean ?: false
-                            binding.txtTypingIndicator?.visibility = if (isTyping) View.VISIBLE else View.GONE
+                            val isTypingBroadcast = jsonObject.get("is_typing")?.asBoolean ?: false
+                            binding.txtTypingIndicator?.visibility = if (isTypingBroadcast) View.VISIBLE else View.GONE
                             binding.txtTypingIndicator?.text = "${jsonObject.get("username")?.asString} is typing..."
                         }
                     }
                     "chat.read" -> {
-                        // Someone read our message
                         messageAdapter?.updateMessageStatus("", MessageStatus.READ)
                     }
                 }
@@ -308,41 +312,143 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
+    override fun onDisconnected(reason: String) {
+        runOnUiThread { Log.d("VirtualChatRoom", "WebSocket Disconnected: $reason") }
+    }
+
+    override fun onError(error: String) {
+        runOnUiThread { Log.e("VirtualChatRoom", "WebSocket Error: $error") }
+    }
+
+    private fun showPreviewBottomSheet(selectedFiles: List<Pair<File, ChatMessageType>>) {
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.vc_bottom_sheet_attachment_preview, null)
+        bottomSheetDialog.setContentView(view)
+
+        val viewPager: ViewPager2 = view.findViewById(R.id.viewPagerPreview)
+        val edtCaption: EditText = view.findViewById(R.id.edtCaptionPreview)
+        val btnSend: View = view.findViewById(R.id.btnSendPreview)
+        val btnCancel: View = view.findViewById(R.id.btnCancelPreview)
+
+        viewPager.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+                val img = ImageView(parent.context).apply {
+                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                }
+                return object : RecyclerView.ViewHolder(img) {}
+            }
+
+            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+                val (file, type) = selectedFiles[position]
+                val img = holder.itemView as ImageView
+                if (type == ChatMessageType.IMAGE) {
+                    img.setImageURI(Uri.fromFile(file))
+                } else if (type == ChatMessageType.VIDEO) {
+                    img.setImageResource(android.R.drawable.ic_media_play)
+                } else {
+                    img.setImageResource(android.R.drawable.ic_menu_save)
+                }
+            }
+
+            override fun getItemCount() = selectedFiles.size
+        }
+
+        btnCancel.setOnClickListener { bottomSheetDialog.dismiss() }
+
+        btnSend.setOnClickListener {
+            val caption = edtCaption.text.toString()
+            bottomSheetDialog.dismiss()
+
+            selectedFiles.forEach { (file, type) ->
+                val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+                val localId = "local_${System.currentTimeMillis()}_${file.name}"
+                val tempMessage = ChatMessage(
+                    messageId = localId,
+                    text = "",
+                    isSender = true,
+                    timeLabel = timeLabel,
+                    type = type,
+                    attachmentUri = file.absolutePath,
+                    caption = if (selectedFiles.size == 1) caption else null,
+                    status = MessageStatus.SENDING,
+                    fileName = file.name
+                )
+                messageAdapter?.addMessage(tempMessage)
+                scrollToLast()
+
+                lifecycleScope.launch {
+                    val fileToUpload = if (type == ChatMessageType.IMAGE) {
+                        try { compressImage(file) } catch (e: Exception) { file }
+                    } else file
+                    performUpload(fileToUpload, if (selectedFiles.size == 1) caption else "", type, localId)
+                }
+            }
+        }
+
+        bottomSheetDialog.show()
+    }
+
+    private suspend fun compressImage(file: File): File = withContext(Dispatchers.IO) {
+        val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+        val out = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, out)
+        val compressedFile = File(cacheDir, "compressed_${file.name}")
+        FileOutputStream(compressedFile).use { it.write(out.toByteArray()) }
+        compressedFile
+    }
+
+    private fun performUpload(file: File, caption: String, type: ChatMessageType, localId: String) {
+        val slug = room?.roNumber ?: return
+        val token = PreferenceManager.getAccessToken() ?: return
+
+        val mimeType = when (type) {
+            ChatMessageType.IMAGE -> "image/jpeg"
+            ChatMessageType.VIDEO -> "video/mp4"
+            ChatMessageType.VOICE_NOTE -> "audio/wav"
+            else -> "application/octet-stream"
+        }
+
+        val requestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
+        val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
+        val captionPart = caption.toRequestBody("text/plain".toMediaTypeOrNull())
+
+        lifecycleScope.launch {
+            try {
+                val response = apiService.uploadFile("Bearer $token", slug, body, captionPart)
+                if (response.isSuccessful && response.body() != null) {
+                    runOnUiThread { messageAdapter?.updateMessageStatus(localId, MessageStatus.SENT) }
+                } else {
+                    runOnUiThread { messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR) }
+                    Toast.makeText(this@VirtualChatRoomActivity, "Upload failed: ${response.code()}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread { messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR) }
+                Log.e("VirtualChatRoom", "Upload Error: ${e.message}")
+            }
+        }
+    }
+
     private fun sendTypingStatus(typing: Boolean) {
         if (isTyping == typing) return
         isTyping = typing
         val json = JsonObject()
-        json.addProperty("type", "chat.typing")
+        json.addProperty("type", "typing")
         json.addProperty("is_typing", typing)
         WebSocketManager.getInstance().sendMessage(json.toString())
     }
 
     private fun sendReadReceipt(messageId: String) {
-        val json = JsonObject()
-        json.addProperty("type", "chat.read")
-        json.addProperty("message_id", messageId)
-        WebSocketManager.getInstance().sendMessage(json.toString())
-    }
-
-    override fun onDisconnected(reason: String) {
-        runOnUiThread {
-            Log.d("VirtualChatRoom", "WebSocket Disconnected: $reason")
-        }
-    }
-
-    override fun onError(error: String) {
-        runOnUiThread {
-            Log.e("VirtualChatRoom", "WebSocket Error: $error")
-            if (error.contains("403")) {
-                Toast.makeText(this, "Access Denied. Please check token or room slug.", Toast.LENGTH_LONG).show()
-            }
-        }
+        val jsonObject = JsonObject()
+        jsonObject.addProperty("type", "chat.read")
+        jsonObject.addProperty("message_id", messageId)
+        WebSocketManager.getInstance().sendMessage(jsonObject.toString())
     }
 
     private fun setupToolbar() {
         binding.btnBack.setOnClickListener { finish() }
-        val titleView = binding.txtRoomTitle ?: return
-        titleView.text = when (currentRole) {
+        val titleView = binding.txtRoomTitle
+        titleView?.text = when (currentRole) {
             UserRole.CUSTOMER -> getString(R.string.vc_title_virtual_chat_room_customer)
             UserRole.SERVICE_ADVISOR -> getString(R.string.vc_title_virtual_chat_room_service_advisor)
             UserRole.MANAGER -> getString(R.string.vc_title_virtual_chat_room_manager)
@@ -351,45 +457,46 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun bindStaticPhoneHeader() {
         val room = room ?: return
-        val txtRoomTitle = binding.txtRoomTitle
-
-        val subject = room.subject ?: ""
-
-        val trimmedSubject =
-            if (subject.length > 20)
-                subject.substring(0, 20) + "..."
-            else
-                subject
+        binding.txtRoomTitle?.text = "${room.roNumber} | ${room.subject}"
     }
 
     private fun bindStaticTabletPanels() {
         val room = room ?: return
-        val txtLeftCustomerName = binding.txtLeftCustomerName
-        val txtLeftRoNumber = binding.txtLeftRoNumber
-        val txtLeftStatus = binding.txtLeftStatus
-        txtLeftCustomerName?.text = room.customerName
-        txtLeftRoNumber?.text = room.roNumber
-        txtLeftStatus?.text = room.status.name
-//        val txtWelcomeHeader = binding.txtWelcomeHeaderTablet
-//        val txtWelcomeBody = binding.txtWelcomeBodyTablet
-//        txtWelcomeHeader?.text = getString(R.string.vc_chat_welcome_title, room.customerName)
-//        txtWelcomeBody?.text = getString(R.string.vc_chat_welcome_body, room.roNumber)
-//
+        binding.txtLeftCustomerName?.text = room.customerName
+        binding.txtLeftRoNumber?.text = room.roNumber
+        binding.txtLeftStatus?.text = room.status.name
     }
 
     private fun setupMessageList() {
-        val recycler: RecyclerView = binding.recyclerMessages
-        val layoutManager = LinearLayoutManager(this)
-        layoutManager.stackFromEnd = true
-        recycler.layoutManager = layoutManager
-        if (messages.isEmpty()) {
-            room?.let { r ->
-                messages.add(ChatMessage(text = getString(R.string.vc_chat_welcome_body, r.roNumber), isSender = false, timeLabel = r.timeLabel))
-                messages.add(ChatMessage(text = getString(R.string.vc_chat_sample_message), isSender = true, timeLabel = r.timeLabel))
-            }
-        }
-        messageAdapter = VirtualChatMessageAdapter(messages)
-        recycler.adapter = messageAdapter
+        binding.recyclerMessages.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
+        messageAdapter = VirtualChatMessageAdapter(
+            messages,
+            onRetryClick = { message ->
+                // Retry upload logic
+                val type = message.type
+                val file = File(message.attachmentUri!!)
+                val caption = message.caption ?: ""
+                val localId = message.messageId!!
+                messageAdapter?.updateMessageStatus(localId, MessageStatus.SENDING)
+                lifecycleScope.launch {
+                    val fileToUpload = if (type == ChatMessageType.IMAGE) {
+                        try { compressImage(file) } catch (e: Exception) { file }
+                    } else file
+                    performUpload(fileToUpload, caption, type, localId)
+                }
+            },
+            onItemClick = { message -> handleAttachmentClick(message) }
+        )
+        binding.recyclerMessages.adapter = messageAdapter
+    }
+
+    private fun handleAttachmentClick(message: ChatMessage) {
+        val url = message.attachmentUri ?: return
+        val fragment = MediaViewerFragment.newInstance(url, message.type.name)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.FragmentContainer, fragment)
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun setupQuickReplies() {
@@ -405,17 +512,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         container.removeAllViews()
         val inflater = LayoutInflater.from(this)
-
         quickReplies.forEach { text ->
-
-            val chip = inflater.inflate(
-                R.layout.vc_quick_reply_chip,
-                container,
-                false
-            ) as TextView
-
+            val chip = inflater.inflate(R.layout.vc_quick_reply_chip, container, false) as TextView
             chip.text = text
-
             chip.setOnClickListener {
                 messageField.setText(text)
                 messageField.setSelection(text.length)
@@ -426,39 +525,27 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun setupSendActions() {
-        val recycler: RecyclerView = binding.recyclerMessages
-        val edtMessage: EditText? = binding.edtMessageTablet
-        val recordLayout: LinearLayout? = binding.recordLayout
-        val sendLayout: LinearLayout? = binding.sendLayout
-        val sendBtn: ImageView? = binding.imgSendTablet
-
-        edtMessage?.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                if (s.isNullOrBlank()) {
-                    sendTypingStatus(false)
-                }
-            }
+        binding.edtMessageTablet.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) { if (s.isNullOrBlank()) sendTypingStatus(false) }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val hasText = !s.isNullOrBlank()
-                recordLayout?.visibility = if (hasText) View.GONE else View.VISIBLE
-                sendLayout?.visibility = if (hasText) View.VISIBLE else View.GONE
-
+                binding.recordLayout?.visibility = if (hasText) View.GONE else View.VISIBLE
+                binding.sendLayout?.visibility = if (hasText) View.VISIBLE else View.GONE
                 if (hasText) {
                     sendTypingStatus(true)
-
                     typingHandler.removeCallbacks(stopTypingRunnable)
                     typingHandler.postDelayed(stopTypingRunnable, 2000)
                 }
             }
         })
 
-        sendBtn?.setOnClickListener {
-            val text = edtMessage?.text?.toString()?.trim().orEmpty()
+        binding.imgSendTablet.setOnClickListener {
+            val text = binding.edtMessageTablet.text.toString().trim()
             if (text.isNotEmpty()) {
                 sendWebSocketMessage(text)
                 addMessage(text, true)
-                edtMessage?.setText("")
+                binding.edtMessageTablet.setText("")
                 scrollToLast()
                 sendTypingStatus(false)
             }
@@ -473,31 +560,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun setupAttachmentAndMedia() {
-        binding.imgAttachmentTablet.visibility=View.VISIBLE
-        val attachmentBtn: ImageView? = binding.imgAttachmentTablet
-        attachmentBtn?.setOnClickListener { showAttachmentOptionsDialog() }
+        binding.imgAttachmentTablet.setOnClickListener { showAttachmentOptionsDialog() }
     }
-//
-//    private fun showAttachmentOptionsDialog() {
-//        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_attachment_options, null)
-//        val dialog = AlertDialog.Builder(this).setView(view).create()
-//        view.findViewById<LinearLayout>(R.id.optionGallery).setOnClickListener {
-//            dialog.dismiss()
-//            requestPermission.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_MEDIA_IMAGES))
-//            galleryLauncher.launch("image/*")
-//        }
-//        view.findViewById<LinearLayout>(R.id.optionCamera).setOnClickListener {
-//            dialog.dismiss()
-//            requestCameraPermission.launch(Manifest.permission.CAMERA)
-//        }
-//        view.findViewById<LinearLayout>(R.id.optionFile).setOnClickListener {
-//            dialog.dismiss()
-//            fileLauncher.launch(arrayOf("*/*"))
-//        }
-//        dialog.show()
-//    }
 
     private fun showAttachmentOptionsDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_attachment_options, null)
+        val dialog = AlertDialog.Builder(this).setView(view).create()
+        view.findViewById<LinearLayout>(R.id.optionGallery).setOnClickListener {
 
         val dialogView = LayoutInflater.from(this)
             .inflate(R.layout.vc_dialog_attachment_options, null)
@@ -529,19 +598,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         dialogView.findViewById<LinearLayout>(R.id.optionGallery)?.setOnClickListener {
             dialog.dismiss()
-            requestPermission.launch(
-                arrayOf(
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.READ_MEDIA_IMAGES
-                )
-            )
-            galleryLauncher.launch("image/*")
+            fileLauncher.launch(arrayOf("*/*"))
         }
+        view.findViewById<LinearLayout>(R.id.optionCamera).setOnClickListener {
 
         dialogView.findViewById<LinearLayout>(R.id.optionCamera)?.setOnClickListener {
             dialog.dismiss()
             requestCameraPermission.launch(Manifest.permission.CAMERA)
         }
+        view.findViewById<LinearLayout>(R.id.optionFile).setOnClickListener {
 
         dialogView.findViewById<LinearLayout>(R.id.optionFile)?.setOnClickListener {
             dialog.dismiss()
@@ -557,310 +622,122 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         takePictureLauncher.launch(uri)
     }
 
-    private fun showImagePreviewDialog(imagePath: String) {
-        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_image_preview, null)
-        val img = view.findViewById<ImageView>(R.id.imgPreview)
-        img.setImageURI(Uri.fromFile(File(imagePath)))
-        val dialog = AlertDialog.Builder(this).setView(view).create()
-        view.findViewById<TextView>(R.id.btnCancelPreview).setOnClickListener { dialog.dismiss() }
-        view.findViewById<TextView>(R.id.btnSendPreview).setOnClickListener {
-            dialog.dismiss()
-            addImageMessage(imagePath, true)
-            scrollToLast()
-        }
-        dialog.show()
+    private fun uriToFile(uri: Uri): File? {
+        return try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val file = File(cacheDir, "temp_file_${System.currentTimeMillis()}_${uri.lastPathSegment}")
+                file.outputStream().use { input.copyTo(it) }
+                file
+            }
+        } catch (_: Exception) { null }
     }
 
-    private fun addImageMessage(path: String, isSender: Boolean) {
+    private fun addMessage(text: String, isSender: Boolean) {
+        if (TextUtils.isEmpty(text)) return
         val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
-        messageAdapter?.addMessage(ChatMessage(
-            text = "",
-            isSender = isSender,
-            timeLabel = timeLabel,
-            type = ChatMessageType.IMAGE,
-            attachmentUri = path
-        ))
+        messageAdapter?.addMessage(ChatMessage(text = text, isSender = isSender, timeLabel = timeLabel, status = if(isSender) MessageStatus.SENDING else MessageStatus.SENT))
+    }
+
+    override fun onDestroy() {
+        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
+        try { mediaRecorder?.release() } catch (_: Exception) {}
+        WebSocketManager.getInstance().disconnect()
+        super.onDestroy()
     }
 
     private fun setupVoiceNote() {
-        val recordLayout: LinearLayout? = binding.recordLayout
-        recordLayout?.setOnClickListener { showVoiceNoteDialog() }
+        binding.recordLayout?.setOnClickListener { showVoiceNoteDialog() }
     }
 
     private fun showVoiceNoteDialog() {
-        val view = LayoutInflater.from(this)
-            .inflate(R.layout.vc_dialog_voice_note, null)
-
+        val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_voice_note, null)
         voiceNoteWaveformView = view.findViewById(R.id.waveformView)
-
-        voiceNoteWaveformView?.visibility = View.GONE
         voiceNoteDialogTimerView = view.findViewById(R.id.txtVoiceTimer)
-
         val btnClose = view.findViewById<ImageView>(R.id.btnCloseVoice)
         val btnRecord = view.findViewById<ImageView>(R.id.btnRecordVoice)
         val btnDelete = view.findViewById<ImageView>(R.id.btnDeleteVoice)
         val btnPlay = view.findViewById<ImageView>(R.id.btnPlayPauseVoice)
         val pauseIcon = view.findViewById<ImageView>(R.id.pauseIcon)
-
-        // cache references for permission callback
-        dialogBtnRecord = btnRecord
-        dialogBtnDelete = btnDelete
-        dialogBtnPlay = btnPlay
-        dialogPauseIcon = pauseIcon
-
-        val btnCancel = view.findViewById<TextView>(R.id.btnCancelVoice)
         val btnSave = view.findViewById<TextView>(R.id.btnSaveVoice)
+        val btnCancel = view.findViewById<TextView>(R.id.btnCancelVoice)
 
         voiceNoteDurationSeconds = 0
         voiceNotePath = null
         voiceNoteDialogTimerView?.text = "00:00"
 
-        voiceNoteDialog = AlertDialog.Builder(this).setView(view).create()
+        val dialog = AlertDialog.Builder(this).setView(view).create()
 
-        btnClose.setOnClickListener { voiceNoteDialog?.dismiss() }
-        btnCancel.setOnClickListener { voiceNoteDialog?.dismiss() }
+        btnClose.setOnClickListener { dialog.dismiss() }
+        btnCancel.setOnClickListener { dialog.dismiss() }
 
         btnRecord.setOnClickListener {
-
-            if (isPlaying) {
-                Toast.makeText(this, "Stop playback first", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.RECORD_AUDIO
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon)
             } else {
                 recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
         }
-        pauseIcon.setOnClickListener {
-
-            stopVoiceRecording()
-            isRecording = false
-
-            btnRecord.visibility = View.VISIBLE
-            btnDelete.visibility = View.VISIBLE
-            btnPlay.visibility = View.VISIBLE
-
-            pauseIcon.visibility = View.GONE
-        }
-
-        btnDelete.setOnClickListener {
-
-            if (isPlaying) {
-                Toast.makeText(this,"Stop playback first",Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            stopVoiceRecording()
-
-            voiceNotePath?.let {
-                File(it).delete()
-            }
-
-            voiceNotePath = null
-            voiceNoteDurationSeconds = 0
-
-            voiceNoteDialogTimerView?.text = "00:00"
-            voiceNoteWaveformView?.visibility = View.VISIBLE
-            voiceNoteWaveformView?.clear()
-
-        }
-
-        btnPlay.setOnClickListener {
-
-            voiceNotePath ?: return@setOnClickListener
-
-            if (!isPlaying) {
-
-                mediaPlayer = MediaPlayer().apply {
-                    setDataSource(voiceNotePath)
-                    prepare()
-                }
-
-                mediaPlayer?.start()
-
-                isPlaying = true
-
-                btnPlay.setImageResource(R.drawable.pause)
-
-                btnDelete.isEnabled = false
-                btnRecord.isEnabled = false
-
-                voiceNoteWaveformView?.visibility = View.VISIBLE
-                voiceNoteWaveformView?.resetProgress()
-
-                playbackHandler.removeCallbacks(playbackRunnable)
-                playbackHandler.post(playbackRunnable)
-
-                mediaPlayer?.setOnCompletionListener {
-
-                    stopPlaybackTimer()
-
-                    isPlaying = false
-
-                    btnPlay.setImageResource(R.drawable.play_circle)
-
-                    btnDelete.isEnabled = true
-                    btnRecord.isEnabled = true
-
-                    voiceNoteWaveformView?.resetProgress()
-                }
-
-            } else {
-
-                mediaPlayer?.stop()
-                mediaPlayer?.release()
-                mediaPlayer = null
-
-                stopPlaybackTimer()
-
-                isPlaying = false
-
-                btnPlay.setImageResource(R.drawable.play_circle)
-
-                btnDelete.isEnabled = true
-                btnRecord.isEnabled = true
-            }
-        }
 
         btnSave.setOnClickListener {
-
             if (isRecording) {
                 stopVoiceRecording()
                 isRecording = false
             }
-
-            voiceNoteDialog?.dismiss()
-
+            dialog.dismiss()
             voiceNotePath?.let { path ->
-
-                val timeLabel = SimpleDateFormat(
-                    "hh:mma",
-                    Locale.getDefault()
-                ).format(Date()).lowercase()
-
-                messageAdapter?.addMessage(
-                    ChatMessage(
-                        text = "",
-                        isSender = true,
-                        timeLabel = timeLabel,
-                        type = ChatMessageType.VOICE_NOTE,
-                        attachmentUri = path,
-                        durationSeconds = voiceNoteDurationSeconds
-                    )
+                val localId = "local_voice_${System.currentTimeMillis()}"
+                val tempMessage = ChatMessage(
+                    messageId = localId,
+                    text = "",
+                    isSender = true,
+                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
+                    type = ChatMessageType.VOICE_NOTE,
+                    attachmentUri = path,
+                    durationSeconds = voiceNoteDurationSeconds,
+                    status = MessageStatus.SENDING
                 )
-
+                messageAdapter?.addMessage(tempMessage)
                 scrollToLast()
+                performUpload(File(path), "Voice Note", ChatMessageType.VOICE_NOTE, localId)
             }
         }
 
-        voiceNoteDialog?.show()
+        dialog.show()
     }
+
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    private fun startRecordingFlow(
-        btnRecord: ImageView,
-        btnDelete: ImageView,
-        btnPlay: ImageView,
-        pauseIcon: ImageView
-    ) {
+    private fun startRecordingFlow(r: ImageView, d: ImageView, p: ImageView, pause: ImageView) {
         startVoiceRecording()
         isRecording = true
-
-        btnRecord.visibility = View.GONE
-        btnDelete.visibility = View.GONE
-        btnPlay.visibility = View.GONE
-
-        pauseIcon.visibility = View.VISIBLE
-        voiceNoteWaveformView?.visibility = View.VISIBLE
-        voiceNoteWaveformView?.clear()
+        r.visibility = View.GONE
+        d.visibility = View.GONE
+        p.visibility = View.GONE
+        pause.visibility = View.VISIBLE
     }
-    private val recordAudioPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                dialogBtnRecord?.let { r ->
-                    dialogBtnDelete?.let { d ->
-                        dialogBtnPlay?.let { p ->
-                            dialogPauseIcon?.let { pause ->
-                                startRecordingFlow(r, d, p, pause)
-                            }
-                        }
-                    }
-                }
-            } else {
-                Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show()
-            }
-        }
+
+    private val recordAudioPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) Toast.makeText(this, "Permission required", Toast.LENGTH_SHORT).show()
+    }
+
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun startVoiceRecording() {
-
-        if (isRecording) return
-
         val sampleRate = 44100
-
-        val bufferSize = AudioRecord.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT
-        )
-
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            sampleRate,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            bufferSize
-        )
-
-        pcmFile = File(cacheDir,"voice_note.pcm")
-        if (pcmFile!!.exists()) pcmFile!!.delete()
-
+        val bufferSize = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
+        pcmFile = File(cacheDir, "voice_note.pcm")
+        voiceNotePath = pcmFile?.absolutePath
         audioRecord?.startRecording()
-
         isRecording = true
-
         voiceTimerHandler.post(voiceTimerRunnable)
-
         Thread {
-
             val buffer = ShortArray(1024)
             val output = FileOutputStream(pcmFile!!)
-
             while (isRecording) {
-
-                val read = audioRecord?.read(buffer,0,buffer.size) ?: 0
-
+                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                 if (read > 0) {
-
-                    val maxAmp =
-                        buffer.take(read).maxOf {
-                            abs(it.toInt())
-                        }
-
-                    val normalized =
-                        (maxAmp / 300).coerceAtLeast(1)
-
-                    runOnUiThread {
-
-                        voiceNoteWaveformView?.addAmplitude(
-                            normalized
-                        )
-                    }
-
-                    val byteBuffer =
-                        ByteBuffer.allocate(read*2)
-
-                    byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
-
-                    buffer.take(read).forEach {
-                        byteBuffer.putShort(it)
-                    }
-
-                    output.write(byteBuffer.array())
+                    val maxAmp = buffer.take(read).maxOf { abs(it.toInt()) }
+                    runOnUiThread { voiceNoteWaveformView?.addAmplitude((maxAmp / 300).coerceAtLeast(1)) }
+                    output.write(ByteBuffer.allocate(read*2).order(ByteOrder.LITTLE_ENDIAN).apply { buffer.take(read).forEach { putShort(it) } }.array())
                 }
             }
 
@@ -959,148 +836,92 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun loadFragment(fragment: Fragment) {
-
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.FragmentContainer, fragment)
-            .commit()
+        supportFragmentManager.beginTransaction().replace(R.id.FragmentContainer, fragment).commit()
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun setupTabs() {
-
-        val tabParticipants = binding.tabParticipants ?: return
-        val tabMedia = binding.tabMedia ?: return
-        val tabRoDetails = binding.tabRoDetails ?: return
-
-        tabParticipants.setOnClickListener {
-
+        binding.tabParticipants?.setOnClickListener {
             loadFragment(ParticipantsListFragment())
-
             selectParticipantsTab()
-
-            moveIndicator(tabParticipants)
+            moveIndicator(it)
         }
-
-        tabMedia.setOnClickListener {
-
+        binding.tabMedia?.setOnClickListener {
             loadFragment(MediaFragment())
-
             selectMediaTab()
-            moveIndicator(tabMedia)
+            moveIndicator(it)
         }
-        tabRoDetails.setOnClickListener {
-
-            loadFragment(RODetailsFragment())
-
-            selectRoDetailsTab()
-            moveIndicator(tabRoDetails)
-        }
-
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun selectParticipantsTab() {
-
-        val tabParticipants = binding.tabParticipants ?: return
-        val tabMedia = binding.tabMedia ?: return
-        val tabRodetails=binding.tabRoDetails?: return
-
-        tabParticipants.setTextColor(
-            getColor(R.color.colorPrimary_kia_kandid)
-        )
-
-        tabParticipants.typeface =
-            resources.getFont(R.font.kia_signature_fix_bold)
-
-        tabMedia.setTextColor(
-            getColor(R.color.gray_mic_background)
-        )
-
-        tabMedia.typeface =
-            resources.getFont(R.font.kia_signature_fix_regular)
-
-        tabRodetails.setTextColor(
-            getColor(R.color.gray_mic_background)
-        )
-
-        tabRodetails.typeface =
-            resources.getFont(R.font.kia_signature_fix_regular)
-
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun selectRoDetailsTab() {
-
-        val tabParticipants = binding.tabParticipants ?: return
-        val tabMedia = binding.tabMedia ?: return
-        val tabRodetails=binding.tabRoDetails?: return
-
-        tabRodetails.setTextColor(
-            getColor(R.color.colorPrimary_kia_kandid)
-        )
-
-        tabRodetails.typeface =
-            resources.getFont(R.font.kia_signature_fix_bold)
-
-
-   tabParticipants.setTextColor(
-            getColor(R.color.gray_mic_background)
-        )
-
-        tabParticipants.typeface =
-            resources.getFont(R.font.kia_signature_fix_regular)
-
-        tabMedia.setTextColor(
-            getColor(R.color.gray_mic_background)
-        )
-
-        tabMedia.typeface =
-            resources.getFont(R.font.kia_signature_fix_regular)
+        binding.tabParticipants?.setTextColor(getColor(R.color.colorPrimary_kia_kandid))
+        binding.tabParticipants?.typeface = resources.getFont(R.font.kia_signature_fix_bold)
+        binding.tabMedia?.setTextColor(getColor(R.color.gray_mic_background))
+        binding.tabMedia?.typeface = resources.getFont(R.font.kia_signature_fix_regular)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun selectMediaTab() {
-        val tabRodetails=binding.tabRoDetails?: return
-
-        val tabParticipants = binding.tabParticipants ?: return
-        val tabMedia = binding.tabMedia ?: return
-
-        tabMedia.setTextColor(
-            getColor(R.color.colorPrimary_kia_kandid)
-        )
-
-        tabMedia.typeface =
-            resources.getFont(R.font.kia_signature_fix_bold)
-
-        tabParticipants.setTextColor(
-            getColor(R.color.gray_mic_background)
-        )
-
-        tabParticipants.typeface =
-            resources.getFont(R.font.kia_signature_fix_regular)
-
-        tabRodetails.setTextColor(
-            getColor(R.color.gray_mic_background)
-        )
-
-        tabRodetails.typeface =
-            resources.getFont(R.font.kia_signature_fix_regular)
+        binding.tabMedia?.setTextColor(getColor(R.color.colorPrimary_kia_kandid))
+        binding.tabMedia?.typeface = resources.getFont(R.font.kia_signature_fix_bold)
+        binding.tabParticipants?.setTextColor(getColor(R.color.gray_mic_background))
+        binding.tabParticipants?.typeface = resources.getFont(R.font.kia_signature_fix_regular)
     }
 
     private fun moveIndicator(tab: View) {
-
-        val indicator = binding.tabIndicator ?: return
-
-        indicator.post {
-
-            val width = tab.width
-            val start = tab.left
-
-            indicator.layoutParams.width = width
-            indicator.requestLayout()
-
-            indicator.x = start.toFloat()
+        binding.tabIndicator?.post {
+            binding.tabIndicator?.layoutParams?.width = tab.width
+            binding.tabIndicator?.requestLayout()
+            binding.tabIndicator?.x = tab.left.toFloat()
         }
+    }
+
+    private fun scrollToLast() {
+        binding.recyclerMessages.scrollToPosition((messages.size - 1).coerceAtLeast(0))
     }
 }
 
+class MediaViewerFragment : Fragment() {
+    companion object {
+        fun newInstance(url: String, type: String): MediaViewerFragment {
+            return MediaViewerFragment().apply {
+                arguments = Bundle().apply {
+                    putString("url", url)
+                    putString("type", type)
+                }
+            }
+        }
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        val url = arguments?.getString("url")
+        val type = arguments?.getString("type")
+        val root = LinearLayout(context).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(android.graphics.Color.BLACK)
+        }
+
+        if (type == ChatMessageType.IMAGE.name) {
+            val img = ImageView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+            if (url?.startsWith("http") == true) {
+                // In real app, use Glide or similar
+            } else {
+                img.setImageURI(Uri.parse(url))
+            }
+            root.addView(img)
+        } else {
+            val txt = TextView(context).apply {
+                text = "Viewing $type: $url"
+                setTextColor(android.graphics.Color.WHITE)
+                gravity = android.view.Gravity.CENTER
+            }
+            root.addView(txt)
+        }
+        return root
+    }
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- The white background color -->
+    <solid android:color="@color/white" />
+
+    <!-- The corner radius - 4dp to 8dp is standard for small status labels -->
+    <corners android:radius="4dp" />
+
+    <!-- Optional: add a very thin border if it needs to stand out against white images -->
+    <stroke
+        android:width="0.5dp"
+        android:color="#DDDDDD" />
+</shape>

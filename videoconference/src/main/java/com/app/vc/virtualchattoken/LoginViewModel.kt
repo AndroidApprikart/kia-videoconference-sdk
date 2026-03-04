@@ -30,6 +30,9 @@ class LoginViewModel : ViewModel() {
     private val _isVerified = MutableLiveData<Boolean>()
     val isVerified: LiveData<Boolean> = _isVerified
 
+    private val _sessionExpired = MutableLiveData<Boolean>()
+    val sessionExpired: LiveData<Boolean> = _sessionExpired
+
     private val loginApiService: LoginApiService by lazy {
         val gson = GsonBuilder().setLenient().create()
         Retrofit.Builder()
@@ -94,7 +97,7 @@ class LoginViewModel : ViewModel() {
     private suspend fun refreshAuthToken() {
         val refreshToken = PreferenceManager.getRefreshToken()
         if (refreshToken.isNullOrEmpty()) {
-            _errorMessage.value = "Session expired. Please login again."
+            _sessionExpired.postValue(true)
             _isLoading.value = false
             return
         }
@@ -110,10 +113,10 @@ class LoginViewModel : ViewModel() {
                 }
                 _isVerified.value = true
             } else {
-                _errorMessage.value = "Verification failed. Please login again."
+                _sessionExpired.postValue(true)
             }
         } catch (e: Exception) {
-            _errorMessage.value = "Error during verification: ${e.localizedMessage}"
+            _sessionExpired.postValue(true)
         } finally {
             _isLoading.value = false
         }
