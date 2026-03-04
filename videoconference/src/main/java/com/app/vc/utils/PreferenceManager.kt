@@ -22,6 +22,10 @@ class PreferenceManager {
         private const val USERTYPE = "USERTYPE"
         private const val ESTIMATE_TOKEN = "ESTIMATE_TOKEN"
         private const val BASE_URL = "BASE_URL"
+        private const val ACCESS_TOKEN = "ACCESS_TOKEN"
+        private const val REFRESH_TOKEN = "REFRESH_TOKEN"
+        private const val USER_ID = "USER_ID"
+
 
         fun isChatScreenOpen(): Boolean? {
 
@@ -66,6 +70,30 @@ class PreferenceManager {
         }
         fun getBaseUrl():String? {
             return mSharedPrefs!!.getString(BASE_URL,"")
+        }
+
+        fun setAccessToken(token: String?) {
+            mSharedPrefs?.edit()?.putString(ACCESS_TOKEN, token)?.apply()
+        }
+
+        fun getAccessToken(): String? {
+            return mSharedPrefs?.getString(ACCESS_TOKEN, "")
+        }
+
+        fun setRefreshToken(token: String?) {
+            mSharedPrefs?.edit()?.putString(REFRESH_TOKEN, token)?.apply()
+        }
+
+        fun getRefreshToken(): String? {
+            return mSharedPrefs?.getString(REFRESH_TOKEN, "")
+        }
+
+        fun setUserId(userId: String?) {
+            mSharedPrefs?.edit()?.putString(USER_ID, userId)?.apply()
+        }
+
+        fun getUserId(): String? {
+            return mSharedPrefs?.getString(USER_ID, "")
         }
     }
 }

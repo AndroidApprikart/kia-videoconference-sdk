@@ -18,7 +18,7 @@ import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
-import android.view.Gravity
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
@@ -44,13 +44,17 @@ import com.app.vc.RODetailsFragment
 import com.app.vc.RepairOrderActivity
 import com.app.vc.RequestVideoCallDialog
 import com.app.vc.databinding.VcActivityVirtualChatRoomBinding
+import com.app.vc.utils.PreferenceManager
 import com.app.vc.virtualroomlist.UserRole
 import com.app.vc.virtualroomlist.VirtualRoomUiModel
+import com.app.vc.websocketconnection.WebSocketManager
 import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.app.vc.views.WaveformView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.SimpleDateFormat
@@ -108,6 +112,12 @@ class VirtualChatRoomActivity : AppCompatActivity() {
         }
     }
     private var isRecording = false
+
+    private var isTyping = false
+    private val typingHandler = Handler(Looper.getMainLooper())
+    private val stopTypingRunnable = Runnable {
+        sendTypingStatus(false)
+    }
 
     private val quickReplies = listOf(
         "When can we schedule for pickup?",
@@ -210,6 +220,103 @@ class VirtualChatRoomActivity : AppCompatActivity() {
         setupSendActions()
         setupAttachmentAndMedia()
         setupVoiceNote()
+
+        connectToWebSocket()
+    }
+
+    private fun connectToWebSocket() {
+        val rawRoNumber = room?.roNumber ?: "default-room"
+        val roomSlug = "test-08d50b33"
+        val token = PreferenceManager.getAccessToken()
+
+        val url = "wss://testingchat.apprikart.com/ws/chat/$roomSlug/?token=$token"
+        Log.d("VirtualChatRoom", "Connecting to WebSocket URL: $url")
+        WebSocketManager.getInstance().connect(url, this)
+    }
+
+    override fun onConnected() {
+        runOnUiThread {
+            Log.d("VirtualChatRoom", "WebSocket Connected Successfully")
+            Toast.makeText(this, "Chat connected", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onMessageReceived(message: String) {
+        runOnUiThread {
+            Log.d("VirtualChatRoom", "Message Received: $message")
+            try {
+                val jsonObject = Gson().fromJson(message, JsonObject::class.java)
+                val type = jsonObject.get("type")?.asString
+
+                when (type) {
+                    "chat.message" -> {
+                        val senderId = jsonObject.get("sender_id")?.asString
+                        val currentUserId = PreferenceManager.getUserId()
+
+                        if (senderId != null && senderId == currentUserId) {
+                            Log.d("VirtualChatRoom", "Ignoring echoed message from self")
+                            // Update our local message to SENT status since server acknowledged it
+                            messageAdapter?.updateMessageStatus("", MessageStatus.SENT)
+                            return@runOnUiThread
+                        }
+
+                        val content = jsonObject.get("content")?.asString ?: jsonObject.get("message")?.asString
+                        if (content != null) {
+                            addMessage(content, false)
+                            scrollToLast()
+                            // Send read receipt
+                            sendReadReceipt(jsonObject.get("message_id")?.asString ?: "")
+                        }
+                    }
+                    "chat.typing" -> {
+                        val senderId = jsonObject.get("sender_id")?.asString
+                        val currentUserId = PreferenceManager.getUserId()
+                        if (senderId != currentUserId) {
+                            val isTyping = jsonObject.get("is_typing")?.asBoolean ?: false
+                            binding.txtTypingIndicator?.visibility = if (isTyping) View.VISIBLE else View.GONE
+                            binding.txtTypingIndicator?.text = "${jsonObject.get("username")?.asString} is typing..."
+                        }
+                    }
+                    "chat.read" -> {
+                        // Someone read our message
+                        messageAdapter?.updateMessageStatus("", MessageStatus.READ)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("VirtualChatRoom", "Error parsing message: ${e.message}")
+            }
+        }
+    }
+
+    private fun sendTypingStatus(typing: Boolean) {
+        if (isTyping == typing) return
+        isTyping = typing
+        val json = JsonObject()
+        json.addProperty("type", "chat.typing")
+        json.addProperty("is_typing", typing)
+        WebSocketManager.getInstance().sendMessage(json.toString())
+    }
+
+    private fun sendReadReceipt(messageId: String) {
+        val json = JsonObject()
+        json.addProperty("type", "chat.read")
+        json.addProperty("message_id", messageId)
+        WebSocketManager.getInstance().sendMessage(json.toString())
+    }
+
+    override fun onDisconnected(reason: String) {
+        runOnUiThread {
+            Log.d("VirtualChatRoom", "WebSocket Disconnected: $reason")
+        }
+    }
+
+    override fun onError(error: String) {
+        runOnUiThread {
+            Log.e("VirtualChatRoom", "WebSocket Error: $error")
+            if (error.contains("403")) {
+                Toast.makeText(this, "Access Denied. Please check token or room slug.", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun setupToolbar() {
@@ -234,8 +341,6 @@ class VirtualChatRoomActivity : AppCompatActivity() {
             else
                 subject
 
-        txtRoomTitle?.text = "${room.roNumber} | $trimmedSubject"
-    }
     private fun bindStaticTabletPanels() {
         val room = room ?: return
         val txtLeftCustomerName = binding.txtLeftCustomerName
@@ -276,15 +381,25 @@ class VirtualChatRoomActivity : AppCompatActivity() {
 
     private fun initQuickReplyContainer(container: LinearLayout?, messageField: EditText?) {
         if (container == null || messageField == null) return
+
         container.removeAllViews()
         val inflater = LayoutInflater.from(this)
+
         quickReplies.forEach { text ->
-            val chip = inflater.inflate(R.layout.vc_quick_reply_chip, container, false) as TextView
+
+            val chip = inflater.inflate(
+                R.layout.vc_quick_reply_chip,
+                container,
+                false
+            ) as TextView
+
             chip.text = text
+
             chip.setOnClickListener {
                 messageField.setText(text)
                 messageField.setSelection(text.length)
             }
+
             container.addView(chip)
         }
     }
@@ -297,23 +412,43 @@ class VirtualChatRoomActivity : AppCompatActivity() {
         val sendBtn: ImageView? = binding.imgSendTablet
 
         edtMessage?.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {}
+            override fun afterTextChanged(s: Editable?) {
+                if (s.isNullOrBlank()) {
+                    sendTypingStatus(false)
+                }
+            }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val hasText = !s.isNullOrBlank()
                 recordLayout?.visibility = if (hasText) View.GONE else View.VISIBLE
                 sendLayout?.visibility = if (hasText) View.VISIBLE else View.GONE
+
+                if (hasText) {
+                    sendTypingStatus(true)
+
+                    typingHandler.removeCallbacks(stopTypingRunnable)
+                    typingHandler.postDelayed(stopTypingRunnable, 2000)
+                }
             }
         })
 
         sendBtn?.setOnClickListener {
             val text = edtMessage?.text?.toString()?.trim().orEmpty()
             if (text.isNotEmpty()) {
+                sendWebSocketMessage(text)
                 addMessage(text, true)
                 edtMessage?.setText("")
                 scrollToLast()
+                sendTypingStatus(false)
             }
         }
+    }
+
+    private fun sendWebSocketMessage(text: String) {
+        val json = JsonObject()
+        json.addProperty("type", "chat.message")
+        json.addProperty("content", text)
+        WebSocketManager.getInstance().sendMessage(json.toString())
     }
 
     private fun setupAttachmentAndMedia() {
@@ -391,6 +526,7 @@ class VirtualChatRoomActivity : AppCompatActivity() {
             dialog.dismiss()
             fileLauncher.launch(arrayOf("*/*"))
         }
+        dialog.show()
     }
 
     private fun launchCamera() {
@@ -735,7 +871,7 @@ class VirtualChatRoomActivity : AppCompatActivity() {
     private fun addMessage(text: String, isSender: Boolean) {
         if (TextUtils.isEmpty(text)) return
         val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
-        messageAdapter?.addMessage(ChatMessage(text = text, isSender = isSender, timeLabel = timeLabel))
+        messageAdapter?.addMessage(ChatMessage(text = text, isSender = isSender, timeLabel = timeLabel, status = if(isSender) MessageStatus.SENDING else MessageStatus.SENT))
     }
 
     private fun uriToPath(uri: Uri): String? {
@@ -761,6 +897,7 @@ class VirtualChatRoomActivity : AppCompatActivity() {
     override fun onDestroy() {
         voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
         try { mediaRecorder?.release() } catch (_: Exception) {}
+        WebSocketManager.getInstance().disconnect()
         super.onDestroy()
     }
     private fun startPlaybackTimer() {

@@ -8,6 +8,9 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val KIA_BASE_URL = "https://kialinkd-qa.kiaindia.net/dev/"
         const val KIA_BASE_URL_VPN = "http://10.107.11.242:7001/kiakandit/service/vcConference/"
 
+        const val APRIK_Kia_BASE_URL = "https://testingchat.apprikart.com"
+        const val APRIK_KIA_LOGIN = "/api/token/"
+
         //        const val BASE_URL = "https://videoserver.apprikart.com/"
         const val MEDIA_BASE_URL = "https://videoserver.apprikart.com"
         const val SUB_URL = "kandid_api/v1/"

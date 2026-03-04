@@ -133,6 +133,18 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp" />
 
+    <!-- Typing Indicator -->
+    <TextView
+        android:id="@+id/txtTypingIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="4dp"
+        android:text="Someone is typing..."
+        android:textColor="@color/grey_text_color"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
     <!-- Quick replies + input unified card -->
         <View
             android:layout_width="match_parent"
