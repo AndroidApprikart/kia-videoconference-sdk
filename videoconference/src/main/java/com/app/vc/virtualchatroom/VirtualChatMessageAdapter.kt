@@ -117,6 +117,15 @@ class VirtualChatMessageAdapter(
     }
     
     fun updateMessageStatus(messageId: String, newStatus: MessageStatus) {
+        if (messageId.isEmpty() && newStatus == MessageStatus.READ) {
+            messages.forEachIndexed { index, msg ->
+                if (msg.isSender && msg.status == MessageStatus.SENT) {
+                    msg.status = MessageStatus.READ
+                    notifyItemChanged(index)
+                }
+            }
+            return
+        }
         val index = if (messageId.isNotEmpty()) {
             messages.indexOfLast { it.messageId == messageId }
         } else {
@@ -129,10 +138,10 @@ class VirtualChatMessageAdapter(
         }
     }
 
-    fun updateMessageIdAndStatus(newId: String, newStatus: MessageStatus) {
-        val index = messages.indexOfLast { it.isSender && it.status == MessageStatus.SENDING }
+    fun updateMessageIdAndStatus(localId: String, serverId: String, newStatus: MessageStatus) {
+        val index = messages.indexOfLast { it.messageId == localId }
         if (index != -1) {
-            messages[index].messageId = newId
+            messages[index].messageId = serverId
             messages[index].status = newStatus
             notifyItemChanged(index)
         }

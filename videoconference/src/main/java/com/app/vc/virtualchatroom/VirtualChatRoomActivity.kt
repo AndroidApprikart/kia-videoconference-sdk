@@ -476,6 +476,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         setupVoiceNote()
         connectToWebSocket()
         fetchQuickReplies()
+        fetchMessages()
 
         sharedViewModel.estimateDetailsResponse.observe(this) {
             if (it != null) {
@@ -543,6 +544,70 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
+    private fun fetchMessages() {
+        val slug = room?.roNumber ?: return
+        val token = PreferenceManager.getAccessToken() ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val response = apiService.getMessages("Bearer $token", slug)
+                if (response.isSuccessful && response.body() != null) {
+                    val currentUserId = PreferenceManager.getUserId()
+                    val apiMessages = response.body()!!
+                    
+                    val chatMessages = apiMessages.map { apiMsg ->
+                        val isSender = apiMsg.sender.id.toString() == currentUserId
+                        val type = when (apiMsg.messageType) {
+                            "image" -> ChatMessageType.IMAGE
+                            "video" -> ChatMessageType.VIDEO
+                            "document" -> ChatMessageType.FILE
+                            else -> ChatMessageType.TEXT
+                        }
+                        
+                        val attachment = apiMsg.attachments.firstOrNull()
+                        val attachmentUri = attachment?.fileUrl?.let { 
+                            if (it.startsWith("http")) it else ApiDetails.APRIK_Kia_BASE_URL + it 
+                        }
+                        
+                        val isRead = apiMsg.receipts.isNotEmpty()
+                        
+                        ChatMessage(
+                            messageId = apiMsg.id.toString(),
+                            text = if (type == ChatMessageType.TEXT) apiMsg.content else "",
+                            isSender = isSender,
+                            timeLabel = formatApiDate(apiMsg.createdAt),
+                            status = if (isRead) MessageStatus.READ else MessageStatus.SENT,
+                            type = type,
+                            attachmentUri = attachmentUri,
+                            fileName = attachment?.fileName,
+                            caption = if (type != ChatMessageType.TEXT) apiMsg.content else null
+                        )
+                    }
+                    
+                    withContext(Dispatchers.Main) {
+                        messages.clear()
+                        messages.addAll(chatMessages)
+                        messageAdapter?.notifyDataSetChanged()
+                        scrollToLast()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("VirtualChatRoom", "Error fetching messages: ${e.message}")
+            }
+        }
+    }
+
+    private fun formatApiDate(dateStr: String): String {
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val date = inputFormat.parse(dateStr)
+            if (date != null) {
+                SimpleDateFormat("hh:mma", Locale.getDefault()).format(date).lowercase()
+            } else ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
     private fun updateEstimateStatusApi(estimationStatus: Boolean) {
         if (estimationStatus) {
             sharedViewModel.updateEstimationStatusNew(
@@ -569,7 +634,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun showVoiceNoteDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_voice_note, null)
         voiceNoteWaveformView = view.findViewById(R.id.waveformView)
-        voiceNoteDialogTimerView = view.findViewById(R.id.txtVoiceTimer)
+        voiceNoteDialogTimerView = view.findViewById<TextView>(R.id.txtVoiceTimer)
         val btnClose = view.findViewById<ImageView>(R.id.btnCloseVoice)
         val btnRecord = view.findViewById<ImageView>(R.id.btnRecordVoice)
         val btnDelete = view.findViewById<ImageView>(R.id.btnDeleteVoice)
@@ -765,7 +830,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         if (senderId != null && senderId == currentUserId) {
                             Log.d("VirtualChatRoom", "Ignoring echoed message from self")
                             // Update our local message to SENT status since server acknowledged it
-                            messageAdapter?.updateMessageStatus("", MessageStatus.SENT)
+                            val msgId = jsonObject.get("message_id")?.asString ?: ""
+                            messageAdapter?.updateMessageStatus(msgId, MessageStatus.SENT)
                             return@runOnUiThread
                         }
 
@@ -788,6 +854,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                             messageAdapter?.addMessage(
                                 ChatMessage(
+                                    messageId = jsonObject.get("message_id")?.asString,
                                     text = "",
                                     isSender = false,
                                     timeLabel = SimpleDateFormat(
@@ -802,11 +869,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 )
                             )
                         } else if (content != null) {
-                            addMessage(content, false)
+                            addMessage(content, false, jsonObject.get("message_id")?.asString)
                         }
                         scrollToLast()
-                        val messageId = jsonObject.get("message_id")?.asLong?.toString() ?: ""
-                        sendReadReceipt(messageId)                    }
+                        sendReadReceipt(jsonObject.get("message_id")?.asString ?: "")
+                    }
 
                     "chat.typing" -> {
                         val senderId = jsonObject.get("sender_id")?.asString
@@ -988,6 +1055,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun sendReadReceipt(messageId: String) {
+        if (messageId.isEmpty()) return
         val jsonObject = JsonObject()
         jsonObject.addProperty("type", "chat.read")
         jsonObject.addProperty("message_id", messageId)

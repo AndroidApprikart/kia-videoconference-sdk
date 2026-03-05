@@ -54,6 +54,12 @@ interface LoginApiService {
     suspend fun getQuickReplies(
         @Query("role") role: String
     ): Response<List<QuickReplyResponse>>
+
+    @GET("api/groups/{slug}/messages/")
+    suspend fun getMessages(
+        @Header("Authorization") token: String,
+        @Path("slug") slug: String
+    ): Response<List<ApiMessageResponse>>
 }
 
 data class TokenVerifyRequest(val token: String)
@@ -64,4 +70,29 @@ data class QuickReplyResponse(
     @SerializedName("text") val text: String,
     @SerializedName("role") val role: String,
     @SerializedName("display_order") val displayOrder: Int
+)
+
+data class ApiMessageResponse(
+    @SerializedName("id") val id: Int,
+    @SerializedName("content") val content: String,
+    @SerializedName("message_type") val messageType: String,
+    @SerializedName("sender") val sender: ApiSenderResponse,
+    @SerializedName("attachments") val attachments: List<ApiAttachmentResponse>,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("receipts") val receipts: List<ApiReceiptResponse>
+)
+
+data class ApiSenderResponse(
+    @SerializedName("id") val id: Int,
+    @SerializedName("username") val username: String
+)
+
+data class ApiAttachmentResponse(
+    @SerializedName("file_url") val fileUrl: String,
+    @SerializedName("file_name") val fileName: String,
+    @SerializedName("mime_type") val mimeType: String
+)
+
+data class ApiReceiptResponse(
+    @SerializedName("user") val user: ApiSenderResponse
 )
