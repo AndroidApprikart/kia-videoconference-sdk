@@ -47,16 +47,16 @@ class LoginViewModel : ViewModel() {
 
 
 
-    fun login(username: String, password: String) {
-        if (username.isEmpty() || password.isEmpty()) {
-            _errorMessage.value = "Please enter username and password"
+    fun login(username: String, unique_id: String, role: String,dealer_code: String) {
+        if (username.isEmpty() || unique_id.isEmpty() || role.isEmpty() || dealer_code.isEmpty()) {
+            _errorMessage.value = "Please enter username . role dealer code and uniqueId "
             return
         }
 
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                val response = loginApiService.login(username, password)
+                val response = loginApiService.login(username, unique_id, role = role, dealer_code = dealer_code)
                 if (response.isSuccessful && response.body() != null) {
                     val loginData = response.body()!!
 

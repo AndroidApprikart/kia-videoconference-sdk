@@ -20,10 +20,12 @@ import retrofit2.http.Query
 
 interface LoginApiService {
     @FormUrlEncoded
-    @POST("api/token/")
+    @POST("api/auth/participant-token/")
     suspend fun login(
-        @Field("username") username: String,
-        @Field("password") password: String
+        @Field("name") name: String,
+        @Field("unique_id") unique_id: String,
+        @Field("role") role: String,
+        @Field("dealer_code") dealer_code: String,
     ): Response<LoginResponse>
 
     @POST("api/token/verify/")

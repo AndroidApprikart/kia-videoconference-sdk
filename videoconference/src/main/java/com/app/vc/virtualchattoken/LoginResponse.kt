@@ -1,10 +1,10 @@
 package com.app.vc.virtualchattoken
 
-import com.google.gson.annotations.SerializedName
-
 data class LoginResponse(
-    @SerializedName("refresh")
-    val refresh: String?,
-    @SerializedName("access")
-    val access: String?
+    val access: String,
+    val dealer_code: String,
+    val display_name: String,
+    val refresh: String,
+    val role: String,
+    val username: String
 )

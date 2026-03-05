@@ -54,8 +54,10 @@ class LoginKiaKrystal : AppCompatActivity() {
     private fun setupListeners() {
         binding.btnLogin.setOnClickListener {
             val username = binding.etUsername.text.toString().trim()
-            val password = binding.etPassword.text.toString().trim()
-            viewModel.login(username, password)
+            val uniqueId = binding.etPassword.text.toString().trim()
+            val dealercode=binding.etdealercode.text.toString().trim()
+            val role=binding.etrole.text.toString().trim()
+            viewModel.login(username, uniqueId, dealer_code = dealercode, role = role)
         }
     }
 
