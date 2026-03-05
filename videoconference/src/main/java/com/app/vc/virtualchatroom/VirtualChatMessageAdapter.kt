@@ -25,7 +25,7 @@ enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE, ESTIMATION }
 enum class MessageStatus { SENDING, SENT, READ, ERROR }
 
 data class ChatMessage(
-    val messageId: String? = null,
+    var messageId: String? = null,
     val text: String,
     val isSender: Boolean,
     val timeLabel: String,
@@ -124,6 +124,15 @@ class VirtualChatMessageAdapter(
         }
         
         if (index != -1) {
+            messages[index].status = newStatus
+            notifyItemChanged(index)
+        }
+    }
+
+    fun updateMessageIdAndStatus(newId: String, newStatus: MessageStatus) {
+        val index = messages.indexOfLast { it.isSender && it.status == MessageStatus.SENDING }
+        if (index != -1) {
+            messages[index].messageId = newId
             messages[index].status = newStatus
             notifyItemChanged(index)
         }
