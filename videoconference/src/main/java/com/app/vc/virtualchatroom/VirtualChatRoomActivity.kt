@@ -160,12 +160,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             .create(LoginApiService::class.java)
     }
 
-    private val quickReplies = listOf(
-        "When can we schedule for pickup?",
-        "Can I share the payment link?",
-        "Can we have a quick call?",
-        "Will share the estimation in sometime"
-    )
+    private var quickReplies = mutableListOf<String>()
 
     private val requestPermission =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
@@ -480,6 +475,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         setupAttachmentAndMedia()
         setupVoiceNote()
         connectToWebSocket()
+        fetchQuickReplies()
 
         sharedViewModel.estimateDetailsResponse.observe(this) {
             if (it != null) {
@@ -522,6 +518,27 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     Toast.makeText(this, it.message, Toast.LENGTH_SHORT).show()
                     sharedViewModel.isProgressBarVisible.value = false
                 }
+            }
+        }
+    }
+
+    private fun fetchQuickReplies() {
+        val role = if (binding.tabParticipants != null) "service_person" else "customer"
+        lifecycleScope.launch {
+            try {
+                val response = apiService.getQuickReplies(role)
+                if (response.isSuccessful && response.body() != null) {
+                    val apiReplies = response.body()!!.sortedBy { it.displayOrder }.map { it.text }
+                    if (apiReplies.isNotEmpty()) {
+                        quickReplies.clear()
+                        quickReplies.addAll(apiReplies)
+                        runOnUiThread {
+                            setupQuickReplies()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("VirtualChatRoom", "Error fetching quick replies: ${e.message}")
             }
         }
     }
@@ -804,7 +821,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     }
 
                     "chat.read" -> {
-                        messageAdapter?.updateMessageStatus("", MessageStatus.READ)
+                        val msgId = jsonObject.get("message_id")?.asString ?: ""
+                        messageAdapter?.updateMessageStatus(msgId, MessageStatus.READ)
                     }
                 }
             } catch (e: Exception) {
@@ -1096,8 +1114,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.imgSendTablet.setOnClickListener {
             val text = binding.edtMessageTablet.text.toString().trim()
             if (text.isNotEmpty()) {
-                sendWebSocketMessage(text)
-                addMessage(text, true)
+                val localId = "local_txt_${System.currentTimeMillis()}"
+                sendWebSocketMessage(text, localId)
+                addMessage(text, true, localId)
                 binding.edtMessageTablet.setText("")
                 scrollToLast()
                 sendTypingStatus(false)
@@ -1109,11 +1128,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.recyclerMessages.scrollToPosition((messages.size - 1).coerceAtLeast(0))
     }
 
-    private fun addMessage(text: String, isSender: Boolean) {
+    private fun addMessage(text: String, isSender: Boolean, messageId: String? = null) {
         if (TextUtils.isEmpty(text)) return
         val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
         messageAdapter?.addMessage(
             ChatMessage(
+                messageId = messageId,
                 text = text,
                 isSender = isSender,
                 timeLabel = timeLabel,
@@ -1122,10 +1142,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         )
     }
 
-    private fun sendWebSocketMessage(text: String) {
+    private fun sendWebSocketMessage(text: String, messageId: String? = null) {
         val json = JsonObject()
         json.addProperty("type", "chat.message")
         json.addProperty("content", text)
+        if (messageId != null) {
+            json.addProperty("message_id", messageId)
+        }
         WebSocketManager.getInstance().sendMessage(json.toString())
     }
 

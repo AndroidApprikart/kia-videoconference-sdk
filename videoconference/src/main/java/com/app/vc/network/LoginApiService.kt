@@ -3,6 +3,7 @@ package com.app.vc.network
 import com.app.vc.virtualchatroom.FileUploadResponse
 import com.app.vc.virtualchattoken.LoginResponse
 import com.app.vc.virtualroomlist.GroupResponse
+import com.google.gson.annotations.SerializedName
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -15,6 +16,7 @@ import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface LoginApiService {
     @FormUrlEncoded
@@ -47,7 +49,19 @@ interface LoginApiService {
         @Part file: MultipartBody.Part,
         @Part("caption") caption: RequestBody?
     ): Response<FileUploadResponse>
+
+    @GET("api/quick-replies/")
+    suspend fun getQuickReplies(
+        @Query("role") role: String
+    ): Response<List<QuickReplyResponse>>
 }
 
 data class TokenVerifyRequest(val token: String)
 data class TokenRefreshRequest(val refresh: String)
+
+data class QuickReplyResponse(
+    @SerializedName("id") val id: Int,
+    @SerializedName("text") val text: String,
+    @SerializedName("role") val role: String,
+    @SerializedName("display_order") val displayOrder: Int
+)

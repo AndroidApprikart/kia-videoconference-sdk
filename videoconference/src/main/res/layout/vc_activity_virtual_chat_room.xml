@@ -69,17 +69,6 @@
                         android:textSize="14sp"
                         android:layout_gravity="start"
                         android:textStyle="bold" />
-<!--                    <TextView-->
-<!--                        android:id="@+id/aboutCar"-->
-<!--                        android:layout_width="wrap_content"-->
-<!--                        android:layout_height="wrap_content"-->
-<!--                        android:text="About car"-->
-<!--                        android:textColor="@color/white"-->
-<!--                        android:textSize="14sp"-->
-<!--                        android:layout_gravity="start"-->
-<!--                        android:textStyle="bold" />-->
-
-
                 </LinearLayout>
 
 
@@ -97,21 +86,9 @@
                     android:textColor="@color/white"
                     android:textSize="8sp" />
 
-
-
-                <!-- Status Chip -->
-
-
             </LinearLayout>
 
         </LinearLayout>
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-           />
-
-        <!-- Video Call Icon -->
 
         <ImageView
             android:id="@+id/btnVideoCall"
@@ -204,7 +181,7 @@
                             android:layout_width="0dp"
                             android:layout_weight="1"
                             android:paddingHorizontal="@dimen/_5sdp"
-                            android:paddingVertical="@dimen/_9sdp"
+                            android:paddingVertical="@dimen/_5sdp"
                             android:background="@drawable/bg_comment_box"
                             android:backgroundTint="#F7F7F7"
                             android:layout_height="wrap_content"
@@ -212,15 +189,19 @@
 
                             <EditText
                                 android:id="@+id/edtMessageTablet"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:fontFamily="@font/kia_signature_fix_regular"
                                 android:hint="Text here"
-                                android:layout_gravity="center"
+                                android:layout_gravity="center_vertical"
                                 android:textSize="14sp"
                                 android:background="@null"
                                 android:textColor="@color/black"
+                                android:inputType="textMultiLine"
+                                android:maxLines="4"
+                                android:minLines="1"
+                                android:scrollbars="vertical"
                                 android:gravity="center_vertical"
                                 />
 

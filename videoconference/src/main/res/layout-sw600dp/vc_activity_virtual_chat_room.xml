@@ -335,7 +335,8 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="2"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:background="@color/white">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -353,6 +354,18 @@
                 android:layout_weight="1" />
 
             </LinearLayout>
+
+            <!-- Typing Indicator -->
+            <TextView
+                android:id="@+id/txtTypingIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginBottom="4dp"
+                android:text="Someone is typing..."
+                android:textColor="@color/grey_text_color"
+                android:textSize="12sp"
+                android:visibility="gone" />
 
             <View
                 android:layout_width="match_parent"
@@ -404,7 +417,7 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="@dimen/_20sdp"
+                        android:layout_height="wrap_content"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -420,14 +433,18 @@
 
                         <EditText
                             android:id="@+id/edtMessageTablet"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:fontFamily="@font/kia_signature_fix_regular"
                             android:hint="Text here"
                             android:textSize="14sp"
                             android:background="@null"
                             android:textColor="@color/black"
+                            android:inputType="textMultiLine"
+                            android:maxLines="4"
+                            android:minLines="1"
+                            android:scrollbars="vertical"
                             android:gravity="center_vertical"
                             />
 
@@ -436,6 +453,7 @@
                             android:layout_width="@dimen/_12sdp"
                             android:layout_height="@dimen/_12sdp"
                             android:layout_marginStart="8dp"
+                            android:layout_gravity="center_vertical"
                             android:visibility="visible"
                             android:src="@drawable/screen_share"
                            />
