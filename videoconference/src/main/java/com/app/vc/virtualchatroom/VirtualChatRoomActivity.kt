@@ -805,8 +805,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             addMessage(content, false)
                         }
                         scrollToLast()
-                        sendReadReceipt(jsonObject.get("message_id")?.asString ?: "")
-                    }
+                        val messageId = jsonObject.get("message_id")?.asLong?.toString() ?: ""
+                        sendReadReceipt(messageId)                    }
 
                     "chat.typing" -> {
                         val senderId = jsonObject.get("sender_id")?.asString
@@ -982,7 +982,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         if (isTyping == typing) return
         isTyping = typing
         val json = JsonObject()
-        json.addProperty("type", "typing")
+        json.addProperty("type", "chat.typing")
         json.addProperty("is_typing", typing)
         WebSocketManager.getInstance().sendMessage(json.toString())
     }
