@@ -15,7 +15,7 @@ class PartListAdapter(
     val mContext:  android.content.Context,
     var dataList: ArrayList<Part>,
     var parentPosition: Int,
-    var checkboxSelectedListener: OnPartCheckboxSelectedListener,
+    var checkboxSelectedListener: OnPartCheckboxSelectedListener?,
     var isCheckboxVisible: Boolean?,
     var isCheckboxSelectable:Boolean?
 ):RecyclerView.Adapter<PartListAdapter.PartListViewHolder>() {

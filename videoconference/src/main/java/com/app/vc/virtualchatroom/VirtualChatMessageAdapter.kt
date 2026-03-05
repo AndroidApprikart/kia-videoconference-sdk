@@ -1,21 +1,27 @@
 package com.app.vc.virtualchatroom
 
-import android.graphics.Bitmap
-import android.graphics.pdf.PdfRenderer
+import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.ParcelFileDescriptor
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.R
-import com.app.vc.views.WaveformView
+import com.app.vc.message.ResponseModelEstimateData
+import com.app.vc.utils.PreferenceManager
+import com.kia.vc.message.Labour
+import com.kia.vc.message.LabourListAdapter
+import com.kia.vc.message.Part
+import com.kia.vc.message.PartListAdapter
 import java.io.File
 
-enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE }
+enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE, ESTIMATION }
 enum class MessageStatus { SENDING, SENT, READ, ERROR }
 
 data class ChatMessage(
@@ -30,18 +36,30 @@ data class ChatMessage(
     val fileName: String? = null,
     val caption: String? = null,
     val waveformData: String? = null,
-    val mimeType: String? = null
+    val mimeType: String? = null,
+    val estimationDetails: ResponseModelEstimateData? = null
 )
+
+interface EstimationInteractionListener : 
+    PartListAdapter.OnPartCheckboxSelectedListener, 
+    LabourListAdapter.OnLabourCheckboxSelectedListener {
+    fun onAcceptClicked(parentPosition: Int, estimationDetails: ResponseModelEstimateData)
+    fun onRejectClicked(parentPosition: Int, estimationDetails: ResponseModelEstimateData)
+    fun onSelectAllClicked(parentPosition: Int, isSelected: Boolean, estimationDetails: ResponseModelEstimateData)
+}
 
 class VirtualChatMessageAdapter(
     private val messages: MutableList<ChatMessage>,
     private val onRetryClick: (ChatMessage) -> Unit,
-    private val onItemClick: (ChatMessage) -> Unit
+    private val onItemClick: (ChatMessage) -> Unit,
+    private val estimationListener: EstimationInteractionListener? = null
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
         private const val VIEW_TYPE_OUTGOING = 1
         private const val VIEW_TYPE_INCOMING = 2
+        private const val VIEW_TYPE_ESTIMATION_OUTGOING = 3
+        private const val VIEW_TYPE_ESTIMATION_INCOMING = 4
 
         fun parseWaveformData(waveformData: String?): FloatArray {
             if (waveformData.isNullOrBlank()) return floatArrayOf()
@@ -50,26 +68,44 @@ class VirtualChatMessageAdapter(
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (messages[position].isSender) VIEW_TYPE_OUTGOING else VIEW_TYPE_INCOMING
+        val message = messages[position]
+        return if (message.type == ChatMessageType.ESTIMATION) {
+            if (message.isSender) VIEW_TYPE_ESTIMATION_OUTGOING else VIEW_TYPE_ESTIMATION_INCOMING
+        } else {
+            if (message.isSender) VIEW_TYPE_OUTGOING else VIEW_TYPE_INCOMING
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
-        return if (viewType == VIEW_TYPE_OUTGOING) {
-            val view = inflater.inflate(R.layout.vc_item_chat_message_outgoing, parent, false)
-            OutgoingViewHolder(view, onRetryClick, onItemClick)
-        } else {
-            val view = inflater.inflate(R.layout.vc_item_chat_message_incoming, parent, false)
-            IncomingViewHolder(view, onItemClick)
+        return when (viewType) {
+            VIEW_TYPE_OUTGOING -> {
+                val view = inflater.inflate(R.layout.vc_item_chat_message_outgoing, parent, false)
+                OutgoingViewHolder(view, onRetryClick, onItemClick)
+            }
+            VIEW_TYPE_INCOMING -> {
+                val view = inflater.inflate(R.layout.vc_item_chat_message_incoming, parent, false)
+                IncomingViewHolder(view, onItemClick)
+            }
+            VIEW_TYPE_ESTIMATION_OUTGOING -> {
+                val view = inflater.inflate(R.layout.layout_estimation_message_self, parent, false)
+                EstimationOutgoingViewHolder(view, estimationListener)
+            }
+            VIEW_TYPE_ESTIMATION_INCOMING -> {
+                val view = inflater.inflate(R.layout.layout_estimation_message_remote, parent, false)
+                EstimationIncomingViewHolder(view, estimationListener)
+            }
+            else -> throw IllegalArgumentException("Invalid view type")
         }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messages[position]
-        if (holder is OutgoingViewHolder) {
-            holder.bind(message)
-        } else if (holder is IncomingViewHolder) {
-            holder.bind(message)
+        when (holder) {
+            is OutgoingViewHolder -> holder.bind(message)
+            is IncomingViewHolder -> holder.bind(message)
+            is EstimationOutgoingViewHolder -> holder.bind(message, position)
+            is EstimationIncomingViewHolder -> holder.bind(message, position)
         }
     }
 
@@ -166,6 +202,7 @@ class VirtualChatMessageAdapter(
                     layoutVoice?.visibility = View.VISIBLE
                     txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
                 }
+                else -> {}
             }
         }
 
@@ -245,6 +282,7 @@ class VirtualChatMessageAdapter(
                     layoutVoice?.visibility = View.VISIBLE
                     txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
                 }
+                else -> {}
             }
         }
 
@@ -266,6 +304,105 @@ class VirtualChatMessageAdapter(
             val m = seconds / 60
             val s = seconds % 60
             return "%02d:%02d".format(m, s)
+        }
+    }
+
+    class EstimationOutgoingViewHolder(itemView: View, private val listener: EstimationInteractionListener?) : RecyclerView.ViewHolder(itemView) {
+        private val userNameTv: TextView = itemView.findViewById(R.id.user_name_tv)
+        private val rvPartList: RecyclerView = itemView.findViewById(R.id.rv_estimation_part_list)
+        private val rvLabourList: RecyclerView = itemView.findViewById(R.id.rv_estimation_labour_list)
+        private val tvStatus: TextView = itemView.findViewById(R.id.tv_estimate_status)
+        private val tvTimeStamp: TextView = itemView.findViewById(R.id.tv_time_stamp_self)
+
+        fun bind(message: ChatMessage, position: Int) {
+            val context = itemView.context
+            userNameTv.text = if (message.isSender) "You" else "Service Advisor"
+            tvTimeStamp.text = message.timeLabel
+
+            val details = message.estimationDetails ?: return
+
+            if (listener != null) {
+                val partAdapter = PartListAdapter(context, details.part_list, position, listener, false, false)
+                rvPartList.adapter = partAdapter
+                rvPartList.layoutManager = LinearLayoutManager(context)
+
+                val labourAdapter = LabourListAdapter(context, details.labour_list, position, listener, false, false)
+                rvLabourList.adapter = labourAdapter
+                rvLabourList.layoutManager = LinearLayoutManager(context)
+            }
+
+            if (!details.estimationApprovalStatus.isNullOrEmpty()) {
+                tvStatus.visibility = View.VISIBLE
+                if (details.estimationApprovalStatus == "Y") {
+                    tvStatus.text = "Approved"
+                    tvStatus.setTextColor(ContextCompat.getColor(context, R.color.green))
+                } else {
+                    tvStatus.text = "Rejected"
+                    tvStatus.setTextColor(ContextCompat.getColor(context, R.color.text_colour1))
+                }
+            } else {
+                tvStatus.visibility = View.GONE
+            }
+        }
+    }
+
+    class EstimationIncomingViewHolder(itemView: View, private val listener: EstimationInteractionListener?) : RecyclerView.ViewHolder(itemView) {
+        private val userNameTv: TextView = itemView.findViewById(R.id.remote_user_name_tv)
+        private val rvPartList: RecyclerView = itemView.findViewById(R.id.rv_receiver_estimation_part_list)
+        private val rvLabourList: RecyclerView = itemView.findViewById(R.id.rv_receiver_estimation_labour_list)
+        private val tvTimeStamp: TextView = itemView.findViewById(R.id.tv_remote_time_stamp)
+        private val tvGrandTotal: TextView = itemView.findViewById(R.id.tv_grand_total_value)
+        private val btnApprove: TextView = itemView.findViewById(R.id.btn_approve_estimation)
+        private val btnReject: TextView = itemView.findViewById(R.id.btn_reject_estimation)
+        private val layoutApproval: View = itemView.findViewById(R.id.rv_estimation_approval_layout)
+        private val tvStatus: TextView = itemView.findViewById(R.id.tv_estimate_status_receiver)
+        private val checkboxSelectAll: android.widget.CheckBox = itemView.findViewById(R.id.checkbox_select_all)
+
+        fun bind(message: ChatMessage, position: Int) {
+            val context = itemView.context
+            userNameTv.text = "Service Advisor"
+            tvTimeStamp.text = message.timeLabel
+
+            val details = message.estimationDetails ?: return
+            tvGrandTotal.text = details.selectedItemsTotal.toString()
+
+            if (listener != null) {
+                val partAdapter = PartListAdapter(context, details.part_list, position, listener, null, details.estimationApprovalStatus == null)
+                rvPartList.adapter = partAdapter
+                rvPartList.layoutManager = LinearLayoutManager(context)
+
+                val labourAdapter = LabourListAdapter(context, details.labour_list, position, listener, null, details.estimationApprovalStatus == null)
+                rvLabourList.adapter = labourAdapter
+                rvLabourList.layoutManager = LinearLayoutManager(context)
+
+                checkboxSelectAll.isChecked = details.areAllItemsSelected
+                checkboxSelectAll.isEnabled = details.estimationApprovalStatus == null
+                checkboxSelectAll.setOnCheckedChangeListener { _, isChecked ->
+                    listener.onSelectAllClicked(position, isChecked, details)
+                }
+
+                btnApprove.setOnClickListener {
+                    listener.onAcceptClicked(position, details)
+                }
+                btnReject.setOnClickListener {
+                    listener.onRejectClicked(position, details)
+                }
+            }
+
+            if (!details.estimationApprovalStatus.isNullOrEmpty()) {
+                layoutApproval.visibility = View.GONE
+                tvStatus.visibility = View.VISIBLE
+                if (details.estimationApprovalStatus == "Y") {
+                    tvStatus.text = "Approved"
+                    tvStatus.setTextColor(ContextCompat.getColor(context, R.color.green))
+                } else {
+                    tvStatus.text = "Rejected"
+                    tvStatus.setTextColor(ContextCompat.getColor(context, R.color.text_colour1))
+                }
+            } else {
+                layoutApproval.visibility = if (PreferenceManager.getuserType() == "customer") View.VISIBLE else View.GONE
+                tvStatus.visibility = View.GONE
+            }
         }
     }
 }

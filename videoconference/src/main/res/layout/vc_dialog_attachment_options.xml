@@ -139,7 +139,29 @@
 
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/estimation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/_8sdp"
+            android:orientation="vertical"
+            android:gravity="center">
 
+            <ImageView
+                android:layout_width="@dimen/_30sdp"
+                android:layout_height="@dimen/_30sdp"
+                android:padding="@dimen/_8sdp"
+                android:src="@drawable/receipt"
+                android:background="@drawable/bg_camera_icon"/>
+
+            <TextView
+                android:layout_width="86dp"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/kia_signature_fix_regular"
+                android:text="Estimation"
+                android:textColor="@color/black"
+                android:textFontWeight="800" />
+        </LinearLayout>
 
     </LinearLayout>
 

@@ -16,7 +16,7 @@ class LabourListAdapter(
     val mContext:  android.content.Context,
     var dataList: ArrayList<Labour>,
     var parentPosition: Int,
-    var checkboxSelectedListener: OnLabourCheckboxSelectedListener,
+    var checkboxSelectedListener: OnLabourCheckboxSelectedListener?,
     var isCheckBoxVisible: Boolean?,
     var isCheckboxSelectable: Boolean?
 ):RecyclerView.Adapter<LabourListAdapter.LabrourListViewHolder>() {
@@ -59,7 +59,7 @@ class LabourListAdapter(
 
         holder.isSelectedCheckbox.setOnCheckedChangeListener { _, isChecked ->
             Log.d("checkboxSelection: ", "onBindViewHolder: ")
-            checkboxSelectedListener.onLabourCheckboxClick(parentPosition,position, isChecked,dataList)
+            checkboxSelectedListener?.onLabourCheckboxClick(parentPosition,position, isChecked,dataList)
         }
     }
 

@@ -2,6 +2,7 @@ package com.app.vc.virtualchatroom
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
@@ -25,13 +26,16 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
@@ -43,15 +47,22 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.app.vc.MainViewModel
 import com.app.vc.MediaFragment
 import com.app.vc.ParticipantsListFragment
 import com.app.vc.R
 import com.app.vc.RepairOrderActivity
 import com.app.vc.RequestVideoCallDialog
+import com.app.vc.databinding.LayoutUniversalDialogBinding
 import com.app.vc.databinding.VcActivityVirtualChatRoomBinding
+import com.app.vc.message.ResponseModelEstimateData
+import com.app.vc.models.MessageModel
+import com.app.vc.models.MessageStatusEnum
 import com.app.vc.network.LoginApiService
+import com.app.vc.utils.AndroidUtils
 import com.app.vc.utils.ApiDetails
 import com.app.vc.utils.PreferenceManager
+import com.app.vc.utils.VCConstants
 import com.app.vc.virtualroomlist.UserRole
 import com.app.vc.virtualroomlist.VirtualRoomUiModel
 import com.app.vc.websocketconnection.WebSocketManager
@@ -60,6 +71,8 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.app.vc.views.WaveformView
+import com.kia.vc.message.Labour
+import com.kia.vc.message.Part
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -79,7 +92,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
-class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketCallback {
+class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketCallback, EstimationInteractionListener {
 
     private lateinit var binding: VcActivityVirtualChatRoomBinding
     private var audioRecord: AudioRecord? = null
@@ -91,11 +104,17 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var isPlaying = false
     private val messages: MutableList<ChatMessage> = mutableListOf()
     private var messageAdapter: VirtualChatMessageAdapter? = null
+    private var lastClickTime = System.currentTimeMillis()
+    private val clickTimeInterval = 2000
+
+    // Add this if you have a reference to your main ViewModel or use the Activity scope
+    private val sharedViewModel: MainViewModel by viewModels()
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
         const val EXTRA_ROOM_JSON = "extra_room_json"
     }
+    private var dataList = ArrayList<MessageModel>()
 
 
     private var cameraPhotoPath: String? = null
@@ -224,6 +243,194 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
+    private fun showUniversalConfirmationDialog(
+        title: String,
+        message: String,
+        isCancelButtonVisible: Boolean,
+        onPositiveClick: () -> Unit
+    ) {
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(layoutInflater)
+        dialogBinding.tvDialogTitle.text = title
+        dialogBinding.tvDialogMessage.text = message
+        dialogBinding.btnPositive.text = "OK"
+        dialogBinding.btnNegative.visibility =
+            if (isCancelButtonVisible) View.VISIBLE else View.GONE
+
+        val dialog = Dialog(this)
+        dialog.setContentView(dialogBinding.root)
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialog.setCancelable(true)
+
+        dialogBinding.btnPositive.setOnClickListener {
+            onPositiveClick()
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnNegative.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private var progressDialog: Dialog? = null
+
+    private fun showProgressDialogLocal() {
+        if (progressDialog == null) {
+            progressDialog = com.app.vc.utils.AndroidUtils.progressDialog(this)
+        }
+        if (progressDialog?.isShowing == false) {
+            progressDialog?.show()
+        }
+    }
+
+    private fun dismissProgressDialogLocal() {
+        if (progressDialog?.isShowing == true) {
+            progressDialog?.dismiss()
+        }
+    }
+
+    private fun handleEstimationClick() {
+        val now = System.currentTimeMillis()
+        if (now - lastClickTime < clickTimeInterval) return
+        lastClickTime = now
+        Log.d("handleEstimationClick", "handleEstimationClick: ")
+
+        sharedViewModel.isProgressBarVisible.value = true
+
+        // Check if estimation is already shared/approved logic from MessageFragment
+        if (isEstimationShared()) {
+            if (!isAnyEstimationApproved()) {
+                if (canEstimationBeSent()) {
+                    sharedViewModel.getEstimationDetails.value = true
+                } else {
+                    sharedViewModel.isProgressBarVisible.value = false
+                    showUniversalConfirmationDialog(
+                        title = "Already Shared !!!",
+                        message = "Estimation cannot be sent.",
+                        isCancelButtonVisible = false
+                    ) { /* Handle OK click */ }
+                }
+            } else {
+                sharedViewModel.isProgressBarVisible.value = false
+                // Estimation is shared and approved at least once
+                showUniversalConfirmationDialog(
+                    title = "Already Shared !!!",
+                    message = "Estimation details has been shared and approved.",
+                    isCancelButtonVisible = false
+                ) { /* Handle OK click */ }
+            }
+        } else {
+            // Estimation is not shared at all
+            sharedViewModel.getEstimationDetails.value = true
+        }
+    }
+
+    // Helper to check if estimation exists in current message list
+    private fun isEstimationShared(): Boolean {
+        for (message in dataList) {
+            if (message.estimationDetails != null) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun isAnyEstimationApproved(): Boolean {
+        for (message in dataList) {
+            if (message.estimationDetails?.estimationApprovalStatus == "Y") {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun canEstimationBeSent(): Boolean {
+        //Cases estimation is sent and not approved even once.
+        var canBeSent: Boolean? = null
+
+        for (message in dataList) {
+            if (message.estimationDetails?.estimationApprovalStatus == "N") {
+                canBeSent = true
+                continue
+            }
+            if (message.estimationDetails != null) {
+                canBeSent = false
+            }
+        }
+
+        return canBeSent ?: true
+    }
+
+    private fun showDialogToConfirmEstimation(estimationDetails: ResponseModelEstimateData) {
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(layoutInflater)
+        dialogBinding.tvDialogTitle.visibility = View.GONE
+        dialogBinding.tvDialogMessage.text = "Do you want to send the \n estimation details."
+        dialogBinding.btnNegative.text = "No"
+        dialogBinding.btnPositive.text = "Yes"
+
+        val dialog = Dialog(this)
+        dialog.setContentView(dialogBinding.root)
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        dialog.setCancelable(false)
+
+        dialogBinding.btnNegative.setOnClickListener {
+            dialog.dismiss()
+        }
+        dialogBinding.btnPositive.setOnClickListener {
+            dialog.dismiss()
+            sendEstimationMessage(estimationDetails)
+        }
+
+        dialog.show()
+    }
+
+    private fun sendEstimationMessage(estimationDetails: ResponseModelEstimateData) {
+        val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+        val localIdLong = System.currentTimeMillis()
+        val localId = "local_est_$localIdLong"
+
+        val chatMessage = ChatMessage(
+            messageId = localId,
+            text = "",
+            isSender = true,
+            timeLabel = timeLabel,
+            type = ChatMessageType.ESTIMATION,
+            estimationDetails = estimationDetails,
+            status = MessageStatus.SENT
+        )
+
+        messageAdapter?.addMessage(chatMessage)
+        scrollToLast()
+
+        // Send via WebSocket
+        val json = JsonObject()
+        json.addProperty("type", "chat.message")
+        json.addProperty("content", "Estimation Details Shared")
+        json.add("estimation_details", Gson().toJsonTree(estimationDetails))
+        WebSocketManager.getInstance().sendMessage(json.toString())
+
+        // Also update dataList to keep it in sync for isEstimationShared() logic
+        val messageModel = MessageModel(
+            userName = "You",
+            messageText = "",
+            isLocalMessage = true,
+            messageType = VCConstants.ESTIMATION_MESSAGE,
+            id = localIdLong,
+            fileName = "",
+            serverFilePath = "",
+            status = MessageStatusEnum.MSG_SENT_SUCCESS.tag,
+            estimationDetails = estimationDetails
+        )
+        dataList.add(messageModel)
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -237,7 +444,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             UserRole.MANAGER.name -> UserRole.MANAGER
             else -> UserRole.CUSTOMER
         }
-
+        Log.d("init"
+            , "init: sharedViewModel.messageListInMVM -> ${sharedViewModel.messageListInMVM}")
+        dataList.clear()
+        dataList.addAll(sharedViewModel.messageListInMVM)
         if (binding.tabParticipants != null) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             loadFragment(ParticipantsListFragment())
@@ -259,6 +469,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         if (roomJson != null) {
             room = Gson().fromJson(roomJson, VirtualRoomUiModel::class.java)
         }
+// Inside onCreate
 
         setupToolbar()
         bindStaticPhoneHeader()
@@ -269,6 +480,65 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         setupAttachmentAndMedia()
         setupVoiceNote()
         connectToWebSocket()
+
+        sharedViewModel.estimateDetailsResponse.observe(this) {
+            if (it != null) {
+                dismissProgressDialogLocal()
+                showDialogToConfirmEstimation(it)
+            }
+        }
+
+        sharedViewModel.isProgressBarVisible.observe(this) {
+            if (it != null) {
+                if (it) {
+                    showProgressDialogLocal()
+                } else {
+                    dismissProgressDialogLocal()
+                }
+            }
+        }
+
+        sharedViewModel.updateEstimateStatus.observe(this) {
+            if (it != null) {
+                updateEstimateStatusApi(it)
+                sharedViewModel.updateEstimateStatus.value = null
+            }
+        }
+
+        sharedViewModel.updateEstimationStatusResponse.observe(this) {
+            if (it != null) {
+                if (it.status == "I") {
+                    // Update local message list and notify adapter
+                    if (sharedViewModel.tempParentPosition != null && sharedViewModel.estimateDetailsAfterApproval != null) {
+                        val pos = sharedViewModel.tempParentPosition!!
+                        messages[pos] = messages[pos].copy(estimationDetails = sharedViewModel.estimateDetailsAfterApproval)
+                        messageAdapter?.notifyItemChanged(pos)
+                        
+                        // Also update dataList for shared logic
+                        dataList[pos].estimationDetails = sharedViewModel.estimateDetailsAfterApproval
+                    }
+                    sharedViewModel.isProgressBarVisible.value = false
+                } else {
+                    Toast.makeText(this, it.message, Toast.LENGTH_SHORT).show()
+                    sharedViewModel.isProgressBarVisible.value = false
+                }
+            }
+        }
+    }
+
+    private fun updateEstimateStatusApi(estimationStatus: Boolean) {
+        if (estimationStatus) {
+            sharedViewModel.updateEstimationStatusNew(
+                customerCode = sharedViewModel.customerCode!!,
+                estimationStatus = sharedViewModel.estimateDetailsAfterApproval?.estimationApprovalStatus ?: "N",
+                employeeNumber = sharedViewModel.serviceAdvisorID.toString(),
+                labourListCodes = sharedViewModel.selectedLabourList!!,
+                partListCodes = sharedViewModel.selectedPartList!!,
+                roNumber = sharedViewModel.roNo!!,
+                dealerCode = sharedViewModel.dealerCode!!,
+                baseUrl = PreferenceManager.getBaseUrl()!!
+            )
+        }
     }
 
     private fun loadFragment(fragment: Fragment) {
@@ -751,7 +1021,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     performUpload(fileToUpload, caption, type, localId)
                 }
             },
-            onItemClick = { message -> handleAttachmentClick(message) }
+            onItemClick = { message -> handleAttachmentClick(message) },
+            estimationListener = this
         )
         binding.recyclerMessages.adapter = messageAdapter
     }
@@ -899,9 +1170,161 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             requestCameraPermission.launch(Manifest.permission.CAMERA)
         }
 
-        dialogView.findViewById<LinearLayout>(R.id.optionFile)?.setOnClickListener {
+        dialogView.findViewById<LinearLayout>(R.id.estimation)?.setOnClickListener {
             dialog.dismiss()
-            fileLauncher.launch(arrayOf("*/*"))
+            handleEstimationClick()
+        }
+    }
+
+    override fun onPartCheckBoxClicked(parentPosition: Int, childPosition: Int, isSelected: Boolean, arrayList: ArrayList<Part>) {
+        updatePartListData(parentPosition, childPosition, isSelected, arrayList)
+        updateGrandTotalConsideringPartList(parentPosition, childPosition, isSelected, arrayList)
+        
+        val details = messages[parentPosition].estimationDetails ?: return
+        details.areAllItemsSelected = details.labour_list.all { it.isSelected == "Y" } && details.part_list.all { it.isSelected == "Y" }
+        
+        messageAdapter?.notifyItemChanged(parentPosition)
+    }
+
+    override fun onLabourCheckboxClick(parentPosition: Int, childPosition: Int, isSelected: Boolean, arrayList: ArrayList<Labour>) {
+        updateLabourListData(parentPosition, childPosition, isSelected, arrayList)
+        updateGrandTotalConsideringLabourList(parentPosition, childPosition, isSelected, arrayList)
+        
+        val details = messages[parentPosition].estimationDetails ?: return
+        details.areAllItemsSelected = details.labour_list.all { it.isSelected == "Y" } && details.part_list.all { it.isSelected == "Y" }
+        
+        messageAdapter?.notifyItemChanged(parentPosition)
+    }
+
+    private fun updatePartListData(parentPosition: Int, childPosition: Int, isSelected: Boolean, arrayList: ArrayList<Part>) {
+        messages[parentPosition].estimationDetails!!.part_list[childPosition].isSelected = if (isSelected) "Y" else "N"
+    }
+
+    private fun updateLabourListData(parentPosition: Int, childPosition: Int, isSelected: Boolean, arrayList: ArrayList<Labour>) {
+        messages[parentPosition].estimationDetails!!.labour_list[childPosition].isSelected = if (isSelected) "Y" else "N"
+    }
+
+    private fun updateGrandTotalConsideringPartList(parentPosition: Int, childPosition: Int, isSelected: Boolean, partList: ArrayList<Part>) {
+        val details = messages[parentPosition].estimationDetails ?: return
+        val itemPrice = details.part_list[childPosition].totalPrice.toDouble()
+        if (isSelected) {
+            details.selectedItemsTotal += itemPrice
+        } else {
+            details.selectedItemsTotal -= itemPrice
+        }
+        details.selectedItemsTotal = "%.2f".format(details.selectedItemsTotal).toDouble()
+    }
+
+    private fun updateGrandTotalConsideringLabourList(parentPosition: Int, childPosition: Int, isSelected: Boolean, labourList: ArrayList<Labour>) {
+        val details = messages[parentPosition].estimationDetails ?: return
+        val itemPrice = details.labour_list[childPosition].totalLabourCost.toDouble()
+        if (isSelected) {
+            details.selectedItemsTotal += itemPrice
+        } else {
+            details.selectedItemsTotal -= itemPrice
+        }
+        details.selectedItemsTotal = "%.2f".format(details.selectedItemsTotal).toDouble()
+    }
+
+    override fun onAcceptClicked(parentPosition: Int, estimationDetails: ResponseModelEstimateData) {
+        sharedViewModel.isProgressBarVisible.value = true
+        
+        updateSelectedPartList(parentPosition, messages[parentPosition].estimationDetails!!.part_list)
+        updateSelectedLabourList(parentPosition, messages[parentPosition].estimationDetails!!.labour_list)
+
+        val approvedEstimateData = ResponseModelEstimateData(
+            deferred_job_list = estimationDetails.deferred_job_list,
+            estimationApprovalStatus = "Y",
+            labour_list = ArrayList(estimationDetails.labour_list.filter { it.isSelected == "Y" }),
+            part_list = ArrayList(estimationDetails.part_list.filter { it.isSelected == "Y" }),
+            totalEstimate = estimationDetails.totalEstimate,
+            totalLabourEstimate = estimationDetails.totalLabourEstimate,
+            totalPartsEstimate = estimationDetails.totalPartsEstimate,
+            selectedItemsTotal = estimationDetails.selectedItemsTotal
+        )
+
+        sharedViewModel.estimateDetailsAfterApproval = approvedEstimateData
+        sharedViewModel.tempParentPosition = parentPosition
+        sharedViewModel.updateEstimateStatus.value = true
+    }
+
+    override fun onRejectClicked(parentPosition: Int, estimationDetails: ResponseModelEstimateData) {
+        sharedViewModel.isProgressBarVisible.value = true
+        showDialogToConfirmEstimateRejection(parentPosition, estimationDetails)
+    }
+
+    private fun showDialogToConfirmEstimateRejection(parentPosition: Int, estimationDetails: ResponseModelEstimateData) {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
+        dialog.setContentView(dialogBinding.root)
+        dialogBinding.tvDialogMessage.text = "Are you sure you want to reject the estimation."
+        dialog.window?.setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.setCancelable(false)
+
+        dialogBinding.tvDialogTitle.visibility = View.GONE
+        dialogBinding.btnPositive.text = "Yes"
+        dialogBinding.btnNegative.text = "No"
+
+        dialogBinding.btnNegative.setOnClickListener {
+            dialog.dismiss()
+            sharedViewModel.isProgressBarVisible.value = false
+        }
+        dialogBinding.btnPositive.setOnClickListener {
+            dialog.dismiss()
+            val rejectedEstimateData = ResponseModelEstimateData(
+                deferred_job_list = estimationDetails.deferred_job_list,
+                estimationApprovalStatus = "N",
+                labour_list = estimationDetails.labour_list,
+                part_list = estimationDetails.part_list,
+                totalEstimate = estimationDetails.totalEstimate,
+                totalLabourEstimate = estimationDetails.totalLabourEstimate,
+                totalPartsEstimate = estimationDetails.totalPartsEstimate,
+                selectedItemsTotal = estimationDetails.selectedItemsTotal
+            )
+            sharedViewModel.estimateDetailsAfterApproval = rejectedEstimateData
+            sharedViewModel.tempParentPosition = parentPosition
+            sharedViewModel.updateEstimateStatus.value = true
+        }
+        dialog.show()
+    }
+
+    override fun onSelectAllClicked(parentPosition: Int, isSelected: Boolean, estimationDetails: ResponseModelEstimateData) {
+        messages[parentPosition] = messages[parentPosition].copy(estimationDetails = updateEstimationListToSelectAllItems(estimationDetails, isSelected))
+        messageAdapter?.notifyItemChanged(parentPosition)
+    }
+
+    private fun updateEstimationListToSelectAllItems(estimateData: ResponseModelEstimateData, isSelected: Boolean): ResponseModelEstimateData {
+        val modifiedEstimateData = estimateData
+        val status = if (isSelected) "Y" else "N"
+        
+        for (part in modifiedEstimateData.part_list) {
+            part.isSelected = status
+        }
+        for (labour in modifiedEstimateData.labour_list) {
+            labour.isSelected = status
+        }
+
+        if (isSelected) {
+            modifiedEstimateData.selectedItemsTotal = modifiedEstimateData.totalEstimate
+        } else {
+            modifiedEstimateData.selectedItemsTotal = 0.0
+        }
+        modifiedEstimateData.areAllItemsSelected = isSelected
+        return modifiedEstimateData
+    }
+
+    private fun updateSelectedPartList(parentPosition: Int, partList: ArrayList<Part>) {
+        val selected = partList.filter { it.isSelected == "Y" }.map { it.partNumber }
+        if (selected.isNotEmpty()) {
+            sharedViewModel.selectedPartList = selected.joinToString(",")
+        }
+    }
+
+    private fun updateSelectedLabourList(parentPosition: Int, labourList: ArrayList<Labour>) {
+        val selected = labourList.filter { it.isSelected == "Y" }.map { it.labourCode }
+        if (selected.isNotEmpty()) {
+            sharedViewModel.selectedLabourList = selected.joinToString(",")
         }
     }
 }
