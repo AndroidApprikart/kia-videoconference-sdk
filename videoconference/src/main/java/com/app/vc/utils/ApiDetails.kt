@@ -2,20 +2,16 @@ package com.app.vc.utils
 
 internal class ApiDetails {
     companion object{
-        /*const val BASE_URL = "https://toyota-lakshya-onlineassessment.in/"
-const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val BASE_URL = "https://kia.apprikart.com/"
         const val KIA_BASE_URL = "https://kialinkd-qa.kiaindia.net/dev/"
         const val KIA_BASE_URL_VPN = "http://10.107.11.242:7001/kiakandit/service/vcConference/"
 
-        const val APRIK_Kia_BASE_URL = "https://testingchat.apprikart.com"
+        const val APRIK_Kia_BASE_URL = "https://testingchat.apprikart.com/"
         const val APRIK_KIA_LOGIN = "/api/token/"
 
-        //        const val BASE_URL = "https://videoserver.apprikart.com/"
         const val MEDIA_BASE_URL = "https://videoserver.apprikart.com"
         const val SUB_URL = "kandid_api/v1/"
         const val SUB_URL_Testing = "kia_vc_api/v1/"
-        //        const val SUB_URL_1 = "kia_vc_api/V1/"
         const val GET_DISPLAY_NAME = SUB_URL +"get_display_name/?"
         const val VALIDATE_VC = SUB_URL +"validate_vc/?"
         const val UPLOAD_VC_FILE = SUB_URL_Testing + "upload_vc_file/"
@@ -27,10 +23,8 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val UPDATE_ESTIMATION_STATUS = KIA_BASE_URL_VPN + "updateEstimateStatus"
         const val SAVE_CHAT_DETAILS = KIA_BASE_URL + "storeMessage"
 
-
         const val GET_SURVEY_QUESTIONS = "http://10.107.11.242:7001/kiakandit/service/vcConference/feedbackQuestions"
         const val POST_SURVEY_QUESTIONS = "http://10.107.11.242:7001/kiakandit/service/vcConference/createVCSurvey"
-
 
         const val VALIDATE_DEALER_CODE = BASE_URL + "kandid_api/v1/validate_license/?"
 
@@ -46,6 +40,9 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val UPDATE_ESTIMATION_STATUS_NEW = "service/vcConference/updateEstimateStatus"
         const val UPDATE_VC_STATUS_CUSTOMER_NEW = "service/vcConference/updateVcStatus"
         const val GET_VC_LIST = "kandid_api/v1/get_vc_list/?"
+        
+        // New API endpoint
+        const val GET_GROUP_MEMBERS = "api/groups/gr100-9359a1bf/members/"
 
         const val DELETE_BROADCAST = "delete_stream_from_room"
 
@@ -57,7 +54,5 @@ const val GET_DISPLAY_NAME = "vc/get_display_name/?"*/
         const val port = "turn:vc.apprikart.com" + ":3478"
 
         const val SEND_USER_MANUAL = "sendUserManual"
-
-
     }
 }

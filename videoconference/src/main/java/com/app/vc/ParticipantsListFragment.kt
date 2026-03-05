@@ -5,14 +5,18 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.databinding.FragmentParticipants2Binding
-import com.app.vc.models.AdvisorModel
-import com.app.vc.models.ParticipantsModel
+import com.app.vc.models.GroupMemberResponse
 import com.app.vc.participants.ChangeAdvisorAdapter
 import com.app.vc.participants.ManageParticipantsAdapter
 import com.app.vc.participants.ParticipantsAdapter
+import com.app.vc.participants.ParticipantsViewModel
+import com.app.vc.utils.PreferenceManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 
@@ -23,10 +27,8 @@ class ParticipantsListFragment : Fragment() {
     private val binding get() = _binding!!
     var TAG = "ParticipantsFragment"
 
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
+    private lateinit var viewModel: ParticipantsViewModel
+    private lateinit var participantsAdapter: ParticipantsAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -44,18 +46,38 @@ class ParticipantsListFragment : Fragment() {
 
         setupManageParticipants()
 
+        viewModel = ViewModelProvider(this)[ParticipantsViewModel::class.java]
+
+        setupObservers()
+
+        // Fetch participants using token from PreferenceManager
+        val token = PreferenceManager.getAccessToken() ?: ""
+        if (token.isNotEmpty()) {
+            viewModel.fetchParticipants(token)
+        } else {
+            Toast.makeText(requireContext(), "No access token found", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupObservers() {
+        viewModel.members.observe(viewLifecycleOwner) { members ->
+            if (members != null) {
+                participantsAdapter.updateList(members)
+            }
+        }
+
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            error?.let {
+                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupParticipantsList() {
-        val staticParticipants = arrayListOf(
-            ParticipantsModel("V", "Vijaykumar", true, true, true, null).apply { displayName = "Vijaykumar (You)" },
-            ParticipantsModel("L", "Lata", false, true, true, null).apply { displayName = "Lata (Customer)" },
-            ParticipantsModel("A", "Ajay", false, true, true, null).apply { displayName = "Ajay (Service Advisor)" },
-            ParticipantsModel("B", "Bhagat", false, true, true, null).apply { displayName = "Bhagat (Service Manager)" },
-        )
+        participantsAdapter = ParticipantsAdapter(emptyList())
         binding.rvParticipants.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = ParticipantsAdapter(staticParticipants)
+            adapter = participantsAdapter
         }
     }
 
@@ -72,12 +94,8 @@ class ParticipantsListFragment : Fragment() {
             .inflate(R.layout.vc_bottom_sheet_manage_participants, null)
 
         dialog.setContentView(view)
-        val staticParticipants = arrayListOf(
-            ParticipantsModel("V", "Vijaykumar", true, true, true, null).apply { displayName = "Vijaykumar" },
-            ParticipantsModel("L", "Lata", false, true, true, null).apply { displayName = "Lata" },
-            ParticipantsModel("A", "Ajay", false, true, true, null).apply { displayName = "Ajay" },
-            ParticipantsModel("B", "Bhagat", false, true, true, null).apply { displayName = "Bhagat" },
-        )
+        
+        val members = viewModel.members.value ?: emptyList()
 
         val recyclerView =
             view.findViewById<RecyclerView>(R.id.manageParticipantsList)
@@ -86,18 +104,9 @@ class ParticipantsListFragment : Fragment() {
             LinearLayoutManager(requireContext())
 
         recyclerView.adapter =
-            ManageParticipantsAdapter(staticParticipants) { participant ->
-
+            ManageParticipantsAdapter(members) { member ->
                 showChangeAdvisorSheet()
-
-                // Later you can open another bottom sheet
-                // showChangeAdvisorSheet(participant)
             }
-
-//        view.findViewById<View>(R.id.btnChangeAdvisor)?.setOnClickListener {
-//            dialog.dismiss()
-//            showChangeAdvisorSheet()
-//        }
 
         dialog.show()
 
@@ -107,71 +116,59 @@ class ParticipantsListFragment : Fragment() {
             )
 
         bottomSheet?.let {
-
-            val behavior =
-                BottomSheetBehavior.from(it)
-
-            it.layoutParams.height =
-                ViewGroup.LayoutParams.WRAP_CONTENT
-
-            behavior.state =
-                BottomSheetBehavior.STATE_EXPANDED
+            val behavior = BottomSheetBehavior.from(it)
+            it.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            behavior.state = BottomSheetBehavior.STATE_EXPANDED
             behavior.skipCollapsed = true
             behavior.isDraggable = true
         }
     }
 
-    private fun setupRecycler(view: View) {
-
-        val recyclerView =
-            view.findViewById<RecyclerView>(R.id.listParticipants)
-
-        val staticAdvisors = arrayListOf(
-            AdvisorModel("Ajay"),
-            AdvisorModel("Bhagat"),
-            AdvisorModel("Ramesh"),
-            AdvisorModel("Karthik")
-        )
-
-        recyclerView.layoutManager =
-            LinearLayoutManager(requireContext())
-
-        recyclerView.adapter =
-            ChangeAdvisorAdapter(staticAdvisors) { selectedAdvisor ->
-
-
-            }
+    private fun setupRecycler(view: View, otherMembers: List<GroupMemberResponse>) {
+        val recyclerView = view.findViewById<RecyclerView>(R.id.listParticipants)
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        recyclerView.adapter = ChangeAdvisorAdapter(otherMembers) { selectedAdvisor -> 
+            // Handle selection if needed
+        }
     }
 
 
     private fun showChangeAdvisorSheet() {
-
         val dialog = BottomSheetDialog(requireContext())
-        val view = layoutInflater
-            .inflate(R.layout.vc_bottom_sheet_change_service_advisor, null)
-
+        val view = layoutInflater.inflate(R.layout.vc_bottom_sheet_change_service_advisor, null)
         dialog.setContentView(view)
 
+        val members = viewModel.members.value ?: emptyList()
+        val adminMember = members.find { it.role.equals("admin", ignoreCase = true) }
+        val otherMembers = members.filter { !it.role.equals("admin", ignoreCase = true) }
 
-        setupRecycler(view)
+        // Update Admin info in the header of the bottom sheet
+        adminMember?.let { admin ->
+            val txtInitial = view.findViewById<TextView>(R.id.txtInitial)
+            val tctParticipantName = view.findViewById<TextView>(R.id.tctParticipantName)
+            val txtLeftStatus = view.findViewById<TextView>(R.id.txtLeftStatus)
+
+            val displayName = "${admin.user.firstName} ${admin.user.lastName}".trim().ifEmpty { admin.user.username }
+            tctParticipantName.text = displayName
+            txtInitial.text = displayName.firstOrNull()?.uppercase() ?: "?"
+            txtLeftStatus.text = admin.role
+        }
+
+        setupRecycler(view, otherMembers)
 
         dialog.show()
 
-        val bottomSheet =
-            dialog.findViewById<View>(
-                com.google.android.material.R.id.design_bottom_sheet
-            )
-
+        val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
         bottomSheet?.let {
-
             val behavior = BottomSheetBehavior.from(it)
-
-            it.layoutParams.height =
-                ViewGroup.LayoutParams.WRAP_CONTENT
-
-            behavior.state =
-                BottomSheetBehavior.STATE_EXPANDED
+            it.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            behavior.state = BottomSheetBehavior.STATE_EXPANDED
             behavior.skipCollapsed = true
         }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

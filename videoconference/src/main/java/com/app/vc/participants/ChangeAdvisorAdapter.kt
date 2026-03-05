@@ -8,11 +8,11 @@ import android.widget.RadioButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.R
-import com.app.vc.models.AdvisorModel
+import com.app.vc.models.GroupMemberResponse
 
 class ChangeAdvisorAdapter(
-    private val list: ArrayList<AdvisorModel>,
-    private val onItemSelected: (AdvisorModel) -> Unit
+    private val list: List<GroupMemberResponse>,
+    private val onItemSelected: (GroupMemberResponse) -> Unit
 ) : RecyclerView.Adapter<ChangeAdvisorAdapter.ViewHolder>() {
 
     private var selectedPosition = -1
@@ -40,11 +40,12 @@ class ChangeAdvisorAdapter(
     override fun onBindViewHolder(holder: ViewHolder, @SuppressLint("RecyclerView") position: Int) {
 
         val item = list[position]
+        val displayName = "${item.user.firstName} ${item.user.lastName}".trim().ifEmpty { item.user.username }
 
-        holder.name.text = item.name
+        holder.name.text = displayName
 
         // Initial letter
-        val initial = item.name.trim()
+        val initial = displayName.trim()
             .firstOrNull()
             ?.toString()
             ?.uppercase()

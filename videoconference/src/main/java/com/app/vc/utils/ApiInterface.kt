@@ -7,6 +7,7 @@ import com.app.vc.message.RequestModelUpdateEstimationStatus
 import com.app.vc.message.ResponseModelUpdateEstimateStatus
 import com.app.vc.message.ResponseModelUpdateEstimationStatus
 import com.app.vc.models.DisplayNameResponse
+import com.app.vc.models.GroupMemberResponse
 import com.app.vc.models.RequestModelUpdateVcStatusCustomer
 import com.app.vc.models.ResponseModelUpdateVideoStatus
 import com.app.vc.models.UpdateStreamIdResponse
@@ -23,6 +24,7 @@ import com.kia.vc.models.ResponseModelGetSurveyQuestionList
 import com.kia.vc.validateDealer.ResponseModelValidateDealerCode
 import okhttp3.MultipartBody
 import retrofit2.Call
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -138,5 +140,11 @@ interface ApiInterface {
         @Header("Authorization") bearerToken: String,
         @Body body: RequestModelSendUserManual
     ):Call<ResponseModelSendUserManual>
+
+
+    @GET(ApiDetails.GET_GROUP_MEMBERS)
+    suspend fun getGroupMembers(
+        @Header("Authorization") token: String,
+    ): Response<List<GroupMemberResponse>>
 
 }

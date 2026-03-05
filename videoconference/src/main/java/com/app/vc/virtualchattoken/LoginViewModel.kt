@@ -9,6 +9,7 @@ import com.app.vc.network.LoginApiService
 import com.app.vc.network.TokenRefreshRequest
 import com.app.vc.network.TokenVerifyRequest
 import com.app.vc.utils.ApiDetails
+import com.app.vc.utils.ApiInterface
 import com.app.vc.utils.JwtUtils
 import com.app.vc.utils.PreferenceManager
 import com.google.gson.GsonBuilder
@@ -20,6 +21,8 @@ class LoginViewModel : ViewModel() {
 
     private val _loginResponse = MutableLiveData<LoginResponse?>()
     val loginResponse: LiveData<LoginResponse?> = _loginResponse
+
+
 
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
@@ -41,6 +44,8 @@ class LoginViewModel : ViewModel() {
             .build()
             .create(LoginApiService::class.java)
     }
+
+
 
     fun login(username: String, password: String) {
         if (username.isEmpty() || password.isEmpty()) {
@@ -79,6 +84,8 @@ class LoginViewModel : ViewModel() {
             }
         }
     }
+
+
 
     private suspend fun verifyToken(token: String) {
         try {
