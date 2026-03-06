@@ -15,6 +15,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.R
 import com.app.vc.message.ResponseModelEstimateData
 import com.app.vc.utils.PreferenceManager
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.bumptech.glide.request.RequestOptions
 import com.kia.vc.message.Labour
 import com.kia.vc.message.LabourListAdapter
 import com.kia.vc.message.Part
@@ -31,7 +35,7 @@ data class ChatMessage(
     val timeLabel: String,
     var status: MessageStatus = MessageStatus.SENT,
     val type: ChatMessageType = ChatMessageType.TEXT,
-    val attachmentUri: String? = null,
+    var attachmentUri: String? = null,
     val durationSeconds: Int? = null,
     val fileName: String? = null,
     val caption: String? = null,
@@ -155,6 +159,14 @@ class VirtualChatMessageAdapter(
         }
     }
 
+    fun updateMessageAttachmentUrl(localId: String, serverUrl: String) {
+        val index = messages.indexOfLast { it.messageId == localId }
+        if (index != -1) {
+            messages[index].attachmentUri = serverUrl
+            notifyItemChanged(index)
+        }
+    }
+
     class OutgoingViewHolder(
         itemView: View, 
         private val onRetry: (ChatMessage) -> Unit,
@@ -167,6 +179,9 @@ class VirtualChatMessageAdapter(
         private val layoutText: View? = itemView.findViewById(R.id.layoutText)
         private val layoutImageContainer: View? = itemView.findViewById(R.id.layoutImageContainer)
         private val txtImageCaption: TextView? = itemView.findViewById(R.id.txtImageCaption)
+        private val layoutFileContainer: View? = itemView.findViewById(R.id.layoutFileContainer)
+        private val txtFileTitle: TextView? = itemView.findViewById(R.id.txtFileTitle)
+        private val txtFileSubtitle: TextView? = itemView.findViewById(R.id.txtFileSubtitle)
         private val layoutVoice: View? = itemView.findViewById(R.id.layoutVoice)
         private val txtVoiceDuration: TextView? = itemView.findViewById(R.id.txtVoiceDuration)
         private val txtFileName: TextView? = itemView.findViewById(R.id.txtFileName)
@@ -181,6 +196,7 @@ class VirtualChatMessageAdapter(
             txtTime.text = message.timeLabel
             layoutText?.visibility = View.GONE
             layoutImageContainer?.visibility = View.GONE
+            layoutFileContainer?.visibility = View.GONE
             layoutVoice?.visibility = View.GONE
             txtFileName?.visibility = View.GONE
             imgPlayVideo?.visibility = View.GONE
@@ -206,23 +222,23 @@ class VirtualChatMessageAdapter(
                     val uri = message.attachmentUri
                     if (!uri.isNullOrEmpty()) {
                         if (message.type == ChatMessageType.VIDEO) {
-                            loadVideoThumbnail(imgAttachment, uri)
+                            loadVideoThumbnail(itemView.context, imgAttachment, uri)
                         } else {
-                            try {
-                                val u = if (uri.startsWith("http")) Uri.parse(uri) else Uri.fromFile(File(uri))
-                                imgAttachment?.setImageURI(u)
-                            } catch (_: Exception) {}
+                            loadImage(itemView.context, imgAttachment, uri)
                         }
                     }
-                    txtImageCaption?.visibility = if (message.caption.isNullOrBlank()) View.GONE else View.VISIBLE
+                    // Only show caption if it's real user text, not the filename
+                    val showCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
+                    txtImageCaption?.visibility = if (showCaption) View.VISIBLE else View.GONE
                     txtImageCaption?.text = message.caption
                 }
                 ChatMessageType.FILE -> {
-                    layoutText?.visibility = View.VISIBLE
-                    txtFileName?.visibility = View.VISIBLE
-                    txtFileName?.text = message.fileName ?: "Document.pdf"
-                    txtMessage?.visibility = if (message.caption.isNullOrBlank()) View.GONE else View.VISIBLE
-                    txtMessage?.text = message.caption
+                    layoutImageContainer?.visibility = View.GONE
+                    layoutText?.visibility = View.GONE
+                    layoutFileContainer?.visibility = View.VISIBLE
+                    txtFileTitle?.text = message.fileName ?: "Document"
+                    val isPdf = message.fileName?.endsWith(".pdf", ignoreCase = true) == true || message.mimeType?.contains("pdf") == true
+                    txtFileSubtitle?.text = if (isPdf) "PDF" else "Document"
                 }
                 ChatMessageType.VOICE_NOTE -> {
                     layoutVoice?.visibility = View.VISIBLE
@@ -232,7 +248,18 @@ class VirtualChatMessageAdapter(
             }
         }
 
-        private fun loadVideoThumbnail(imageView: ImageView?, uri: String) {
+        private fun loadImage(context: Context, imageView: ImageView?, uri: String) {
+            if (imageView == null) return
+            val loadUri = if (uri.startsWith("http")) Uri.parse(uri) else Uri.fromFile(File(uri))
+            Glide.with(context)
+                .load(loadUri)
+                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+                .placeholder(android.R.drawable.ic_menu_gallery)
+                .error(android.R.drawable.ic_dialog_alert)
+                .into(imageView)
+        }
+
+        private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
             try {
                 val retriever = MediaMetadataRetriever()
                 if (uri.startsWith("http")) {
@@ -243,7 +270,9 @@ class VirtualChatMessageAdapter(
                 val bitmap = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 imageView?.setImageBitmap(bitmap)
                 retriever.release()
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                imageView?.let { Glide.with(context).load(android.R.drawable.ic_media_play).into(it) }
+            }
         }
 
         private fun formatDuration(seconds: Int): String {
@@ -260,6 +289,9 @@ class VirtualChatMessageAdapter(
         private val layoutText: View? = itemView.findViewById(R.id.layoutText)
         private val layoutImageContainer: View? = itemView.findViewById(R.id.layoutImageContainer)
         private val txtImageCaption: TextView? = itemView.findViewById(R.id.txtImageCaption)
+        private val layoutFileContainer: View? = itemView.findViewById(R.id.layoutFileContainer)
+        private val txtFileTitle: TextView? = itemView.findViewById(R.id.txtFileTitle)
+        private val txtFileSubtitle: TextView? = itemView.findViewById(R.id.txtFileSubtitle)
         private val layoutVoice: View? = itemView.findViewById(R.id.layoutVoice)
         private val txtVoiceDuration: TextView? = itemView.findViewById(R.id.txtVoiceDuration)
         private val txtFileName: TextView? = itemView.findViewById(R.id.txtFileName)
@@ -270,6 +302,7 @@ class VirtualChatMessageAdapter(
             txtTime.text = message.timeLabel
             layoutText?.visibility = View.GONE
             layoutImageContainer?.visibility = View.GONE
+            layoutFileContainer?.visibility = View.GONE
             layoutVoice?.visibility = View.GONE
             txtFileName?.visibility = View.GONE
             imgPlayVideo?.visibility = View.GONE
@@ -286,23 +319,23 @@ class VirtualChatMessageAdapter(
                     val uri = message.attachmentUri
                     if (!uri.isNullOrEmpty()) {
                         if (message.type == ChatMessageType.VIDEO) {
-                            loadVideoThumbnail(imgAttachment, uri)
+                            loadVideoThumbnail(itemView.context, imgAttachment, uri)
                         } else {
-                            try {
-                                val u = if (uri.startsWith("http")) Uri.parse(uri) else Uri.fromFile(File(uri))
-                                imgAttachment?.setImageURI(u)
-                            } catch (_: Exception) {}
+                            loadImage(itemView.context, imgAttachment, uri)
                         }
                     }
-                    txtImageCaption?.visibility = if (message.caption.isNullOrBlank()) View.GONE else View.VISIBLE
+                    // Only show caption if it's real user text, not the filename
+                    val showCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
+                    txtImageCaption?.visibility = if (showCaption) View.VISIBLE else View.GONE
                     txtImageCaption?.text = message.caption
                 }
                 ChatMessageType.FILE -> {
-                    layoutText?.visibility = View.VISIBLE
-                    txtFileName?.visibility = View.VISIBLE
-                    txtFileName?.text = message.fileName ?: "Document.pdf"
-                    txtMessage?.visibility = if (message.caption.isNullOrBlank()) View.GONE else View.VISIBLE
-                    txtMessage?.text = message.caption
+                    layoutImageContainer?.visibility = View.GONE
+                    layoutText?.visibility = View.GONE
+                    layoutFileContainer?.visibility = View.VISIBLE
+                    txtFileTitle?.text = message.fileName ?: "Document"
+                    val isPdf = message.fileName?.endsWith(".pdf", ignoreCase = true) == true || message.mimeType?.contains("pdf") == true
+                    txtFileSubtitle?.text = if (isPdf) "PDF" else "Document"
                 }
                 ChatMessageType.VOICE_NOTE -> {
                     layoutVoice?.visibility = View.VISIBLE
@@ -312,7 +345,18 @@ class VirtualChatMessageAdapter(
             }
         }
 
-        private fun loadVideoThumbnail(imageView: ImageView?, uri: String) {
+        private fun loadImage(context: Context, imageView: ImageView?, uri: String) {
+            if (imageView == null) return
+            val loadUri = if (uri.startsWith("http")) Uri.parse(uri) else Uri.fromFile(File(uri))
+            Glide.with(context)
+                .load(loadUri)
+                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+                .placeholder(android.R.drawable.ic_menu_gallery)
+                .error(android.R.drawable.ic_dialog_alert)
+                .into(imageView)
+        }
+
+        private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
             try {
                 val retriever = MediaMetadataRetriever()
                 if (uri.startsWith("http")) {
@@ -323,7 +367,9 @@ class VirtualChatMessageAdapter(
                 val bitmap = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 imageView?.setImageBitmap(bitmap)
                 retriever.release()
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                imageView?.let { Glide.with(context).load(android.R.drawable.ic_media_play).into(it) }
+            }
         }
 
         private fun formatDuration(seconds: Int): String {

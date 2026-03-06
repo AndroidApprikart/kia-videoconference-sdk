@@ -76,10 +76,14 @@ import com.kia.vc.message.Part
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.webrtc.MediaStreamTrack
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.ByteArrayOutputStream
@@ -153,11 +157,54 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private val apiService: LoginApiService by lazy {
         val gson = GsonBuilder().setLenient().create()
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val response = chain.proceed(chain.request())
+                if (response.code == 401 && !response.request.url.encodedPath.contains("token/refresh")) {
+                    response.close()
+                    val newToken = refreshTokenBlocking()
+                    if (!newToken.isNullOrEmpty()) {
+                        val newRequest = chain.request().newBuilder()
+                            .header("Authorization", "Bearer $newToken")
+                            .build()
+                        return@addInterceptor chain.proceed(newRequest)
+                    }
+                }
+                response
+            }
+            .build()
         Retrofit.Builder()
             .baseUrl(ApiDetails.APRIK_Kia_BASE_URL)
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(LoginApiService::class.java)
+    }
+
+    private fun refreshTokenBlocking(): String? {
+        val refresh = PreferenceManager.getRefreshToken() ?: return null
+        if (refresh.isEmpty()) return null
+        return try {
+            val json = JsonObject().apply { addProperty("refresh", refresh) }
+            val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+            val request = Request.Builder()
+                .url(ApiDetails.APRIK_Kia_BASE_URL + "api/token/refresh/")
+                .post(body)
+                .build()
+            val client = OkHttpClient()
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful && response.body != null) {
+                val respJson = Gson().fromJson(response.body!!.string(), JsonObject::class.java)
+                val access = respJson.get("access")?.asString
+                if (!access.isNullOrBlank()) {
+                    PreferenceManager.setAccessToken(access)
+                    respJson.get("refresh")?.asString?.let { if (it.isNotBlank()) PreferenceManager.setRefreshToken(it) }
+                    access
+                } else null
+            } else null
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private var quickReplies = mutableListOf<String>()
@@ -585,16 +632,24 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     
                     val chatMessages = apiMessages.map { apiMsg ->
                         val isSender = apiMsg.sender.id.toString() == currentUserId
-                        val type = when (apiMsg.messageType) {
-                            "image" -> ChatMessageType.IMAGE
-                            "video" -> ChatMessageType.VIDEO
-                            "document" -> ChatMessageType.FILE
-                            else -> ChatMessageType.TEXT
+                        val attachment = apiMsg.attachments.firstOrNull()
+                        val type = when {
+                            attachment != null -> when {
+                                attachment.mimeType.startsWith("image") -> ChatMessageType.IMAGE
+                                attachment.mimeType.startsWith("video") -> ChatMessageType.VIDEO
+                                attachment.mimeType.startsWith("audio") -> ChatMessageType.VOICE_NOTE
+                                else -> ChatMessageType.FILE
+                            }
+                            else -> when (apiMsg.messageType) {
+                                "image" -> ChatMessageType.IMAGE
+                                "video" -> ChatMessageType.VIDEO
+                                "document" -> ChatMessageType.FILE
+                                else -> ChatMessageType.TEXT
+                            }
                         }
                         
-                        val attachment = apiMsg.attachments.firstOrNull()
-                        val attachmentUri = attachment?.fileUrl?.let { 
-                            if (it.startsWith("http")) it else ApiDetails.APRIK_Kia_BASE_URL + it 
+                        val attachmentUri = attachment?.fileUrl?.let { url ->
+                            if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
                         }
                         
                         val isRead = apiMsg.receipts.isNotEmpty()
@@ -858,9 +913,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                         if (senderId != null && senderId == currentUserId) {
                             Log.d("VirtualChatRoom", "Ignoring echoed message from self")
-                            // Update our local message to SENT status since server acknowledged it
-                            val msgId = jsonObject.get("message_id")?.asString ?: ""
-                            messageAdapter?.updateMessageStatus(msgId, MessageStatus.SENT)
+                            val msgId = messageIdFromJson(jsonObject)
+                            messageAdapter?.updateMessageStatus(msgId.toString(), MessageStatus.SENT)
                             return@runOnUiThread
                         }
 
@@ -872,6 +926,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         if (attachment != null) {
 
                             val attachmentUrl = attachment.get("file_url")?.asString ?: ""
+                            val fullAttachmentUrl =
+                                if (attachmentUrl.startsWith("http")) attachmentUrl
+                                else ApiDetails.APRIK_Kia_BASE_URL + attachmentUrl
                             val fileName = attachment.get("file_name")?.asString ?: ""
                             val mimeType = attachment.get("mime_type")?.asString ?: ""
 
@@ -884,12 +941,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                             messageAdapter?.addMessage(
                                 ChatMessage(
-                                    messageId = jsonObject.get("message_id")?.asString,
+                                    messageId = messageIdFromJson(jsonObject),
                                     text = "",
                                     isSender = false,
                                     timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                     type = msgType,
-                                    attachmentUri = attachmentUrl,
+                                    attachmentUri = fullAttachmentUrl,
                                     fileName = fileName,
                                     caption = content,
                                     mimeType = mimeType
@@ -928,30 +985,38 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 //                        }
 //
                         else if (content != null) {
-                            if (content.contains("_image")) {
-                                fetchMessages()   // refresh messages from API to get attachment
+                            if (content.contains("_image") || content.contains(".jpg", ignoreCase = true) ||
+                                content.contains(".jpeg", ignoreCase = true) || content.contains(".png", ignoreCase = true) ||
+                                content.contains(".mp4", ignoreCase = true) || content.contains(".pdf", ignoreCase = true)) {
+                                fetchMessages()
                             } else {
-                                addMessage(content, false, jsonObject.get("message_id")?.asString)
-                            }                        }
+                                addMessage(content, false, messageIdFromJson(jsonObject))
+                            }
+                        }
                         scrollToLast()
-                        sendReadReceipt(jsonObject.get("message_id")?.asString ?: "")
+                        sendReadReceipt(messageIdFromJson(jsonObject) ?: "")
                     }
 
 
                     "chat.typing" -> {
-                        val senderId = jsonObject.get("sender_id")?.asString
+                        val userId = when (val el = jsonObject.get("user_id") ?: jsonObject.get("sender_id")) {
+                            null -> null
+                            else -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asJsonPrimitive.asInt.toString() else el.asString
+                        }
                         val currentUserId = PreferenceManager.getUserId()
-                        if (senderId != currentUserId) {
+                        if (userId != null && userId != currentUserId) {
                             val isTypingBroadcast = jsonObject.get("is_typing")?.asBoolean ?: false
                             binding.txtTypingIndicator?.visibility =
                                 if (isTypingBroadcast) View.VISIBLE else View.GONE
                             binding.txtTypingIndicator?.text =
-                                "${jsonObject.get("username")?.asString} is typing..."
+                                "${jsonObject.get("username")?.asString ?: "Someone"} is typing..."
+                        } else {
+                            binding.txtTypingIndicator?.visibility = View.GONE
                         }
                     }
 
                     "chat.read" -> {
-                        val msgId = jsonObject.get("message_id")?.asString ?: ""
+                        val msgId = messageIdFromJson(jsonObject) ?: ""
                         messageAdapter?.updateMessageStatus(msgId, MessageStatus.READ)
                     }
                 }
@@ -1072,12 +1137,18 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             ChatMessageType.IMAGE -> "image/jpeg"
             ChatMessageType.VIDEO -> "video/mp4"
             ChatMessageType.VOICE_NOTE -> "audio/wav"
+            ChatMessageType.FILE -> when (file.extension.lowercase()) {
+                "pdf" -> "application/pdf"
+                "doc", "docx" -> "application/msword"
+                "xls", "xlsx" -> "application/vnd.ms-excel"
+                else -> "application/octet-stream"
+            }
             else -> "application/octet-stream"
         }
 
         val requestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
         val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-        val captionPart = caption.toRequestBody("text/plain".toMediaTypeOrNull())
+        val captionPart = caption.toRequestBody("text/plain; charset=utf-8".toMediaTypeOrNull())
 
         lifecycleScope.launch {
             try {
@@ -1085,44 +1156,32 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 if (response.isSuccessful && response.body() != null) {
                     val fileResponse = response.body()!!
                     
-                    // After successful upload, send a message via WebSocket to notify others
-//                    val json = JsonObject()
-//                    json.addProperty("type", "chat.message")
-//                    // Use file name or caption if present, otherwise default to "Sent a file"
-////                    val contentText = if (!caption.isNullOrBlank()) caption else file.name
-//
-//                    val contentText = caption.takeIf { it.isNotBlank() } ?: file.name
-//                    json.addProperty("content", contentText)
-//                    json.addProperty("message_id", fileResponse.messageId)
-//
-//                    val attachmentJson = JsonObject()
-//                    attachmentJson.addProperty("file_url", fileResponse.attachment.fileUrl)
-//                    attachmentJson.addProperty("file_name", fileResponse.attachment.fileName)
-//                    attachmentJson.addProperty("mime_type", fileResponse.attachment.mimeType)
-//
-//                    json.add("attachment", attachmentJson)
-//
-//                    WebSocketManager.getInstance().sendMessage(json.toString())
+                    val fullFileUrl = if (fileResponse.attachment.fileUrl.startsWith("http")) {
+                        fileResponse.attachment.fileUrl
+                    } else {
+                        ApiDetails.APRIK_Kia_BASE_URL + fileResponse.attachment.fileUrl
+                    }
 
                     val json = JsonObject()
                     json.addProperty("type", "chat.message")
-                    json.addProperty("message_id", fileResponse.messageId)
-                    json.addProperty("content", caption)
+                    json.addProperty("message_id", fileResponse.messageId.toString())
+                    // Server requires non-empty content; fall back to file name
+                    val contentText = if (caption.isNotBlank()) caption else file.name
+                    json.addProperty("content", contentText)
 
                     val attachmentJson = JsonObject()
-                    attachmentJson.addProperty(
-                        "file_url",
-                        ApiDetails.APRIK_Kia_BASE_URL + fileResponse.attachment.fileUrl
-                    )
+                    attachmentJson.addProperty("file_url", fullFileUrl)
                     attachmentJson.addProperty("file_name", fileResponse.attachment.fileName)
                     attachmentJson.addProperty("mime_type", fileResponse.attachment.mimeType)
-
                     json.add("attachment", attachmentJson)
 
-                    WebSocketManager.getInstance().sendMessage(json.toString())
+                    runOnUiThread {
+                        WebSocketManager.getInstance().sendMessage(json.toString())
+                    }
 
                     runOnUiThread {
                         messageAdapter?.updateMessageId(localId, fileResponse.messageId.toString())
+                        messageAdapter?.updateMessageAttachmentUrl(localId, fullFileUrl)
                         messageAdapter?.updateMessageStatus(
                             localId,
                             MessageStatus.SENT
@@ -1159,10 +1218,18 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun sendReadReceipt(messageId: String) {
         if (messageId.isEmpty()) return
+        val idInt = messageId.toIntOrNull() ?: return
         val jsonObject = JsonObject()
         jsonObject.addProperty("type", "chat.read")
-        jsonObject.addProperty("message_id", messageId)
+        jsonObject.addProperty("message_id", idInt)
         WebSocketManager.getInstance().sendMessage(jsonObject.toString())
+    }
+
+    private fun messageIdFromJson(json: JsonObject): String? {
+        val el = json.get("message_id") ?: return null
+        if (!el.isJsonPrimitive) return null
+        val p = el.asJsonPrimitive
+        return if (p.isNumber) p.asInt.toString() else p.asString
     }
 
     private fun setupToolbar() {
@@ -1217,25 +1284,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun handleAttachmentClick(message: ChatMessage) {
-        val url = message.attachmentUri ?: return
-        val fragment = MediaViewerFragment.newInstance(url, message.type.name)
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.FragmentContainer, fragment)
-            .addToBackStack(null)
-            .commit()
-    }
-
-    class MediaViewerFragment : Fragment() {
-        companion object {
-            fun newInstance(url: String, type: String): MediaViewerFragment {
-                return MediaViewerFragment().apply {
-                    arguments = Bundle().apply {
-                        putString("url", url)
-                        putString("type", type)
-                    }
-                }
-            }
+        val rawUrl = message.attachmentUri ?: return
+        val fullUrl = if (rawUrl.startsWith("http")) rawUrl else ApiDetails.APRIK_Kia_BASE_URL + rawUrl
+        val intent = Intent(this, MediaViewerActivity::class.java).apply {
+            putExtra(MediaViewerActivity.EXTRA_URL, fullUrl)
+            putExtra(MediaViewerActivity.EXTRA_TYPE, message.type.name)
+            putExtra(MediaViewerActivity.EXTRA_FILE_NAME, message.fileName)
         }
+        startActivity(intent)
     }
 
     private fun setupQuickReplies() {
@@ -1356,7 +1412,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         dialogView.findViewById<LinearLayout>(R.id.optionGallery)?.setOnClickListener {
             dialog.dismiss()
-            fileLauncher.launch(arrayOf("image/*", "video/*"))
+            fileLauncher.launch(arrayOf("image/*", "video/*", "application/pdf", "*/*"))
         }
 
         dialogView.findViewById<LinearLayout>(R.id.optionCamera)?.setOnClickListener {

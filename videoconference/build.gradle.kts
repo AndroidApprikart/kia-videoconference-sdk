@@ -92,6 +92,8 @@ dependencies {
     implementation("com.google.code.findbugs:jsr305:3.0.2")
     testImplementation("org.json:json:20210307")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.2.0")
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
 //    commented out dependency
     //Hilt - dependency injection /*06 Nov 2023 - Hilt commented and removed*/

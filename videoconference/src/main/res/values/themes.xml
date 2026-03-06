@@ -57,6 +57,13 @@
 
     <style name="Theme.VideoConference" parent="Base.Theme.VideoConference" />
 
+    <!-- AppCompat theme for MediaViewerActivity (required for AppCompatActivity); fullscreen black -->
+    <style name="Theme.MediaViewer" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
     <style name="text_view_regular" parent="Widget.MaterialComponents.TextView">
         <item name="android:textSize">14sp</item>
         <item name="android:fontFamily">@font/kia_signature_fix_regular</item>

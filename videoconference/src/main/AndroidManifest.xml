@@ -71,6 +71,10 @@
             android:name=".virtualchatroom.VirtualChatRoomActivity"
             android:exported="false" />
         <activity
+            android:name=".virtualchatroom.MediaViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MediaViewer" />
+        <activity
             android:name="com.kia.vc.feedback.FeedbackActivity"
             android:exported="true"
             android:supportsPictureInPicture="false" />
