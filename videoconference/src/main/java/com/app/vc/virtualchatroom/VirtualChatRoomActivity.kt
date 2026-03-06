@@ -225,15 +225,44 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             }
         }
 
+//    private fun uriToFile(uri: Uri): File? {
+//        return try {
+//            contentResolver.openInputStream(uri)?.use { input ->
+//                val file =
+//                    File(cacheDir, "temp_file_${System.currentTimeMillis()}_${uri.lastPathSegment}")
+//                file.outputStream().use { input.copyTo(it) }
+//                file
+//            }
+//        } catch (_: Exception) {
+//            null
+//        }
+//    }
+
     private fun uriToFile(uri: Uri): File? {
         return try {
-            contentResolver.openInputStream(uri)?.use { input ->
-                val file =
-                    File(cacheDir, "temp_file_${System.currentTimeMillis()}_${uri.lastPathSegment}")
-                file.outputStream().use { input.copyTo(it) }
-                file
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            val nameIndex = cursor?.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            cursor?.moveToFirst()
+
+            val fileName = if (nameIndex != null && nameIndex >= 0) {
+                cursor.getString(nameIndex)
+            } else {
+                "file_${System.currentTimeMillis()}"
             }
-        } catch (_: Exception) {
+
+            cursor?.close()
+
+            val file = File(cacheDir, fileName)
+
+            contentResolver.openInputStream(uri)?.use { input ->
+                file.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            file
+        } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }
@@ -839,16 +868,17 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             ?: jsonObject.get("message")?.asString
                         val attachment = jsonObject.get("attachment")?.asJsonObject
 
+
                         if (attachment != null) {
+
                             val attachmentUrl = attachment.get("file_url")?.asString ?: ""
                             val fileName = attachment.get("file_name")?.asString ?: ""
                             val mimeType = attachment.get("mime_type")?.asString ?: ""
-                            val fullUrl =
-                                if (attachmentUrl.startsWith("http")) attachmentUrl else ApiDetails.APRIK_Kia_BASE_URL + attachmentUrl
 
                             val msgType = when {
                                 mimeType.startsWith("image") -> ChatMessageType.IMAGE
                                 mimeType.startsWith("video") -> ChatMessageType.VIDEO
+                                mimeType.startsWith("audio") -> ChatMessageType.VOICE_NOTE
                                 else -> ChatMessageType.FILE
                             }
 
@@ -857,23 +887,56 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     messageId = jsonObject.get("message_id")?.asString,
                                     text = "",
                                     isSender = false,
-                                    timeLabel = SimpleDateFormat(
-                                        "hh:mma",
-                                        Locale.getDefault()
-                                    ).format(Date()).lowercase(),
+                                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                     type = msgType,
-                                    attachmentUri = fullUrl,
+                                    attachmentUri = attachmentUrl,
                                     fileName = fileName,
                                     caption = content,
                                     mimeType = mimeType
                                 )
                             )
-                        } else if (content != null) {
-                            addMessage(content, false, jsonObject.get("message_id")?.asString)
                         }
+//                        if (attachment != null) {
+//                            val attachmentUrl = attachment.get("file_url")?.asString ?: ""
+//                            val fileName = attachment.get("file_name")?.asString ?: ""
+//                            val mimeType = attachment.get("mime_type")?.asString ?: ""
+//                            val fullUrl =
+//                                if (attachmentUrl.startsWith("http")) attachmentUrl else ApiDetails.APRIK_Kia_BASE_URL + attachmentUrl
+//
+//                            val msgType = when {
+//                                mimeType.startsWith("image") -> ChatMessageType.IMAGE
+//                                mimeType.startsWith("video") -> ChatMessageType.VIDEO
+//                                else -> ChatMessageType.FILE
+//                            }
+//
+//                            messageAdapter?.addMessage(
+//                                ChatMessage(
+//                                    messageId = jsonObject.get("message_id")?.asString,
+//                                    text = "",
+//                                    isSender = false,
+//                                    timeLabel = SimpleDateFormat(
+//                                        "hh:mma",
+//                                        Locale.getDefault()
+//                                    ).format(Date()).lowercase(),
+//                                    type = msgType,
+//                                    attachmentUri = fullUrl,
+//                                    fileName = fileName,
+//                                    caption = content,
+//                                    mimeType = mimeType
+//                                )
+//                            )
+//                        }
+//
+                        else if (content != null) {
+                            if (content.contains("_image")) {
+                                fetchMessages()   // refresh messages from API to get attachment
+                            } else {
+                                addMessage(content, false, jsonObject.get("message_id")?.asString)
+                            }                        }
                         scrollToLast()
                         sendReadReceipt(jsonObject.get("message_id")?.asString ?: "")
                     }
+
 
                     "chat.typing" -> {
                         val senderId = jsonObject.get("sender_id")?.asString
@@ -946,8 +1009,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             override fun getItemCount() = selectedFiles.size
         }
 
-        btnCancel.setOnClickListener { bottomSheetDialog.dismiss() }
 
+        btnCancel.setOnClickListener { bottomSheetDialog.dismiss() }
         btnSend.setOnClickListener {
             val caption = edtCaption.text.toString()
             bottomSheetDialog.dismiss()
@@ -995,7 +1058,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val bitmap = BitmapFactory.decodeFile(file.absolutePath)
         val out = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, out)
-        val compressedFile = File(cacheDir, "compressed_${file.name}")
+//        val compressedFile = File(cacheDir, "compressed_${file.name}")
+        val compressedFile = File(cacheDir, file.name)
         FileOutputStream(compressedFile).use { it.write(out.toByteArray()) }
         compressedFile
     }
@@ -1019,7 +1083,46 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             try {
                 val response = apiService.uploadFile("Bearer $token", slug, body, captionPart)
                 if (response.isSuccessful && response.body() != null) {
+                    val fileResponse = response.body()!!
+                    
+                    // After successful upload, send a message via WebSocket to notify others
+//                    val json = JsonObject()
+//                    json.addProperty("type", "chat.message")
+//                    // Use file name or caption if present, otherwise default to "Sent a file"
+////                    val contentText = if (!caption.isNullOrBlank()) caption else file.name
+//
+//                    val contentText = caption.takeIf { it.isNotBlank() } ?: file.name
+//                    json.addProperty("content", contentText)
+//                    json.addProperty("message_id", fileResponse.messageId)
+//
+//                    val attachmentJson = JsonObject()
+//                    attachmentJson.addProperty("file_url", fileResponse.attachment.fileUrl)
+//                    attachmentJson.addProperty("file_name", fileResponse.attachment.fileName)
+//                    attachmentJson.addProperty("mime_type", fileResponse.attachment.mimeType)
+//
+//                    json.add("attachment", attachmentJson)
+//
+//                    WebSocketManager.getInstance().sendMessage(json.toString())
+
+                    val json = JsonObject()
+                    json.addProperty("type", "chat.message")
+                    json.addProperty("message_id", fileResponse.messageId)
+                    json.addProperty("content", caption)
+
+                    val attachmentJson = JsonObject()
+                    attachmentJson.addProperty(
+                        "file_url",
+                        ApiDetails.APRIK_Kia_BASE_URL + fileResponse.attachment.fileUrl
+                    )
+                    attachmentJson.addProperty("file_name", fileResponse.attachment.fileName)
+                    attachmentJson.addProperty("mime_type", fileResponse.attachment.mimeType)
+
+                    json.add("attachment", attachmentJson)
+
+                    WebSocketManager.getInstance().sendMessage(json.toString())
+
                     runOnUiThread {
+                        messageAdapter?.updateMessageId(localId, fileResponse.messageId.toString())
                         messageAdapter?.updateMessageStatus(
                             localId,
                             MessageStatus.SENT
@@ -1214,9 +1317,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val json = JsonObject()
         json.addProperty("type", "chat.message")
         json.addProperty("content", text)
-        if (messageId != null) {
-            json.addProperty("message_id", messageId)
-        }
+        // Only add message_id if it's a valid integer. 
+        // If it starts with 'local_', it's a tracking ID, we might need to send it differently or not at all.
+        // Assuming the server only wants integer for 'message_id' field.
         WebSocketManager.getInstance().sendMessage(json.toString())
     }
 

@@ -138,6 +138,14 @@ class VirtualChatMessageAdapter(
         }
     }
 
+    fun updateMessageId(localId: String, serverId: String) {
+        val index = messages.indexOfLast { it.messageId == localId }
+        if (index != -1) {
+            messages[index].messageId = serverId
+            notifyItemChanged(index)
+        }
+    }
+
     fun updateMessageIdAndStatus(localId: String, serverId: String, newStatus: MessageStatus) {
         val index = messages.indexOfLast { it.messageId == localId }
         if (index != -1) {
