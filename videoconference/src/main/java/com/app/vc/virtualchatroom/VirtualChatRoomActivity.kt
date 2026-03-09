@@ -571,8 +571,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         fetchQuickReplies()
         fetchMessages()
 
-
-
         sharedViewModel.estimateDetailsResponse.observe(this) {
             if (it != null) {
                 dismissProgressDialogLocal()
@@ -857,6 +855,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         dialog.show()
     }
+
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun startRecordingFlow(r: ImageView, d: ImageView, p: ImageView, pause: ImageView) {
         startVoiceRecording()

@@ -41,8 +41,8 @@ internal class ApiDetails {
         const val UPDATE_VC_STATUS_CUSTOMER_NEW = "service/vcConference/updateVcStatus"
         const val GET_VC_LIST = "kandid_api/v1/get_vc_list/?"
         
-        // New API endpoint
-        const val GET_GROUP_MEMBERS = "api/groups/gr100-9359a1bf/members/"
+        // New API endpoint - use {slug} path param; caller passes group slug
+        const val GET_GROUP_MEMBERS = "api/groups/{slug}/members/"
 
         const val DELETE_BROADCAST = "delete_stream_from_room"
 
