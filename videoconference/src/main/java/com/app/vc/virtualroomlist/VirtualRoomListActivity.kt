@@ -27,6 +27,8 @@ class VirtualRoomListActivity : AppCompatActivity() {
     private lateinit var adapter: VirtualRoomListAdapter
     private var currentRole: UserRole = UserRole.CUSTOMER
 
+    val TAG="VirtualRoomListActivity"
+
     private val apiService: LoginApiService by lazy {
         val gson = GsonBuilder().setLenient().create()
         Retrofit.Builder()
@@ -111,12 +113,15 @@ class VirtualRoomListActivity : AppCompatActivity() {
         val gson = Gson()
         val intent = Intent(this, VirtualChatRoomActivity::class.java)
         intent.putExtra(VirtualChatRoomActivity.EXTRA_ROLE, currentRole.name)
+        intent.putExtra(VirtualChatRoomActivity.STATUS, room.status.name)
+        Log.d(TAG, "openChatRoom: ${room.status}")
         intent.putExtra(VirtualChatRoomActivity.EXTRA_ROOM_JSON, gson.toJson(room))
         startActivity(intent)
     }
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
+        const val STATUS = "room_status"
     }
 }
 

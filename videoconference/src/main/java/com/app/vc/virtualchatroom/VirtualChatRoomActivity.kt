@@ -9,7 +9,9 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
+import android.media.AudioTrack
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
@@ -22,6 +24,7 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
+import android.util.Log.e
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -51,6 +54,7 @@ import com.app.vc.MainViewModel
 import com.app.vc.MediaFragment
 import com.app.vc.ParticipantsListFragment
 import com.app.vc.R
+import com.app.vc.RODetailsFragment
 import com.app.vc.RepairOrderActivity
 import com.app.vc.RequestVideoCallDialog
 import com.app.vc.databinding.LayoutUniversalDialogBinding
@@ -88,6 +92,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -98,6 +103,7 @@ import kotlin.math.abs
 
 class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketCallback, EstimationInteractionListener {
 
+    val TAG="VirtualChatRoomActivity"
     private lateinit var binding: VcActivityVirtualChatRoomBinding
     private var audioRecord: AudioRecord? = null
     private var pcmFile: File? = null
@@ -110,12 +116,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var messageAdapter: VirtualChatMessageAdapter? = null
     private var lastClickTime = System.currentTimeMillis()
     private val clickTimeInterval = 2000
-
+    private var audioTrack: AudioTrack? = null
     // Add this if you have a reference to your main ViewModel or use the Activity scope
     private val sharedViewModel: MainViewModel by viewModels()
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
+        const val STATUS = "room_status"
+
         const val EXTRA_ROOM_JSON = "extra_room_json"
     }
     private var dataList = ArrayList<MessageModel>()
@@ -510,6 +518,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         setContentView(binding.root)
 
         val roleFromIntent = intent.getStringExtra(EXTRA_ROLE)
+
+        val roomStatus=intent.getStringExtra(STATUS)
+        Log.d(TAG, "onCreate: $roomStatus")
+
+        binding.txtStatusChip?.text =roomStatus
+
         currentRole = when (roleFromIntent) {
             UserRole.SERVICE_ADVISOR.name -> UserRole.SERVICE_ADVISOR
             UserRole.MANAGER.name -> UserRole.MANAGER
@@ -521,9 +535,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         dataList.addAll(sharedViewModel.messageListInMVM)
         if (binding.tabParticipants != null) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            loadFragment(ParticipantsListFragment())
+            val tabRoDetails = binding.tabRoDetails ?: return
+            loadFragment(RODetailsFragment())
             setupTabs()
-            selectParticipantsTab()
+            selectRoDetailsTab()
+            moveIndicator(tabRoDetails)
+
         } else {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
@@ -553,6 +570,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         connectToWebSocket()
         fetchQuickReplies()
         fetchMessages()
+
+
 
         sharedViewModel.estimateDetailsResponse.observe(this) {
             if (it != null) {
@@ -737,6 +756,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         btnCancel.setOnClickListener { dialog.dismiss() }
 
         btnRecord.setOnClickListener {
+
+            if (isPlaying) {
+                Toast.makeText(this, "Stop playback before recording", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.RECORD_AUDIO
@@ -746,6 +771,63 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             } else {
                 recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
+        }
+
+        pauseIcon.setOnClickListener {
+            if (isRecording) {
+                stopVoiceRecording()
+                isRecording = false
+
+                pauseIcon.visibility = View.GONE
+                btnRecord.visibility = View.VISIBLE
+                btnDelete.visibility = View.VISIBLE
+                btnPlay.visibility = View.VISIBLE
+            }
+        }
+
+        btnPlay.setOnClickListener {
+
+            voiceNotePath?.let { path ->
+
+                if (isPlaying) {
+                    stopPlayback()
+                    btnPlay.setImageResource(R.drawable.play_circle)
+
+                    btnDelete.isEnabled = true
+                    btnRecord.isEnabled = true
+
+                } else {
+                    playVoiceNote(path)
+                    btnPlay.setImageResource(R.drawable.pause)
+
+                    btnDelete.isEnabled = false
+                    btnRecord.isEnabled = false
+                }
+            }
+        }
+
+        btnDelete.setOnClickListener {
+
+            if (isPlaying) {
+                Toast.makeText(this, "Stop playback before deleting", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            voiceNotePath?.let {
+                val file = File(it)
+                if (file.exists()) {
+                    file.delete()
+                }
+            }
+
+            voiceNotePath = null
+            voiceNoteDurationSeconds = 0
+            voiceNoteDialogTimerView?.text = "00:00"
+
+            btnDelete.visibility = View.GONE
+            btnPlay.visibility = View.GONE
+            btnRecord.visibility = View.VISIBLE
+
         }
 
         btnSave.setOnClickListener {
@@ -775,7 +857,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         dialog.show()
     }
-
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun startRecordingFlow(r: ImageView, d: ImageView, p: ImageView, pause: ImageView) {
         startVoiceRecording()
@@ -790,95 +871,253 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) Toast.makeText(this, "Permission required", Toast.LENGTH_SHORT).show()
         }
+//
+//    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+//    private fun startVoiceRecording() {
+//        val sampleRate = 44100
+//        val bufferSize = AudioRecord.getMinBufferSize(
+//            sampleRate,
+//            AudioFormat.CHANNEL_IN_MONO,
+//            AudioFormat.ENCODING_PCM_16BIT
+//        )
+//        audioRecord = AudioRecord(
+//            MediaRecorder.AudioSource.MIC,
+//            sampleRate,
+//            AudioFormat.CHANNEL_IN_MONO,
+//            AudioFormat.ENCODING_PCM_16BIT,
+//            bufferSize
+//        )
+//        pcmFile = File(cacheDir, "voice_note.pcm")
+//        voiceNotePath = pcmFile?.absolutePath
+//        audioRecord?.startRecording()
+//        isRecording = true
+//        voiceTimerHandler.post(voiceTimerRunnable)
+//        Thread {
+//            val buffer = ShortArray(1024)
+//            val output = FileOutputStream(pcmFile!!)
+//            while (isRecording) {
+//                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
+//                if (read > 0) {
+//                    val maxAmp = buffer.take(read).maxOf { abs(it.toInt()) }
+//                    runOnUiThread {
+//                        voiceNoteWaveformView?.addAmplitude(
+//                            (maxAmp / 300).coerceAtLeast(
+//                                1
+//                            )
+//                        )
+//                    }
+//                    output.write(
+//                        ByteBuffer.allocate(read * 2).order(ByteOrder.LITTLE_ENDIAN)
+//                            .apply { buffer.take(read).forEach { putShort(it) } }.array()
+//                    )
+//                }
+//            }
+//            output.close()
+//        }.start()
+//    }
+
+//    private fun stopVoiceRecording() {
+//        isRecording = false
+//        audioRecord?.stop()
+//        audioRecord?.release()
+//        audioRecord = null
+//        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
+//    }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun startVoiceRecording() {
-        val sampleRate = 44100
-        val bufferSize = AudioRecord.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT
-        )
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            sampleRate,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            bufferSize
-        )
-        pcmFile = File(cacheDir, "voice_note.pcm")
-        voiceNotePath = pcmFile?.absolutePath
-        audioRecord?.startRecording()
+
+        val file = File(cacheDir, "voice_note_${System.currentTimeMillis()}.m4a")
+        voiceNotePath = file.absolutePath
+
+        mediaRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioEncodingBitRate(128000)
+            setAudioSamplingRate(44100)
+            setOutputFile(voiceNotePath)
+            prepare()
+            start()
+        }
+
         isRecording = true
         voiceTimerHandler.post(voiceTimerRunnable)
-        Thread {
-            val buffer = ShortArray(1024)
-            val output = FileOutputStream(pcmFile!!)
-            while (isRecording) {
-                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-                if (read > 0) {
-                    val maxAmp = buffer.take(read).maxOf { abs(it.toInt()) }
-                    runOnUiThread {
-                        voiceNoteWaveformView?.addAmplitude(
-                            (maxAmp / 300).coerceAtLeast(
-                                1
-                            )
-                        )
-                    }
-                    output.write(
-                        ByteBuffer.allocate(read * 2).order(ByteOrder.LITTLE_ENDIAN)
-                            .apply { buffer.take(read).forEach { putShort(it) } }.array()
-                    )
-                }
-            }
-            output.close()
-        }.start()
     }
-
     private fun stopVoiceRecording() {
+
+        try {
+            mediaRecorder?.stop()
+            mediaRecorder?.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        mediaRecorder = null
         isRecording = false
-        audioRecord?.stop()
-        audioRecord?.release()
-        audioRecord = null
+
         voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
     }
+    private fun playVoiceNote(path: String) {
+
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(path)
+            prepare()
+            start()
+        }
+
+        isPlaying = true
+
+        mediaPlayer?.setOnCompletionListener {
+            stopPlayback()
+        }
+    }
+    private fun stopPlayback() {
+
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+
+        isPlaying = false
+    }
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun setupTabs() {
-        binding.tabParticipants?.setOnClickListener {
-            loadFragment(ParticipantsListFragment())
-            selectParticipantsTab()
-            moveIndicator(it)
-        }
-        binding.tabMedia?.setOnClickListener {
-            loadFragment(MediaFragment())
-            selectMediaTab()
-            moveIndicator(it)
-        }
-    }
 
-    private fun moveIndicator(tab: View) {
-        binding.tabIndicator?.post {
-            binding.tabIndicator?.layoutParams?.width = tab.width
-            binding.tabIndicator?.requestLayout()
-            binding.tabIndicator?.x = tab.left.toFloat()
+        val tabParticipants = binding.tabParticipants ?: return
+        val tabMedia = binding.tabMedia ?: return
+        val tabRoDetails = binding.tabRoDetails ?: return
+
+        tabParticipants.setOnClickListener {
+
+            loadFragment(ParticipantsListFragment())
+
+            selectParticipantsTab()
+
+            moveIndicator(tabParticipants)
         }
+
+        tabMedia.setOnClickListener {
+
+            loadFragment(MediaFragment())
+
+            selectMediaTab()
+            moveIndicator(tabMedia)
+        }
+        tabRoDetails.setOnClickListener {
+
+            loadFragment(RODetailsFragment())
+
+            selectRoDetailsTab()
+            moveIndicator(tabRoDetails)
+        }
+
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun selectParticipantsTab() {
-        binding.tabParticipants?.setTextColor(getColor(R.color.colorPrimary_kia_kandid))
-        binding.tabParticipants?.typeface = resources.getFont(R.font.kia_signature_fix_bold)
-        binding.tabMedia?.setTextColor(getColor(R.color.gray_mic_background))
-        binding.tabMedia?.typeface = resources.getFont(R.font.kia_signature_fix_regular)
+
+        val tabParticipants = binding.tabParticipants ?: return
+        val tabMedia = binding.tabMedia ?: return
+        val tabRodetails=binding.tabRoDetails?: return
+
+        tabParticipants.setTextColor(
+            getColor(R.color.colorPrimary_kia_kandid)
+        )
+
+        tabParticipants.typeface =
+            resources.getFont(R.font.kia_signature_fix_bold)
+
+        tabMedia.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabMedia.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
+
+        tabRodetails.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabRodetails.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
+
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun selectRoDetailsTab() {
+
+        val tabParticipants = binding.tabParticipants ?: return
+        val tabMedia = binding.tabMedia ?: return
+        val tabRodetails=binding.tabRoDetails?: return
+
+        tabRodetails.setTextColor(
+            getColor(R.color.colorPrimary_kia_kandid)
+        )
+
+        tabRodetails.typeface =
+            resources.getFont(R.font.kia_signature_fix_bold)
+
+
+        tabParticipants.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabParticipants.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
+
+        tabMedia.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabMedia.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun selectMediaTab() {
-        binding.tabMedia?.setTextColor(getColor(R.color.colorPrimary_kia_kandid))
-        binding.tabMedia?.typeface = resources.getFont(R.font.kia_signature_fix_bold)
-        binding.tabParticipants?.setTextColor(getColor(R.color.gray_mic_background))
-        binding.tabParticipants?.typeface = resources.getFont(R.font.kia_signature_fix_regular)
+        val tabRodetails=binding.tabRoDetails?: return
+
+        val tabParticipants = binding.tabParticipants ?: return
+        val tabMedia = binding.tabMedia ?: return
+
+        tabMedia.setTextColor(
+            getColor(R.color.colorPrimary_kia_kandid)
+        )
+
+        tabMedia.typeface =
+            resources.getFont(R.font.kia_signature_fix_bold)
+
+        tabParticipants.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabParticipants.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
+
+        tabRodetails.setTextColor(
+            getColor(R.color.gray_mic_background)
+        )
+
+        tabRodetails.typeface =
+            resources.getFont(R.font.kia_signature_fix_regular)
+    }
+
+    private fun moveIndicator(tab: View) {
+
+        val indicator = binding.tabIndicator ?: return
+
+        indicator.post {
+
+            val width = tab.width
+            val start = tab.left
+
+            indicator.layoutParams.width = width
+            indicator.requestLayout()
+
+            indicator.x = start.toFloat()
+        }
     }
 
 
@@ -1183,7 +1422,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val mimeType = when (type) {
             ChatMessageType.IMAGE -> "image/jpeg"
             ChatMessageType.VIDEO -> "video/mp4"
-            ChatMessageType.VOICE_NOTE -> "audio/wav"
+            ChatMessageType.VOICE_NOTE -> when (file.extension.lowercase()) {
+                "m4a" -> "audio/mp4"
+                "3gp" -> "audio/3gpp"
+                "aac" -> "audio/aac"
+                "wav" -> "audio/wav"
+                else -> "audio/*"
+            }
             ChatMessageType.FILE -> when (file.extension.lowercase()) {
                 "pdf" -> "application/pdf"
                 "doc", "docx" -> "application/msword"
@@ -1252,12 +1497,16 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         )
                     }
                 } else {
+
+                    val errorBody = response.errorBody()?.string()
+
+                    Log.e("UploadDebug", "Code: ${response.code()}")
+                    Log.e("UploadDebug", "ErrorBody: $errorBody")
+
                     runOnUiThread {
-                        messageAdapter?.updateMessageStatus(
-                            localId,
-                            MessageStatus.ERROR
-                        )
+                        messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR)
                     }
+
                     Toast.makeText(
                         this@VirtualChatRoomActivity,
                         "Upload failed: ${response.code()}",
@@ -1641,4 +1890,45 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             sharedViewModel.selectedLabourList = selected.joinToString(",")
         }
     }
+
+    private fun startPlayback(path: String) {
+
+        val sampleRate = 44100
+        val bufferSize = AudioTrack.getMinBufferSize(
+            sampleRate,
+            AudioFormat.CHANNEL_OUT_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+
+        audioTrack = AudioTrack(
+            AudioManager.STREAM_MUSIC,
+            sampleRate,
+            AudioFormat.CHANNEL_OUT_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            bufferSize,
+            AudioTrack.MODE_STREAM
+        )
+
+        audioTrack?.play()
+        isPlaying = true
+
+        Thread {
+            val file = File(path)
+            val input = FileInputStream(file)
+
+            val buffer = ByteArray(bufferSize)
+
+            while (isPlaying) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                audioTrack?.write(buffer, 0, read)
+            }
+
+            input.close()
+            stopPlayback()
+
+        }.start()
+    }
+
+
 }
