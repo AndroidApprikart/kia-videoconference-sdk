@@ -2,6 +2,7 @@ package com.app.vc.virtualchattoken
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -14,6 +15,7 @@ class LoginKiaKrystal : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginKiaKrystalBinding
     private val viewModel: LoginViewModel by viewModels()
+    val TAG="LoginKiaKrystal"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +49,7 @@ class LoginKiaKrystal : AppCompatActivity() {
         viewModel.errorMessage.observe(this) { message ->
             if (message != null) {
                 Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                Log.d(TAG, "setupObservers: $message")
             }
         }
     }

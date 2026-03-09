@@ -78,7 +78,6 @@
                     android:layout_height="wrap_content"
                     android:background="@drawable/vc_bg_status_chip"
                     android:layout_gravity="start"
-                    android:text="Open"
                     android:layout_marginTop="@dimen/_5sdp"
                     android:paddingVertical="@dimen/_2sdp"
                     android:paddingHorizontal="@dimen/_5sdp"
