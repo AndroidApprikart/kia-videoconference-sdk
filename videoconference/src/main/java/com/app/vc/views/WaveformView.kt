@@ -17,21 +17,26 @@ class WaveformView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    private val amplitudes = IntArray(50) { 10 } // ALWAYS FIXED
+    private val barWidth = 4f
+    private val barGap = 1.5f
+    private val totalBarSpace = barWidth + barGap
+    private val recordedAmplitudes = mutableListOf<Int>()
+
+    private val amplitudes = IntArray(50) { 0 } // ALWAYS FIXED
     private var progressIndex = 0
     private var playbackAnimating = false
     private var animationFactor = 1f
     private var animator: ValueAnimator? = null
     private val greyPaint = Paint().apply {
         color = Color.LTGRAY
-        strokeWidth = 6f
+        strokeWidth = 4f
         strokeCap = Paint.Cap.ROUND
         isAntiAlias = true
     }
 
     private val blackPaint = Paint().apply {
         color = Color.BLACK
-        strokeWidth = 6f
+        strokeWidth = 4f
         strokeCap = Paint.Cap.ROUND
         isAntiAlias = true
     }
@@ -40,12 +45,16 @@ class WaveformView @JvmOverloads constructor(
 
     /** Used ONLY while recording */
     fun addAmplitude(amp: Int) {
-        // shift left
+
+        // shift bars left
         for (i in 0 until amplitudes.size - 1) {
             amplitudes[i] = amplitudes[i + 1]
         }
+
         amplitudes[amplitudes.lastIndex] = amp
+
         progressIndex = amplitudes.size
+
         invalidate()
     }
 
@@ -104,45 +113,30 @@ class WaveformView @JvmOverloads constructor(
         super.onDraw(canvas)
 
         val centerY = height / 2f
-        val barCount = amplitudes.size
-
-        val gap = width.toFloat() / barCount
-        val barWidthFactor = 0.45f   // smaller = more gap
-
         val minHeight = 6f
-        val maxHeight = height / 2.2f
-        val scale = 1.4f
+        val maxHeight = height / 3f
 
-        for (i in 0 until barCount) {
+        val scale = 0.9f
 
-            val pattern = if (i % 2 == 0) 0.6f else 1.0f
-            val rawHeight = amplitudes[i] * scale * pattern
+        for (i in amplitudes.indices) {
+
+            val rawHeight = amplitudes[i] * scale
+
             val lineHeight = rawHeight
                 .coerceAtLeast(minHeight)
                 .coerceAtMost(maxHeight)
 
-            // Center bar with spacing
-            val x = i * gap + (gap * (1 - barWidthFactor) / 2f) + gap * barWidthFactor / 2f
+            val x = i * totalBarSpace + barWidth / 2
 
-            // background
+            val paint = if (i < progressIndex) blackPaint else greyPaint
+
             canvas.drawLine(
                 x,
                 centerY - lineHeight,
                 x,
                 centerY + lineHeight,
-                greyPaint
+                paint
             )
-
-            // progress
-            if (i < progressIndex) {
-                canvas.drawLine(
-                    x,
-                    centerY - lineHeight,
-                    x,
-                    centerY + lineHeight,
-                    blackPaint
-                )
-            }
         }
     }
 }

@@ -143,9 +143,35 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             voiceTimerHandler.postDelayed(this, 1000)
         }
     }
+
+    private val playbackTimerHandler = Handler(Looper.getMainLooper())
+
+    private val playbackTimerRunnable = object : Runnable {
+        override fun run() {
+            mediaPlayer?.let {
+
+                val current = it.currentPosition / 1000
+
+                voiceNoteDialogTimerView?.text =
+                    "%02d:%02d".format(current / 60, current % 60)
+
+                val progress =
+                    (it.currentPosition.toFloat() / it.duration * 50).toInt()
+
+                voiceNoteWaveformView?.updateProgress(progress)
+
+                playbackTimerHandler.postDelayed(this, 200)
+            }
+        }
+    }
+
+
     private var voiceNoteDialog: AlertDialog? = null
     private var voiceNoteWaveformView: WaveformView? = null
+    private val recordedAmplitudes = mutableListOf<Int>()
     private val amplitudeHandler = Handler(Looper.getMainLooper())
+
+
     private val amplitudeRunnable = object : Runnable {
         override fun run() {
             val amp = try {
@@ -153,7 +179,17 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             } catch (_: Exception) {
                 0
             }
-            voiceNoteWaveformView?.addAmplitude((amp / 200).coerceIn(5, 120))
+
+            val scaled = (amp / 400).coerceIn(3, 60)
+            val smooth = if (recordedAmplitudes.isEmpty()) {
+                scaled
+            } else {
+                (recordedAmplitudes.last() + scaled) / 2
+            }
+
+            recordedAmplitudes.add(smooth)
+            voiceNoteWaveformView?.addAmplitude(smooth)
+
             if (isRecording) amplitudeHandler.postDelayed(this, 50)
         }
     }
@@ -762,11 +798,30 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 return@setOnClickListener
             }
 
+            recordedAmplitudes.clear()
+            voiceNoteWaveformView?.clear()
+            voiceNoteWaveformView?.visibility = View.VISIBLE
+
+            // ⭐ If old recording exists, delete it and start new recording
+            voiceNotePath?.let {
+                val file = File(it)
+                if (file.exists()) file.delete()
+            }
+
+            voiceNotePath = null
+            voiceNoteDurationSeconds = 0
+            voiceNoteDialogTimerView?.text = "00:00"
+
+
+
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.RECORD_AUDIO
                 ) == PackageManager.PERMISSION_GRANTED
             ) {
+
+                recordedAmplitudes.clear()
+                voiceNoteWaveformView?.clear()
                 startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon)
             } else {
                 recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -790,6 +845,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             voiceNotePath?.let { path ->
 
                 if (isPlaying) {
+
                     stopPlayback()
                     btnPlay.setImageResource(R.drawable.play_circle)
 
@@ -797,7 +853,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     btnRecord.isEnabled = true
 
                 } else {
-                    playVoiceNote(path)
+
+                    voiceNoteWaveformView?.setAmplitudes(
+                        recordedAmplitudes.takeLast(50).toIntArray()
+                    )
+
+                    voiceNoteWaveformView?.resetProgress()
+
+                    playVoiceNote(path, btnPlay, btnDelete, btnRecord)
+
                     btnPlay.setImageResource(R.drawable.pause)
 
                     btnDelete.isEnabled = false
@@ -805,7 +869,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 }
             }
         }
-
         btnDelete.setOnClickListener {
 
             if (isPlaying) {
@@ -815,19 +878,24 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
             voiceNotePath?.let {
                 val file = File(it)
-                if (file.exists()) {
-                    file.delete()
-                }
+                if (file.exists()) file.delete()
             }
 
             voiceNotePath = null
             voiceNoteDurationSeconds = 0
             voiceNoteDialogTimerView?.text = "00:00"
 
+            // ⭐ Clear waveform data
+            recordedAmplitudes.clear()
+
+            // ⭐ Clear waveform view
+            voiceNoteWaveformView?.clear()
+
+            // ⭐ Hide waveform
+            voiceNoteWaveformView?.visibility = View.GONE
             btnDelete.visibility = View.GONE
             btnPlay.visibility = View.GONE
             btnRecord.visibility = View.VISIBLE
-
         }
 
         btnSave.setOnClickListener {
@@ -943,6 +1011,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         isRecording = true
         voiceTimerHandler.post(voiceTimerRunnable)
+
+        // ⭐ START WAVEFORM ANIMATION
+        amplitudeHandler.post(amplitudeRunnable)
     }
     private fun stopVoiceRecording() {
 
@@ -957,28 +1028,66 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         isRecording = false
 
         voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
-    }
-    private fun playVoiceNote(path: String) {
 
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(path)
-            prepare()
-            start()
-        }
+        // ⭐ STOP waveform animation
+        amplitudeHandler.removeCallbacks(amplitudeRunnable)
+    }
+    private fun playVoiceNote(
+        path: String,
+        btnPlay: ImageView,
+        btnDelete: ImageView,
+        btnRecord: ImageView
+    ) {
+
+        mediaPlayer = MediaPlayer()
+        mediaPlayer?.setDataSource(path)
+        mediaPlayer?.prepare()
+        mediaPlayer?.start()
 
         isPlaying = true
 
+        playbackTimerHandler.post(playbackTimerRunnable)
+
         mediaPlayer?.setOnCompletionListener {
+
             stopPlayback()
+
+            runOnUiThread {
+
+                // Reset play icon
+                btnPlay.setImageResource(R.drawable.play_circle)
+
+                // Enable delete + record
+                btnDelete.isEnabled = true
+                btnRecord.isEnabled = true
+
+                // Reset timer to recorded duration
+                voiceNoteDialogTimerView?.text =
+                    "%02d:%02d".format(
+                        voiceNoteDurationSeconds / 60,
+                        voiceNoteDurationSeconds % 60
+                    )
+            }
         }
+
+
     }
+
     private fun stopPlayback() {
 
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
+        isPlaying = false
+
+        try {
+            mediaPlayer?.stop()
+        } catch (_: Exception) {}
+
+        try {
+            mediaPlayer?.release()
+        } catch (_: Exception) {}
+
         mediaPlayer = null
 
-        isPlaying = false
+        playbackTimerHandler.removeCallbacks(playbackTimerRunnable)
     }
 
 
