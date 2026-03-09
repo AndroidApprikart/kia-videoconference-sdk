@@ -1235,8 +1235,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         }
                     }
 
-                    // Server requires non-empty caption/content; fall back to file name
-                    val captionText = if (caption.isNotBlank()) caption else file.name
+                    // Caption should only contain user-entered text; leave blank if none
+                    val captionText = if (caption.isNotBlank()) caption else ""
                     json.addProperty("caption", captionText)
 
                     runOnUiThread {
