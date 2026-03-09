@@ -8,17 +8,21 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.pdf.PdfRenderer
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
+import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextUtils
@@ -37,6 +41,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
@@ -668,7 +673,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         val attachmentUri = attachment?.fileUrl?.let { url ->
                             if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
                         }
-                        
+                        val thumbUrl = attachment?.thumbnailUrl?.let { url ->
+                            if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
+                        }
                         val isRead = apiMsg.receipts.isNotEmpty()
                         
                         ChatMessage(
@@ -680,7 +687,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             type = type,
                             attachmentUri = attachmentUri,
                             fileName = attachment?.fileName,
-                            caption = if (type != ChatMessageType.TEXT) apiMsg.content else null
+                            caption = if (type != ChatMessageType.TEXT) apiMsg.content else null,
+                            thumbnailUrl = thumbUrl
                         )
                     }
                     
@@ -1146,13 +1154,23 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                 when (type) {
                     "chat.message" -> {
-                        val senderId = jsonObject.get("sender_id")?.asString
+                        val senderId = when (val el = jsonObject.get("sender_id")) {
+                            null -> null
+                            else -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asJsonPrimitive.asInt.toString() else el.asString
+                        }
                         val currentUserId = PreferenceManager.getUserId()
 
                         if (senderId != null && senderId == currentUserId) {
-                            Log.d("VirtualChatRoom", "Ignoring echoed message from self")
-                            val msgId = messageIdFromJson(jsonObject)
-                            messageAdapter?.updateMessageStatus(msgId.toString(), MessageStatus.SENT)
+                            // Echoed message from self: update local message status and attachment URL so bubble shows server file
+                            val msgId = messageIdFromJson(jsonObject) ?: return@runOnUiThread
+                            messageAdapter?.updateMessageStatus(msgId, MessageStatus.SENT)
+                            val fileUrl = jsonObject.get("file_url")?.asString
+                                ?: jsonObject.get("attachment")?.asJsonObject?.get("file_url")?.asString
+                            if (!fileUrl.isNullOrBlank()) {
+                                val fullUrl = if (fileUrl.startsWith("http")) fileUrl else ApiDetails.APRIK_Kia_BASE_URL + fileUrl
+                                messageAdapter?.updateMessageAttachmentUrl(msgId, fullUrl)
+                            }
+                            scrollToLast()
                             return@runOnUiThread
                         }
 
@@ -1188,6 +1206,36 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     fileName = fileName,
                                     caption = content,
                                     mimeType = mimeType
+                                )
+                            )
+                        } else if (jsonObject.has("file_url")) {
+                            // Server sent chat.message with top-level file_url (e.g. after chat.media)
+                            val fileUrl = jsonObject.get("file_url")?.asString ?: ""
+                            val fullUrl = if (fileUrl.startsWith("http")) fileUrl else ApiDetails.APRIK_Kia_BASE_URL + fileUrl
+                            val messageTypeStr = jsonObject.get("message_type")?.asString ?: "document"
+                            val msgType = when (messageTypeStr.lowercase(Locale.getDefault())) {
+                                "image" -> ChatMessageType.IMAGE
+                                "video" -> ChatMessageType.VIDEO
+                                "document" -> ChatMessageType.FILE
+                                "audio", "voice" -> ChatMessageType.VOICE_NOTE
+                                else -> ChatMessageType.FILE
+                            }
+                            val fileName = fileUrl.substringAfterLast('/', missingDelimiterValue = "")
+                            val caption = jsonObject.get("content")?.asString
+                            val thumbUrl = jsonObject.get("thumbnail_url")?.asString?.let { t ->
+                                if (t.startsWith("http")) t else ApiDetails.APRIK_Kia_BASE_URL + t
+                            }
+                            messageAdapter?.addMessage(
+                                ChatMessage(
+                                    messageId = messageIdFromJson(jsonObject),
+                                    text = "",
+                                    isSender = false,
+                                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
+                                    type = msgType,
+                                    attachmentUri = fullUrl,
+                                    fileName = if (fileName.isNotBlank()) fileName else null,
+                                    caption = caption,
+                                    thumbnailUrl = thumbUrl
                                 )
                             )
                         }
@@ -1261,6 +1309,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         val fullUrl =
                             if (rawUrl.startsWith("http")) rawUrl else ApiDetails.APRIK_Kia_BASE_URL + rawUrl
                         val caption = jsonObject.get("caption")?.asString
+                        val thumbUrl = jsonObject.get("thumbnail_url")?.asString?.let { t ->
+                            if (t.startsWith("http")) t else ApiDetails.APRIK_Kia_BASE_URL + t
+                        }
 
                         // Derive a filename from URL if server doesn't send it separately
                         val fileName = rawUrl.substringAfterLast('/', missingDelimiterValue = "")
@@ -1274,7 +1325,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 type = msgType,
                                 attachmentUri = fullUrl,
                                 fileName = if (fileName.isNotBlank()) fileName else null,
-                                caption = caption
+                                caption = caption,
+                                thumbnailUrl = thumbUrl
                             )
                         )
 
@@ -1320,89 +1372,160 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun showPreviewBottomSheet(selectedFiles: List<Pair<File, ChatMessageType>>) {
-        val bottomSheetDialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.vc_bottom_sheet_attachment_preview, null)
-        bottomSheetDialog.setContentView(view)
+        showPreviewInPlace(selectedFiles)
+    }
 
-        val viewPager: ViewPager2 = view.findViewById(R.id.viewPagerPreview)
-        val edtCaption: EditText = view.findViewById(R.id.edtCaptionPreview)
-        val btnSend: View = view.findViewById(R.id.btnSendPreview)
-        val btnCancel: View = view.findViewById(R.id.btnCancelPreview)
+    private fun showPreviewInPlace(selectedFiles: List<Pair<File, ChatMessageType>>) {
+        binding.recyclerMessages.visibility = View.GONE
+        binding.layoutPreviewContainer.visibility = View.VISIBLE
+        binding.cardViewBottomChat?.visibility = View.GONE
+        binding.txtTypingIndicator?.visibility = View.GONE
+
+        val previewRoot = binding.layoutPreviewContainer.getChildAt(0)
+        val viewPager: ViewPager2 = previewRoot.findViewById(R.id.viewPagerPreview)
+        val edtCaption: EditText = previewRoot.findViewById(R.id.edtPreviewCaption)
+        val btnSend: View = previewRoot.findViewById(R.id.btnPreviewSend)
+        val btnCancel: View = previewRoot.findViewById(R.id.btnPreviewCancel)
+        val txtTitle: TextView = previewRoot.findViewById(R.id.txtPreviewTitle)
+
+        txtTitle.text = if (selectedFiles.size == 1) "Preview" else "Preview (${selectedFiles.size} files)"
+        edtCaption.setText("")
 
         viewPager.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            override fun onCreateViewHolder(
-                parent: ViewGroup,
-                viewType: Int
-            ): RecyclerView.ViewHolder {
-                val img = ImageView(parent.context).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    scaleType = ImageView.ScaleType.CENTER_INSIDE
-                }
-                return object : RecyclerView.ViewHolder(img) {}
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+                val itemView = layoutInflater.inflate(R.layout.vc_preview_page_media, parent, false)
+                return object : RecyclerView.ViewHolder(itemView) {}
             }
 
             override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
                 val (file, type) = selectedFiles[position]
-                val img = holder.itemView as ImageView
-                if (type == ChatMessageType.IMAGE) {
-                    img.setImageURI(Uri.fromFile(file))
-                } else if (type == ChatMessageType.VIDEO) {
-                    img.setImageResource(android.R.drawable.ic_media_play)
-                } else {
-                    img.setImageResource(android.R.drawable.ic_menu_save)
+                val imgMedia = holder.itemView.findViewById<ImageView>(R.id.imgPreviewMedia)
+                val imgPlay = holder.itemView.findViewById<ImageView>(R.id.imgPreviewPlay)
+                val pdfRow = holder.itemView.findViewById<View>(R.id.layoutPreviewPdfRow)
+                val txtPdfName = holder.itemView.findViewById<TextView>(R.id.txtPreviewPdfName)
+                val videoView = holder.itemView.findViewById<VideoView>(R.id.videoPreview)
+
+                imgPlay.visibility = View.GONE
+                pdfRow.visibility = View.GONE
+                videoView.visibility = View.GONE
+                imgMedia.visibility = View.VISIBLE
+
+                when (type) {
+                    ChatMessageType.IMAGE -> imgMedia.setImageURI(Uri.fromFile(file))
+                    ChatMessageType.VIDEO -> {
+                        imgPlay.visibility = View.VISIBLE
+                        lifecycleScope.launch {
+                            val bitmap = withContext(Dispatchers.IO) {
+                                try {
+                                    val r = MediaMetadataRetriever()
+                                    r.setDataSource(file.absolutePath)
+                                    val frame = r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                                    r.release()
+                                    frame
+                                } catch (e: Exception) { null }
+                            }
+                            bitmap?.let { runOnUiThread { imgMedia.setImageBitmap(it) } }
+                                ?: runOnUiThread { imgMedia.setImageResource(android.R.drawable.ic_media_play) }
+                        }
+                        imgPlay.setOnClickListener {
+                            imgMedia.visibility = View.GONE
+                            imgPlay.visibility = View.GONE
+                            videoView.visibility = View.VISIBLE
+                            videoView.setVideoPath(file.absolutePath)
+                            videoView.setOnCompletionListener {
+                                videoView.visibility = View.GONE
+                                imgMedia.visibility = View.VISIBLE
+                                imgPlay.visibility = View.VISIBLE
+                            }
+                            videoView.start()
+                        }
+                    }
+                    ChatMessageType.FILE -> {
+                        pdfRow.visibility = View.VISIBLE
+                        txtPdfName.text = file.name
+                        if (file.extension.equals("pdf", ignoreCase = true)) {
+                            lifecycleScope.launch {
+                                val bitmap = withContext(Dispatchers.IO) { renderPdfFirstPage(file) }
+                                bitmap?.let { runOnUiThread { imgMedia.setImageBitmap(it) } }
+                                    ?: runOnUiThread { imgMedia.setImageResource(android.R.drawable.ic_menu_save) }
+                            }
+                        } else {
+                            imgMedia.setImageResource(android.R.drawable.ic_menu_save)
+                        }
+                    }
+                    else -> imgMedia.setImageResource(android.R.drawable.ic_menu_save)
                 }
             }
 
             override fun getItemCount() = selectedFiles.size
         }
 
-
-        btnCancel.setOnClickListener { bottomSheetDialog.dismiss() }
+        btnCancel.setOnClickListener {
+            binding.layoutPreviewContainer.visibility = View.GONE
+            binding.recyclerMessages.visibility = View.VISIBLE
+            binding.cardViewBottomChat?.visibility = View.VISIBLE
+        }
         btnSend.setOnClickListener {
             val caption = edtCaption.text.toString()
-            bottomSheetDialog.dismiss()
-
+            binding.layoutPreviewContainer.visibility = View.GONE
+            binding.recyclerMessages.visibility = View.VISIBLE
+            binding.cardViewBottomChat?.visibility = View.VISIBLE
             selectedFiles.forEach { (file, type) ->
-                val timeLabel =
-                    SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+                val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
                 val localId = "local_${System.currentTimeMillis()}_${file.name}"
-                val tempMessage = ChatMessage(
-                    messageId = localId,
-                    text = "",
-                    isSender = true,
-                    timeLabel = timeLabel,
-                    type = type,
-                    attachmentUri = file.absolutePath,
-                    caption = if (selectedFiles.size == 1) caption else null,
-                    status = MessageStatus.SENDING,
-                    fileName = file.name
+                messageAdapter?.addMessage(
+                    ChatMessage(
+                        messageId = localId,
+                        text = "",
+                        isSender = true,
+                        timeLabel = timeLabel,
+                        type = type,
+                        attachmentUri = file.absolutePath,
+                        caption = if (selectedFiles.size == 1) caption else null,
+                        status = MessageStatus.SENDING,
+                        fileName = file.name
+                    )
                 )
-                messageAdapter?.addMessage(tempMessage)
                 scrollToLast()
-
                 lifecycleScope.launch {
                     val fileToUpload = if (type == ChatMessageType.IMAGE) {
-                        try {
-                            compressImage(file)
-                        } catch (e: Exception) {
-                            file
-                        }
+                        try { compressImage(file) } catch (e: Exception) { file }
                     } else file
-                    performUpload(
-                        fileToUpload,
-                        if (selectedFiles.size == 1) caption else "",
-                        type,
-                        localId
-                    )
+                    performUpload(fileToUpload, if (selectedFiles.size == 1) caption else "", type, localId)
                 }
             }
         }
-
-        bottomSheetDialog.show()
     }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun renderPdfFirstPage(file: File): Bitmap? {
+        return try {
+            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
+                PdfRenderer(pfd).use { renderer ->
+                    if (renderer.pageCount == 0) null else {
+                        renderer.openPage(0).use { page ->
+                            val bitmap = Bitmap.createBitmap(
+                                page.width * 2,
+                                page.height * 2,
+                                Bitmap.Config.ARGB_8888
+                            )
+                            page.render(
+                                bitmap,
+                                null,
+                                null,
+                                PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
+                            )
+                            bitmap
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("VirtualChatRoom", "PDF first page: ${e.message}")
+            null
+        }
+    }
+
 
     private suspend fun compressImage(file: File): File = withContext(Dispatchers.IO) {
         val bitmap = BitmapFactory.decodeFile(file.absolutePath)
@@ -1489,7 +1612,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                     runOnUiThread {
                         messageAdapter?.updateMessageId(localId, fileResponse.messageId.toString())
-                        messageAdapter?.updateMessageAttachmentUrl(localId, fullFileUrl)
+                        val thumbUrl = fileResponse.attachment.thumbnailUrl?.let { t ->
+                            if (t.startsWith("http")) t else ApiDetails.APRIK_Kia_BASE_URL + t
+                        }
+                        messageAdapter?.updateMessageAttachmentUrl(localId, fullFileUrl, thumbUrl)
                         messageAdapter?.updateMessageStatus(
                             localId,
                             MessageStatus.SENT
@@ -1590,6 +1716,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 }
             },
             onItemClick = { message -> handleAttachmentClick(message) },
+            onSaveMedia = { message -> downloadAndSaveMedia(message) },
             estimationListener = this
         )
         binding.recyclerMessages.adapter = messageAdapter
@@ -1604,6 +1731,51 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             putExtra(MediaViewerActivity.EXTRA_FILE_NAME, message.fileName)
         }
         startActivity(intent)
+    }
+
+    private fun downloadAndSaveMedia(message: ChatMessage) {
+        val rawUrl = message.attachmentUri ?: run {
+            Toast.makeText(this, "No file to save", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val fullUrl = if (rawUrl.startsWith("http")) rawUrl else ApiDetails.APRIK_Kia_BASE_URL + rawUrl
+        val fileName = message.fileName?.takeIf { it.isNotBlank() }
+            ?: fullUrl.substringAfterLast('/').takeIf { it.isNotBlank() }
+            ?: "download_${System.currentTimeMillis()}"
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val token = PreferenceManager.getAccessToken()
+                val request = Request.Builder()
+                    .url(fullUrl)
+                    .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+                    .build()
+                val client = OkHttpClient()
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@VirtualChatRoomActivity, "Download failed", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                val body = response.body ?: return@launch
+                val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
+                } else {
+                    @Suppress("DEPRECATION")
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                }
+                val file = File(dir, fileName)
+                file.outputStream().use { body.byteStream().copyTo(it) }
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@VirtualChatRoomActivity, "Saved: ${file.name}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("VirtualChatRoom", "Save failed: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@VirtualChatRoomActivity, "Save failed", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun setupQuickReplies() {

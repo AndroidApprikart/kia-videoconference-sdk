@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.R
 import com.app.vc.network.LoginApiService
+import com.app.vc.network.TokenRefreshRequest
 import com.app.vc.utils.ApiDetails
 import com.app.vc.utils.PreferenceManager
 import com.app.vc.virtualchatroom.VirtualChatRoomActivity
@@ -69,18 +70,36 @@ class VirtualRoomListActivity : AppCompatActivity() {
     private fun fetchGroups() {
         val token = PreferenceManager.getAccessToken()
         if (token.isNullOrEmpty()) {
-            Toast.makeText(this, "Session expired", Toast.LENGTH_SHORT).show()
+            tryRefreshAndFetch()
             return
         }
 
         lifecycleScope.launch {
-            try {
-                val response = apiService.getGroups("Bearer $token")
-                if (response.isSuccessful && response.body() != null) {
+            val result = fetchGroupsWithToken(token)
+            when {
+                result is GroupsResult.Success -> {
+                    adapter.updateRooms(result.rooms)
+                }
+                result is GroupsResult.Unauthorized -> {
+                    tryRefreshAndFetch()
+                }
+                result is GroupsResult.Error -> {
+                    Log.e("VirtualRoomList", "Failed to fetch groups: ${result.message}")
+                    Toast.makeText(this@VirtualRoomListActivity, "Failed to load rooms", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private suspend fun fetchGroupsWithToken(token: String): GroupsResult {
+        return try {
+            val response = apiService.getGroups("Bearer $token")
+            when {
+                response.isSuccessful && response.body() != null -> {
                     val groups = response.body()!!
                     val uiModels = groups.map { group ->
                         VirtualRoomUiModel(
-                            roNumber = group.slug, // Using slug as roNumber for WS connection
+                            roNumber = group.slug,
                             subject = group.name,
                             status = RoomStatus.OPEN,
                             dayLabel = "Today",
@@ -90,14 +109,57 @@ class VirtualRoomListActivity : AppCompatActivity() {
                             contactNumber = ""
                         )
                     }
-                    adapter.updateRooms(uiModels)
+                    GroupsResult.Success(uiModels)
+                }
+                response.code() == 401 -> GroupsResult.Unauthorized
+                else -> GroupsResult.Error(response.message())
+            }
+        } catch (e: Exception) {
+            Log.e("VirtualRoomList", "Error: ${e.localizedMessage}")
+            GroupsResult.Error(e.localizedMessage ?: e.message ?: "Unknown error")
+        }
+    }
+
+    private fun tryRefreshAndFetch() {
+        val refreshToken = PreferenceManager.getRefreshToken()
+        if (refreshToken.isNullOrEmpty()) {
+            Toast.makeText(this, "Session expired", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val response = apiService.refreshToken(TokenRefreshRequest(refreshToken))
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    PreferenceManager.setAccessToken(body.access)
+                    if (body.refresh.isNotBlank()) {
+                        PreferenceManager.setRefreshToken(body.refresh)
+                    }
+                    val result = fetchGroupsWithToken(body.access)
+                    if (result is GroupsResult.Success) {
+                        adapter.updateRooms(result.rooms)
+                    } else if (result is GroupsResult.Error) {
+                        Log.e("VirtualRoomList", "Failed to fetch groups after refresh: ${result.message}")
+                        Toast.makeText(this@VirtualRoomListActivity, "Failed to load rooms", Toast.LENGTH_SHORT).show()
+                    }
                 } else {
-                    Log.e("VirtualRoomList", "Failed to fetch groups: ${response.message()}")
+                    Toast.makeText(this@VirtualRoomListActivity, "Session expired", Toast.LENGTH_SHORT).show()
+                    finish()
                 }
             } catch (e: Exception) {
-                Log.e("VirtualRoomList", "Error: ${e.localizedMessage}")
+                Log.e("VirtualRoomList", "Refresh failed: ${e.message}")
+                Toast.makeText(this@VirtualRoomListActivity, "Session expired", Toast.LENGTH_SHORT).show()
+                finish()
             }
         }
+    }
+
+    private sealed class GroupsResult {
+        data class Success(val rooms: List<VirtualRoomUiModel>) : GroupsResult()
+        object Unauthorized : GroupsResult()
+        data class Error(val message: String) : GroupsResult()
     }
 
     private fun applyRoleTitle() {

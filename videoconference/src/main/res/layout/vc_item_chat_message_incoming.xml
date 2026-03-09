@@ -40,6 +40,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
+        android:background="@drawable/vc_bg_chat_bubble_incoming"
         app:cardCornerRadius="12dp"
         app:cardElevation="0dp"
         app:strokeWidth="0dp">
@@ -47,10 +48,38 @@
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="12dp"
-            android:minWidth="200dp">
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="end"
+                android:paddingTop="4dp"
+                android:paddingEnd="4dp">
+                <ImageView
+                    android:id="@+id/btnFileOverflow"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_more_options"
+                    android:contentDescription="More options"
+                    android:padding="2dp" />
+            </LinearLayout>
+            <ImageView
+                android:id="@+id/imgFileThumbnail"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:visibility="gone"
+                android:scaleType="centerCrop"
+                android:contentDescription="@null" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="12dp"
+                android:minWidth="200dp">
 
             <ImageView
                 android:id="@+id/imgFileIcon"
@@ -83,6 +112,18 @@
                     android:textSize="11sp" />
             </LinearLayout>
         </LinearLayout>
+            <TextView
+                android:id="@+id/txtFileCaption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="8dp"
+                android:visibility="gone"
+                android:textColor="@color/color_kia_black"
+                android:textSize="12sp" />
+        </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
     <LinearLayout
@@ -102,6 +143,16 @@
                 android:layout_height="160dp"
                 android:scaleType="centerCrop"
                 android:contentDescription="@null" />
+            <ImageView
+                android:id="@+id/btnImageOverflow"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="4dp"
+                android:padding="2dp"
+                android:src="@drawable/ic_more_options"
+                android:contentDescription="More options"
+                android:background="?attr/selectableItemBackgroundBorderless" />
             <ImageView
                 android:id="@+id/imgPlayVideo"
                 android:layout_width="48dp"

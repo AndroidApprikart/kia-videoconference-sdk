@@ -1,13 +1,18 @@
 package com.app.vc.virtualchatroom
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfRenderer
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -41,6 +46,7 @@ data class ChatMessage(
     val caption: String? = null,
     val waveformData: String? = null,
     val mimeType: String? = null,
+    var thumbnailUrl: String? = null,
     val estimationDetails: ResponseModelEstimateData? = null
 )
 
@@ -56,6 +62,7 @@ class VirtualChatMessageAdapter(
     private val messages: MutableList<ChatMessage>,
     private val onRetryClick: (ChatMessage) -> Unit,
     private val onItemClick: (ChatMessage) -> Unit,
+    private val onSaveMedia: (ChatMessage) -> Unit = {},
     private val estimationListener: EstimationInteractionListener? = null
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -68,6 +75,26 @@ class VirtualChatMessageAdapter(
         fun parseWaveformData(waveformData: String?): FloatArray {
             if (waveformData.isNullOrBlank()) return floatArrayOf()
             return waveformData.split(",").mapNotNull { it.trim().toFloatOrNull() }.toFloatArray()
+        }
+
+        fun renderPdfFirstPageFromPath(path: String): Bitmap? {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return null
+            return try {
+                ParcelFileDescriptor.open(File(path), ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
+                    PdfRenderer(pfd).use { renderer ->
+                        if (renderer.pageCount == 0) null else {
+                            renderer.openPage(0).use { page ->
+                                val bitmap = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
+                                page.render(bitmap, null, null, 1 /* PAGE_RENDER_MODE_FOR_DISPLAY */)
+                                bitmap
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ChatAdapter", "PDF first page: ${e.message}")
+                null
+            }
         }
     }
 
@@ -85,11 +112,11 @@ class VirtualChatMessageAdapter(
         return when (viewType) {
             VIEW_TYPE_OUTGOING -> {
                 val view = inflater.inflate(R.layout.vc_item_chat_message_outgoing, parent, false)
-                OutgoingViewHolder(view, onRetryClick, onItemClick)
+                OutgoingViewHolder(view, onRetryClick, onItemClick, onSaveMedia)
             }
             VIEW_TYPE_INCOMING -> {
                 val view = inflater.inflate(R.layout.vc_item_chat_message_incoming, parent, false)
-                IncomingViewHolder(view, onItemClick)
+                IncomingViewHolder(view, onItemClick, onSaveMedia)
             }
             VIEW_TYPE_ESTIMATION_OUTGOING -> {
                 val view = inflater.inflate(R.layout.layout_estimation_message_self, parent, false)
@@ -131,12 +158,21 @@ class VirtualChatMessageAdapter(
             return
         }
         val index = if (messageId.isNotEmpty()) {
-            messages.indexOfLast { it.messageId == messageId }
+            messages.indexOfFirst { it.messageId == messageId }
         } else {
             messages.indexOfLast { it.isSender }
         }
         
-        if (index != -1) {
+        if (index == -1) return
+        if (newStatus == MessageStatus.READ) {
+            // Mark this message and all previous outgoing (SENT) as READ so read ticks update in tab UI
+            for (i in 0..index) {
+                if (messages[i].isSender && messages[i].status == MessageStatus.SENT) {
+                    messages[i].status = MessageStatus.READ
+                    notifyItemChanged(i)
+                }
+            }
+        } else {
             messages[index].status = newStatus
             notifyItemChanged(index)
         }
@@ -159,10 +195,11 @@ class VirtualChatMessageAdapter(
         }
     }
 
-    fun updateMessageAttachmentUrl(localId: String, serverUrl: String) {
+    fun updateMessageAttachmentUrl(localId: String, serverUrl: String, thumbnailUrl: String? = null) {
         val index = messages.indexOfLast { it.messageId == localId }
         if (index != -1) {
             messages[index].attachmentUri = serverUrl
+            if (thumbnailUrl != null) messages[index].thumbnailUrl = thumbnailUrl
             notifyItemChanged(index)
         }
     }
@@ -170,7 +207,8 @@ class VirtualChatMessageAdapter(
     class OutgoingViewHolder(
         itemView: View, 
         private val onRetry: (ChatMessage) -> Unit,
-        private val onClick: (ChatMessage) -> Unit
+        private val onClick: (ChatMessage) -> Unit,
+        private val onSaveMedia: (ChatMessage) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
         private val txtMessage: TextView? = itemView.findViewById(R.id.txtMessage)
         private val txtTime: TextView = itemView.findViewById(R.id.txtTime)
@@ -188,11 +226,18 @@ class VirtualChatMessageAdapter(
         private val imgPlayVideo: ImageView? = itemView.findViewById(R.id.imgPlayVideo)
         private val layoutError: View? = itemView.findViewById(R.id.layoutError)
         private val btnRetry: View? = itemView.findViewById(R.id.btnRetry)
+        private val imgFileThumbnail: ImageView? = itemView.findViewById(R.id.imgFileThumbnail)
+        private val txtFileCaption: TextView? = itemView.findViewById(R.id.txtFileCaption)
+        private val btnFileOverflow: ImageView? = itemView.findViewById(R.id.btnFileOverflow)
+        private val btnImageOverflow: ImageView? = itemView.findViewById(R.id.btnImageOverflow)
 
         fun bind(message: ChatMessage) {
             itemView.setOnClickListener { onClick(message) }
             btnRetry?.setOnClickListener { onRetry(message) }
-            
+
+            btnFileOverflow?.visibility = View.GONE
+            btnImageOverflow?.visibility = View.GONE
+
             txtTime.text = message.timeLabel
             layoutText?.visibility = View.GONE
             layoutImageContainer?.visibility = View.GONE
@@ -218,6 +263,8 @@ class VirtualChatMessageAdapter(
                 }
                 ChatMessageType.IMAGE, ChatMessageType.VIDEO -> {
                     layoutImageContainer?.visibility = View.VISIBLE
+                    btnImageOverflow?.visibility = View.VISIBLE
+                    btnImageOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     imgPlayVideo?.visibility = if (message.type == ChatMessageType.VIDEO) View.VISIBLE else View.GONE
                     val uri = message.attachmentUri
                     if (!uri.isNullOrEmpty()) {
@@ -236,9 +283,29 @@ class VirtualChatMessageAdapter(
                     layoutImageContainer?.visibility = View.GONE
                     layoutText?.visibility = View.GONE
                     layoutFileContainer?.visibility = View.VISIBLE
+                    btnFileOverflow?.visibility = View.VISIBLE
+                    btnFileOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     txtFileTitle?.text = message.fileName ?: "Document"
                     val isPdf = message.fileName?.endsWith(".pdf", ignoreCase = true) == true || message.mimeType?.contains("pdf") == true
                     txtFileSubtitle?.text = if (isPdf) "PDF" else "Document"
+                    imgFileThumbnail?.visibility = View.GONE
+                    imgFileThumbnail?.setImageBitmap(null)
+                    if (isPdf && !message.attachmentUri.isNullOrBlank()) {
+                        val path = message.attachmentUri!!
+                        if (!path.startsWith("http") && File(path).exists()) {
+                            imgFileThumbnail?.visibility = View.VISIBLE
+                            Thread {
+                                val bitmap = renderPdfFirstPageFromPath(path)
+                                itemView.post { imgFileThumbnail?.setImageBitmap(bitmap) }
+                            }.start()
+                        } else if (path.startsWith("http") && !message.thumbnailUrl.isNullOrBlank()) {
+                            imgFileThumbnail?.visibility = View.VISIBLE
+                            Glide.with(itemView.context).load(message.thumbnailUrl).centerCrop().into(imgFileThumbnail!!)
+                        }
+                    }
+                    val showFileCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
+                    txtFileCaption?.visibility = if (showFileCaption) View.VISIBLE else View.GONE
+                    txtFileCaption?.text = message.caption
                 }
                 ChatMessageType.VOICE_NOTE -> {
                     layoutVoice?.visibility = View.VISIBLE
@@ -246,6 +313,18 @@ class VirtualChatMessageAdapter(
                 }
                 else -> {}
             }
+        }
+
+        private fun showSavePopup(anchor: View, message: ChatMessage) {
+            val popup = PopupMenu(anchor.context, anchor)
+            popup.menu.add(0, 1, 0, "Save")
+            popup.setOnMenuItemClickListener {
+                if (it.itemId == 1) {
+                    onSaveMedia(message)
+                    true
+                } else false
+            }
+            popup.show()
         }
 
         private fun loadImage(context: Context, imageView: ImageView?, uri: String) {
@@ -282,7 +361,11 @@ class VirtualChatMessageAdapter(
         }
     }
 
-    class IncomingViewHolder(itemView: View, private val onClick: (ChatMessage) -> Unit) : RecyclerView.ViewHolder(itemView) {
+    class IncomingViewHolder(
+        itemView: View,
+        private val onClick: (ChatMessage) -> Unit,
+        private val onSaveMedia: (ChatMessage) -> Unit
+    ) : RecyclerView.ViewHolder(itemView) {
         private val txtMessage: TextView? = itemView.findViewById(R.id.txtMessage)
         private val txtTime: TextView = itemView.findViewById(R.id.txtTime)
         private val imgAttachment: ImageView? = itemView.findViewById(R.id.imgAttachment)
@@ -296,6 +379,10 @@ class VirtualChatMessageAdapter(
         private val txtVoiceDuration: TextView? = itemView.findViewById(R.id.txtVoiceDuration)
         private val txtFileName: TextView? = itemView.findViewById(R.id.txtFileName)
         private val imgPlayVideo: ImageView? = itemView.findViewById(R.id.imgPlayVideo)
+        private val imgFileThumbnail: ImageView? = itemView.findViewById(R.id.imgFileThumbnail)
+        private val txtFileCaption: TextView? = itemView.findViewById(R.id.txtFileCaption)
+        private val btnFileOverflow: ImageView? = itemView.findViewById(R.id.btnFileOverflow)
+        private val btnImageOverflow: ImageView? = itemView.findViewById(R.id.btnImageOverflow)
 
         fun bind(message: ChatMessage) {
             itemView.setOnClickListener { onClick(message) }
@@ -307,6 +394,9 @@ class VirtualChatMessageAdapter(
             txtFileName?.visibility = View.GONE
             imgPlayVideo?.visibility = View.GONE
 
+            btnFileOverflow?.visibility = View.GONE
+            btnImageOverflow?.visibility = View.GONE
+
             when (message.type) {
                 ChatMessageType.TEXT -> {
                     layoutText?.visibility = View.VISIBLE
@@ -315,6 +405,8 @@ class VirtualChatMessageAdapter(
                 }
                 ChatMessageType.IMAGE, ChatMessageType.VIDEO -> {
                     layoutImageContainer?.visibility = View.VISIBLE
+                    btnImageOverflow?.visibility = View.VISIBLE
+                    btnImageOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     imgPlayVideo?.visibility = if (message.type == ChatMessageType.VIDEO) View.VISIBLE else View.GONE
                     val uri = message.attachmentUri
                     if (!uri.isNullOrEmpty()) {
@@ -333,9 +425,29 @@ class VirtualChatMessageAdapter(
                     layoutImageContainer?.visibility = View.GONE
                     layoutText?.visibility = View.GONE
                     layoutFileContainer?.visibility = View.VISIBLE
+                    btnFileOverflow?.visibility = View.VISIBLE
+                    btnFileOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     txtFileTitle?.text = message.fileName ?: "Document"
                     val isPdf = message.fileName?.endsWith(".pdf", ignoreCase = true) == true || message.mimeType?.contains("pdf") == true
                     txtFileSubtitle?.text = if (isPdf) "PDF" else "Document"
+                    imgFileThumbnail?.visibility = View.GONE
+                    imgFileThumbnail?.setImageBitmap(null)
+                    if (isPdf && !message.attachmentUri.isNullOrBlank()) {
+                        val path = message.attachmentUri!!
+                        if (!path.startsWith("http") && File(path).exists()) {
+                            imgFileThumbnail?.visibility = View.VISIBLE
+                            Thread {
+                                val bitmap = renderPdfFirstPageFromPath(path)
+                                itemView.post { imgFileThumbnail?.setImageBitmap(bitmap) }
+                            }.start()
+                        } else if (path.startsWith("http") && !message.thumbnailUrl.isNullOrBlank()) {
+                            imgFileThumbnail?.visibility = View.VISIBLE
+                            Glide.with(itemView.context).load(message.thumbnailUrl).centerCrop().into(imgFileThumbnail!!)
+                        }
+                    }
+                    val showFileCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
+                    txtFileCaption?.visibility = if (showFileCaption) View.VISIBLE else View.GONE
+                    txtFileCaption?.text = message.caption
                 }
                 ChatMessageType.VOICE_NOTE -> {
                     layoutVoice?.visibility = View.VISIBLE
@@ -343,6 +455,18 @@ class VirtualChatMessageAdapter(
                 }
                 else -> {}
             }
+        }
+
+        private fun showSavePopup(anchor: View, message: ChatMessage) {
+            val popup = PopupMenu(anchor.context, anchor)
+            popup.menu.add(0, 1, 0, "Save")
+            popup.setOnMenuItemClickListener {
+                if (it.itemId == 1) {
+                    onSaveMedia(message)
+                    true
+                } else false
+            }
+            popup.show()
         }
 
         private fun loadImage(context: Context, imageView: ImageView?, uri: String) {

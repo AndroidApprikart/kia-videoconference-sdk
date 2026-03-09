@@ -92,7 +92,8 @@ data class ApiSenderResponse(
 data class ApiAttachmentResponse(
     @SerializedName("file_url") val fileUrl: String,
     @SerializedName("file_name") val fileName: String,
-    @SerializedName("mime_type") val mimeType: String
+    @SerializedName("mime_type") val mimeType: String,
+    @SerializedName("thumbnail_url") val thumbnailUrl: String? = null
 )
 
 data class ApiReceiptResponse(
