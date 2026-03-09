@@ -68,7 +68,6 @@ import com.app.vc.message.ResponseModelEstimateData
 import com.app.vc.models.MessageModel
 import com.app.vc.models.MessageStatusEnum
 import com.app.vc.network.LoginApiService
-import com.app.vc.utils.AndroidUtils
 import com.app.vc.utils.ApiDetails
 import com.app.vc.utils.PreferenceManager
 import com.app.vc.utils.VCConstants
@@ -541,7 +540,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         if (binding.tabParticipants != null) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             val tabRoDetails = binding.tabRoDetails ?: return
-            loadFragment(RODetailsFragment())
+            loadFragment(RODetailsFragment().apply {
+                arguments = Bundle().apply {
+                    putString(RODetailsFragment.KEY_JOB_NOTES, jobNotes ?: "")
+                    putString(RODetailsFragment.KEY_STATUS_LABEL, statusLabel ?: "")
+                }
+            })
             setupTabs()
             selectRoDetailsTab()
             moveIndicator(tabRoDetails)
@@ -575,6 +579,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         connectToWebSocket()
         fetchQuickReplies()
         fetchMessages()
+        fetchServiceLifecycle()
+        fetchTemplates()
 
         sharedViewModel.estimateDetailsResponse.observe(this) {
             if (it != null) {
@@ -619,6 +625,18 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        WebSocketManager.getInstance().clearCallback()
+        typingHandler.removeCallbacks(stopTypingRunnable)
+        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
+        amplitudeHandler.removeCallbacks(amplitudeRunnable)
+        mediaRecorder?.release()
+        mediaRecorder = null
+        mediaPlayer?.release()
+        mediaPlayer = null
+        super.onDestroy()
     }
 
     private fun fetchQuickReplies() {
@@ -701,6 +719,58 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 }
             } catch (e: Exception) {
                 Log.e("VirtualChatRoom", "Error fetching messages: ${e.message}")
+            }
+        }
+    }
+
+    private var jobNotes: String? = null
+    private var statusLabel: String? = null
+
+    private fun fetchServiceLifecycle() {
+        val slug = room?.roNumber ?: return
+        val token = PreferenceManager.getAccessToken() ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val response = apiService.getServiceLifecycleCurrent("Bearer $token", slug)
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    jobNotes = body.notes?.takeIf { it.isNotBlank() }
+                    statusLabel = body.statusLabel?.takeIf { it.isNotBlank() }
+                    withContext(Dispatchers.Main) {
+                        binding.txtJobNotes?.let { tv ->
+                            tv.visibility = if (!jobNotes.isNullOrBlank()) View.VISIBLE else View.GONE
+                            tv.text = jobNotes ?: ""
+                        }
+                        (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
+                            frag.setJobNotes(jobNotes)
+                            frag.setStatusLabel(statusLabel)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("VirtualChatRoom", "Error fetching service lifecycle: ${e.message}")
+            }
+        }
+    }
+
+    private fun fetchTemplates() {
+        val token = PreferenceManager.getAccessToken() ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val response = apiService.getTemplates("Bearer $token")
+                if (response.isSuccessful && response.body() != null) {
+                    val templates = response.body()!!
+                    withContext(Dispatchers.Main) {
+                        Log.d("VirtualChatRoom", "Templates API response: count=${templates.size}")
+                        templates.forEachIndexed { index, t ->
+                            Log.d("VirtualChatRoom", "Template[$index]: id=${t.id}, key=${t.key}, title=${t.title}, body=${t.body}, is_active=${t.isActive}")
+                        }
+                    }
+                } else {
+                    Log.e("VirtualChatRoom", "Templates API failed: ${response.code()} ${response.message()}")
+                }
+            } catch (e: Exception) {
+                Log.e("VirtualChatRoom", "Error fetching templates: ${e.message}")
             }
         }
     }
@@ -1014,7 +1084,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
         tabRoDetails.setOnClickListener {
 
-            loadFragment(RODetailsFragment())
+            loadFragment(RODetailsFragment().apply {
+                arguments = Bundle().apply {
+                    putString(RODetailsFragment.KEY_JOB_NOTES, jobNotes ?: "")
+                    putString(RODetailsFragment.KEY_STATUS_LABEL, statusLabel ?: "")
+                }
+            })
 
             selectRoDetailsTab()
             moveIndicator(tabRoDetails)

@@ -62,6 +62,17 @@ interface LoginApiService {
         @Header("Authorization") token: String,
         @Path("slug") slug: String
     ): Response<List<ApiMessageResponse>>
+
+    @GET("api/groups/{slug}/service-lifecycle/current/")
+    suspend fun getServiceLifecycleCurrent(
+        @Header("Authorization") token: String,
+        @Path("slug") slug: String
+    ): Response<ServiceLifecycleCurrentResponse>
+
+    @GET("api/templates/")
+    suspend fun getTemplates(
+        @Header("Authorization") token: String
+    ): Response<List<TemplateResponse>>
 }
 
 data class TokenVerifyRequest(val token: String)
@@ -98,4 +109,27 @@ data class ApiAttachmentResponse(
 
 data class ApiReceiptResponse(
     @SerializedName("user") val user: ApiSenderResponse
+)
+
+data class ServiceLifecycleCurrentResponse(
+    @SerializedName("id") val id: Int,
+    @SerializedName("group") val group: Int,
+    @SerializedName("status") val status: String,
+    @SerializedName("status_label") val statusLabel: String?,
+    @SerializedName("previous_status") val previousStatus: String?,
+    @SerializedName("previous_status_label") val previousStatusLabel: String?,
+    @SerializedName("updated_by") val updatedBy: String?,
+    @SerializedName("notes") val notes: String?,
+    @SerializedName("timestamp") val timestamp: String?
+)
+
+data class TemplateResponse(
+    @SerializedName("id") val id: Int,
+    @SerializedName("key") val key: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("body") val body: String,
+    @SerializedName("image_url") val imageUrl: String?,
+    @SerializedName("is_active") val isActive: Boolean,
+    @SerializedName("created_at") val createdAt: String?,
+    @SerializedName("updated_at") val updatedAt: String?
 )
