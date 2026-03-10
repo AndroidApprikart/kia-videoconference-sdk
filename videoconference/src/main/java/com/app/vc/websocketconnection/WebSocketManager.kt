@@ -83,9 +83,14 @@ class WebSocketManager {
         webSocket = client.newWebSocket(request, listener!!)
     }
 
-    fun sendMessage(message: String) {
+    fun sendMessage(message: String): Boolean {
         Log.d(TAG, "Sending message: $message")
-        webSocket?.send(message) ?: Log.e(TAG, "WebSocket not connected")
+        if (webSocket?.send(message) != true) {
+            Log.e(TAG, "WebSocket not connected")
+            callback?.onError("WebSocket not connected")
+            return false
+        }
+        return true
     }
 
     fun disconnect() {

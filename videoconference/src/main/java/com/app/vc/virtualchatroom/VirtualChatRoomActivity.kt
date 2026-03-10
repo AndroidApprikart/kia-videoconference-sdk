@@ -3,6 +3,7 @@ package com.app.vc.virtualchatroom
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
@@ -17,6 +18,7 @@ import android.media.AudioTrack
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.media.MediaRecorder
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -40,6 +42,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.VideoView
@@ -69,7 +72,9 @@ import com.app.vc.message.ResponseModelEstimateData
 import com.app.vc.models.MessageModel
 import com.app.vc.models.MessageStatusEnum
 import com.app.vc.network.LoginApiService
+import com.app.vc.presence.PresenceStore
 import com.app.vc.utils.ApiDetails
+import com.app.vc.utils.ConnectivityBannerHandler
 import com.app.vc.utils.PreferenceManager
 import com.app.vc.utils.VCConstants
 import com.app.vc.virtualroomlist.UserRole
@@ -99,6 +104,8 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.SimpleDateFormat
@@ -124,6 +131,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var audioTrack: AudioTrack? = null
     // Add this if you have a reference to your main ViewModel or use the Activity scope
     private val sharedViewModel: MainViewModel by viewModels()
+    private var networkErrorVisible = false
+    private var connectivityBannerHandler: ConnectivityBannerHandler? = null
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
@@ -557,6 +566,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         super.onCreate(savedInstanceState)
         binding = VcActivityVirtualChatRoomBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        connectivityBannerHandler = ConnectivityBannerHandler(
+            context = this,
+            rootViewProvider = { findViewById(android.R.id.content) },
+            onConnectionChanged = { connected ->
+                if (connected) hideNetworkErrorBanner() else showNetworkErrorBanner()
+            }
+        )
 
         val roleFromIntent = intent.getStringExtra(EXTRA_ROLE)
 
@@ -627,10 +643,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         bindStaticPhoneHeader()
         bindStaticTabletPanels()
         setupMessageList()
+        setupNetworkErrorBanner()
         setupQuickReplies()
         setupSendActions()
         setupAttachmentAndMedia()
         setupVoiceNote()
+        setMessagesLoading(true)
         connectToWebSocket()
         fetchQuickReplies()
         fetchMessages()
@@ -694,6 +712,16 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         super.onDestroy()
     }
 
+    override fun onStart() {
+        super.onStart()
+        connectivityBannerHandler?.register()
+    }
+
+    override fun onStop() {
+        connectivityBannerHandler?.unregister()
+        super.onStop()
+    }
+
     private fun fetchQuickReplies() {
         val role = if (binding.tabParticipants != null) "service_person" else "customer"
         lifecycleScope.launch {
@@ -716,8 +744,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun fetchMessages() {
-        val slug = room?.roNumber ?: return
-        val token = PreferenceManager.getAccessToken() ?: return
+        val slug = room?.roNumber ?: run {
+            setMessagesLoading(false)
+            return
+        }
+        val token = PreferenceManager.getAccessToken() ?: run {
+            setMessagesLoading(false)
+            return
+        }
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val response = apiService.getMessages("Bearer $token", slug)
@@ -768,14 +802,49 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     withContext(Dispatchers.Main) {
                         messages.clear()
                         messages.addAll(chatMessages)
+                        ChatMediaStore.replaceMessages(slug, chatMessages)
                         messageAdapter?.notifyDataSetChanged()
                         scrollToLast()
+                        setMessagesLoading(false)
+                        hideNetworkErrorBanner()
+                        chatMessages.lastOrNull { !it.isSender }?.messageId?.let { sendReadReceipt(it) }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        setMessagesLoading(false)
+                        showNetworkErrorBanner()
                     }
                 }
             } catch (e: Exception) {
                 Log.e("VirtualChatRoom", "Error fetching messages: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    setMessagesLoading(false)
+                    showNetworkErrorBanner()
+                }
             }
         }
+    }
+
+    private fun setupNetworkErrorBanner() {
+        binding.root.findViewById<View>(R.id.includeNetworkErrorBanner)
+            ?.findViewById<View>(R.id.btnDismissNetworkError)
+            ?.setOnClickListener { hideNetworkErrorBanner() }
+    }
+
+    private fun showNetworkErrorBanner() {
+        binding.root.findViewById<View>(R.id.includeNetworkErrorBanner)?.visibility = View.VISIBLE
+        networkErrorVisible = true
+    }
+
+    private fun hideNetworkErrorBanner() {
+        binding.root.findViewById<View>(R.id.includeNetworkErrorBanner)?.visibility = View.GONE
+        networkErrorVisible = false
+    }
+
+    private fun setMessagesLoading(isLoading: Boolean) {
+        binding.root.findViewById<ProgressBar>(R.id.progressLoadingMessages)?.visibility =
+            if (isLoading) View.VISIBLE else View.GONE
+        binding.recyclerMessages.visibility = if (isLoading) View.INVISIBLE else View.VISIBLE
     }
 
     private var jobNotes: String? = null
@@ -1210,7 +1279,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         tabMedia.setOnClickListener {
 
-            loadFragment(MediaFragment())
+            loadFragment(MediaFragment().apply {
+                arguments = Bundle().apply {
+                    putString(MediaFragment.KEY_GROUP_SLUG, room?.roNumber)
+                }
+            })
 
             selectMediaTab()
             moveIndicator(tabMedia)
@@ -1350,6 +1423,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     override fun onConnected() {
         runOnUiThread {
             Log.d("VirtualChatRoom", "WebSocket Connected Successfully")
+            PresenceStore.setUserOnline(PreferenceManager.getUserId())
+            if (networkErrorVisible) hideNetworkErrorBanner()
             Toast.makeText(this, "Chat connected", Toast.LENGTH_SHORT).show()
         }
     }
@@ -1368,6 +1443,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             else -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asJsonPrimitive.asInt.toString() else el.asString
                         }
                         val currentUserId = PreferenceManager.getUserId()
+                        PresenceStore.setUserOnline(senderId)
 
                         if (senderId != null && senderId == currentUserId) {
                             // Echoed message from self: update local message status and attachment URL so bubble shows server file
@@ -1404,8 +1480,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 else -> ChatMessageType.FILE
                             }
 
-                            messageAdapter?.addMessage(
-                                ChatMessage(
+                            val mediaMessage = ChatMessage(
                                     messageId = messageIdFromJson(jsonObject),
                                     text = "",
                                     isSender = false,
@@ -1416,7 +1491,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     caption = content,
                                     mimeType = mimeType
                                 )
-                            )
+                            messageAdapter?.addMessage(mediaMessage)
+                            room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
                         } else if (jsonObject.has("file_url")) {
                             // Server sent chat.message with top-level file_url (e.g. after chat.media)
                             val fileUrl = jsonObject.get("file_url")?.asString ?: ""
@@ -1434,8 +1510,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             val thumbUrl = jsonObject.get("thumbnail_url")?.asString?.let { t ->
                                 if (t.startsWith("http")) t else ApiDetails.APRIK_Kia_BASE_URL + t
                             }
-                            messageAdapter?.addMessage(
-                                ChatMessage(
+                            val mediaMessage = ChatMessage(
                                     messageId = messageIdFromJson(jsonObject),
                                     text = "",
                                     isSender = false,
@@ -1446,7 +1521,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     caption = caption,
                                     thumbnailUrl = thumbUrl
                                 )
-                            )
+                            messageAdapter?.addMessage(mediaMessage)
+                            room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
                         }
 //                        if (attachment != null) {
 //                            val attachmentUrl = attachment.get("file_url")?.asString ?: ""
@@ -1493,8 +1569,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     }
 
                     "chat.media" -> {
-                        val senderId = jsonObject.get("sender_id")?.asString
+                        val senderId = when (val el = jsonObject.get("sender_id")) {
+                            null -> null
+                            else -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asJsonPrimitive.asInt.toString() else el.asString
+                        }
                         val currentUserId = PreferenceManager.getUserId()
+                        PresenceStore.setUserOnline(senderId)
 
                         if (senderId != null && senderId == currentUserId) {
                             Log.d("VirtualChatRoom", "Ignoring echoed media message from self")
@@ -1525,8 +1605,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         // Derive a filename from URL if server doesn't send it separately
                         val fileName = rawUrl.substringAfterLast('/', missingDelimiterValue = "")
 
-                        messageAdapter?.addMessage(
-                            ChatMessage(
+                        val mediaMessage = ChatMessage(
                                 messageId = messageIdFromJson(jsonObject),
                                 text = "",
                                 isSender = false,
@@ -1537,7 +1616,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 caption = caption,
                                 thumbnailUrl = thumbUrl
                             )
-                        )
+                        messageAdapter?.addMessage(mediaMessage)
+                        room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
 
                         scrollToLast()
                         sendReadReceipt(messageIdFromJson(jsonObject) ?: "")
@@ -1549,6 +1629,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             null -> null
                             else -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asJsonPrimitive.asInt.toString() else el.asString
                         }
+                        PresenceStore.setUserOnline(userId)
                         val currentUserId = PreferenceManager.getUserId()
                         if (userId != null && userId != currentUserId) {
                             val isTypingBroadcast = jsonObject.get("is_typing")?.asBoolean ?: false
@@ -1565,6 +1646,17 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         val msgId = messageIdFromJson(jsonObject) ?: ""
                         messageAdapter?.updateMessageStatus(msgId, MessageStatus.READ)
                     }
+
+                    "user.presence" -> {
+                        val userId = when (val el = jsonObject.get("user_id")) {
+                            null -> null
+                            else -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asJsonPrimitive.asInt.toString() else el.asString
+                        }
+                        when (jsonObject.get("status")?.asString?.lowercase()) {
+                            "online" -> PresenceStore.setUserOnline(userId)
+                            "offline" -> PresenceStore.setUserOffline(userId)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("VirtualChatRoom", "Error parsing message: ${e.message}")
@@ -1573,11 +1665,24 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     override fun onDisconnected(reason: String) {
-        runOnUiThread { Log.d("VirtualChatRoom", "WebSocket Disconnected: $reason") }
+        runOnUiThread {
+            Log.d("VirtualChatRoom", "WebSocket Disconnected: $reason")
+            showWebSocketDisconnectedToast("Chat connection lost")
+        }
     }
 
     override fun onError(error: String) {
-        runOnUiThread { Log.e("VirtualChatRoom", "WebSocket Error: $error") }
+        runOnUiThread {
+            Log.e("VirtualChatRoom", "WebSocket Error: $error")
+            showNetworkErrorBanner()
+            showWebSocketDisconnectedToast(
+                if (error.contains("not connected", ignoreCase = true)) {
+                    "WebSocket disconnected. Please retry."
+                } else {
+                    "Chat connection lost"
+                }
+            )
+        }
     }
 
     private fun showPreviewBottomSheet(selectedFiles: List<Pair<File, ChatMessageType>>) {
@@ -1656,13 +1761,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             lifecycleScope.launch {
                                 val bitmap = withContext(Dispatchers.IO) { renderPdfFirstPage(file) }
                                 bitmap?.let { runOnUiThread { imgMedia.setImageBitmap(it) } }
-                                    ?: runOnUiThread { imgMedia.setImageResource(android.R.drawable.ic_menu_save) }
+                                    ?: runOnUiThread { imgMedia.setImageResource(R.drawable.file_pdf_icon) }
                             }
                         } else {
-                            imgMedia.setImageResource(android.R.drawable.ic_menu_save)
+                            imgMedia.setImageResource(R.drawable.file_pdf_icon)
                         }
                     }
-                    else -> imgMedia.setImageResource(android.R.drawable.ic_menu_save)
+                    else -> imgMedia.setImageResource(R.drawable.file_pdf_icon)
                 }
             }
 
@@ -1785,50 +1890,50 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         ApiDetails.APRIK_Kia_BASE_URL + fileResponse.attachment.fileUrl
                     }
 
-                    // Build chat.media payload as per server spec
-                    val json = JsonObject()
-                    json.addProperty("type", "chat.media")
-                    json.addProperty("message_id", fileResponse.messageId)
-                    // Prefer server-provided messageType, otherwise derive from our ChatMessageType
-                    val messageTypeStr = when {
-                        !fileResponse.messageType.isNullOrBlank() -> fileResponse.messageType
-                        else -> when (type) {
-                            ChatMessageType.IMAGE -> "image"
-                            ChatMessageType.VIDEO -> "video"
-                            ChatMessageType.VOICE_NOTE -> "audio"
-                            ChatMessageType.FILE -> "document"
-                            else -> "document"
-                        }
-                    }
-                    json.addProperty("message_type", messageTypeStr)
-
-                    json.addProperty("file_url", fullFileUrl)
-                    fileResponse.attachment.thumbnailUrl?.let { thumb ->
-                        if (thumb.isNotBlank()) {
-                            val fullThumbUrl =
-                                if (thumb.startsWith("http")) thumb else ApiDetails.APRIK_Kia_BASE_URL + thumb
-                            json.addProperty("thumbnail_url", fullThumbUrl)
-                        }
-                    }
-
                     // Caption should only contain user-entered text; leave blank if none
                     val captionText = if (caption.isNotBlank()) caption else ""
-                    json.addProperty("caption", captionText)
 
                     runOnUiThread {
-                        WebSocketManager.getInstance().sendMessage(json.toString())
-                    }
-
-                    runOnUiThread {
-                        messageAdapter?.updateMessageId(localId, fileResponse.messageId.toString())
+                        val serverId = fileResponse.messageId.toString()
                         val thumbUrl = fileResponse.attachment.thumbnailUrl?.let { t ->
                             if (t.startsWith("http")) t else ApiDetails.APRIK_Kia_BASE_URL + t
                         }
-                        messageAdapter?.updateMessageAttachmentUrl(localId, fullFileUrl, thumbUrl)
-                        messageAdapter?.updateMessageStatus(
-                            localId,
-                            MessageStatus.SENT
+                        val sent = sendMediaMessageOverWebSocket(
+                            messageId = serverId,
+                            type = type,
+                            fileUrl = fullFileUrl,
+                            caption = captionText,
+                            thumbnailUrl = thumbUrl
                         )
+                        messageAdapter?.updateMessageAttachmentUrl(localId, fullFileUrl, thumbUrl)
+                        messageAdapter?.updateMessageId(localId, serverId)
+                        messageAdapter?.updateMessageStatus(
+                            serverId,
+                            if (sent) MessageStatus.SENT else MessageStatus.ERROR
+                        )
+                        if (sent) {
+                            room?.roNumber?.let {
+                                ChatMediaStore.addOrUpdateMessage(
+                                    it,
+                                    ChatMessage(
+                                        messageId = serverId,
+                                        text = "",
+                                        isSender = true,
+                                        timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
+                                        status = MessageStatus.SENT,
+                                        type = type,
+                                        attachmentUri = fullFileUrl,
+                                        fileName = file.name,
+                                        caption = caption,
+                                        thumbnailUrl = thumbUrl,
+                                        mimeType = mimeType
+                                    )
+                                )
+                            }
+                            hideNetworkErrorBanner()
+                        } else {
+                            showNetworkErrorBanner()
+                        }
                     }
                 } else {
 
@@ -1839,6 +1944,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                     runOnUiThread {
                         messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR)
+                        showNetworkErrorBanner()
                     }
 
                     Toast.makeText(
@@ -1848,7 +1954,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     ).show()
                 }
             } catch (e: Exception) {
-                runOnUiThread { messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR) }
+                runOnUiThread {
+                    messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR)
+                    showNetworkErrorBanner()
+                }
                 Log.e("VirtualChatRoom", "Upload Error: ${e.message}")
             }
         }
@@ -1870,6 +1979,34 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         jsonObject.addProperty("type", "chat.read")
         jsonObject.addProperty("message_id", idInt)
         WebSocketManager.getInstance().sendMessage(jsonObject.toString())
+    }
+
+    private fun sendMediaMessageOverWebSocket(
+        messageId: String,
+        type: ChatMessageType,
+        fileUrl: String,
+        caption: String,
+        thumbnailUrl: String? = null
+    ): Boolean {
+        val idInt = messageId.toIntOrNull() ?: return false
+        val json = JsonObject().apply {
+            addProperty("type", "chat.media")
+            addProperty("message_id", idInt)
+            addProperty(
+                "message_type",
+                when (type) {
+                    ChatMessageType.IMAGE -> "image"
+                    ChatMessageType.VIDEO -> "video"
+                    ChatMessageType.VOICE_NOTE -> "audio"
+                    ChatMessageType.FILE -> "document"
+                    else -> "document"
+                }
+            )
+            addProperty("file_url", fileUrl)
+            addProperty("caption", caption)
+            thumbnailUrl?.takeIf { it.isNotBlank() }?.let { addProperty("thumbnail_url", it) }
+        }
+        return WebSocketManager.getInstance().sendMessage(json.toString())
     }
 
     private fun messageIdFromJson(json: JsonObject): String? {
@@ -1910,21 +2047,37 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         messageAdapter = VirtualChatMessageAdapter(
             messages,
             onRetryClick = { message ->
-                // Retry upload logic
                 val type = message.type
-                val file = File(message.attachmentUri!!)
                 val caption = message.caption ?: ""
-                val localId = message.messageId!!
-                messageAdapter?.updateMessageStatus(localId, MessageStatus.SENDING)
-                lifecycleScope.launch {
-                    val fileToUpload = if (type == ChatMessageType.IMAGE) {
-                        try {
-                            compressImage(file)
-                        } catch (e: Exception) {
-                            file
-                        }
-                    } else file
-                    performUpload(fileToUpload, caption, type, localId)
+                val messageId = message.messageId ?: return@VirtualChatMessageAdapter
+                val attachmentUri = message.attachmentUri ?: return@VirtualChatMessageAdapter
+                messageAdapter?.updateMessageStatus(messageId, MessageStatus.SENDING)
+
+                if (attachmentUri.startsWith("http") && messageId.toIntOrNull() != null) {
+                    val sent = sendMediaMessageOverWebSocket(
+                        messageId = messageId,
+                        type = type,
+                        fileUrl = attachmentUri,
+                        caption = caption,
+                        thumbnailUrl = message.thumbnailUrl
+                    )
+                    messageAdapter?.updateMessageStatus(
+                        messageId,
+                        if (sent) MessageStatus.SENT else MessageStatus.ERROR
+                    )
+                    if (sent) hideNetworkErrorBanner() else showNetworkErrorBanner()
+                } else {
+                    val file = File(attachmentUri)
+                    lifecycleScope.launch {
+                        val fileToUpload = if (type == ChatMessageType.IMAGE) {
+                            try {
+                                compressImage(file)
+                            } catch (e: Exception) {
+                                file
+                            }
+                        } else file
+                        performUpload(fileToUpload, caption, type, messageId)
+                    }
                 }
             },
             onItemClick = { message -> handleAttachmentClick(message) },
@@ -1932,6 +2085,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             estimationListener = this
         )
         binding.recyclerMessages.adapter = messageAdapter
+        messageAdapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                scrollToLast()
+            }
+
+            override fun onChanged() {
+                scrollToLast()
+            }
+        })
     }
 
     private fun handleAttachmentClick(message: ChatMessage) {
@@ -1950,36 +2112,23 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             Toast.makeText(this, "No file to save", Toast.LENGTH_SHORT).show()
             return
         }
-        val fullUrl = if (rawUrl.startsWith("http")) rawUrl else ApiDetails.APRIK_Kia_BASE_URL + rawUrl
         val fileName = message.fileName?.takeIf { it.isNotBlank() }
-            ?: fullUrl.substringAfterLast('/').takeIf { it.isNotBlank() }
+            ?: rawUrl.substringAfterLast('/').takeIf { it.isNotBlank() }
             ?: "download_${System.currentTimeMillis()}"
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val token = PreferenceManager.getAccessToken()
-                val request = Request.Builder()
-                    .url(fullUrl)
-                    .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
-                    .build()
-                val client = OkHttpClient()
-                val response = client.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@VirtualChatRoomActivity, "Download failed", Toast.LENGTH_SHORT).show()
+                if (!rawUrl.startsWith("http")) {
+                    val localFile = File(rawUrl)
+                    if (localFile.exists()) {
+                        saveLocalFileToPublicStorage(localFile, fileName, message)
+                    } else {
+                        throw IOException("Local file missing")
                     }
-                    return@launch
-                }
-                val body = response.body ?: return@launch
-                val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
                 } else {
-                    @Suppress("DEPRECATION")
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    downloadRemoteFileToPublicStorage(rawUrl, fileName, message)
                 }
-                val file = File(dir, fileName)
-                file.outputStream().use { body.byteStream().copyTo(it) }
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@VirtualChatRoomActivity, "Saved: ${file.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@VirtualChatRoomActivity, "Saved: $fileName", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e("VirtualChatRoom", "Save failed: ${e.message}")
@@ -1987,6 +2136,118 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     Toast.makeText(this@VirtualChatRoomActivity, "Save failed", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+
+    private fun downloadRemoteFileToPublicStorage(
+        fileUrl: String,
+        fileName: String,
+        message: ChatMessage
+    ) {
+        val token = PreferenceManager.getAccessToken()
+        val request = Request.Builder()
+            .url(fileUrl)
+            .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+            .build()
+        val client = OkHttpClient()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Download failed: ${response.code}")
+            }
+            val body = response.body ?: throw IOException("Empty response body")
+            body.byteStream().use { input ->
+                saveInputStreamToPublicStorage(input, fileName, message)
+            }
+        }
+    }
+
+    private fun saveLocalFileToPublicStorage(
+        sourceFile: File,
+        fileName: String,
+        message: ChatMessage
+    ) {
+        sourceFile.inputStream().use { input ->
+            saveInputStreamToPublicStorage(input, fileName, message)
+        }
+    }
+
+    private fun saveInputStreamToPublicStorage(
+        inputStream: InputStream,
+        fileName: String,
+        message: ChatMessage
+    ) {
+        val mimeType = resolveMimeType(fileName, message)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val collection = when (message.type) {
+                ChatMessageType.IMAGE -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                ChatMessageType.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                else -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            }
+            val relativePath = when (message.type) {
+                ChatMessageType.IMAGE -> "${Environment.DIRECTORY_PICTURES}/KiaKandid"
+                ChatMessageType.VIDEO -> "${Environment.DIRECTORY_MOVIES}/KiaKandid"
+                else -> "${Environment.DIRECTORY_DOWNLOADS}/KiaKandid"
+            }
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = contentResolver.insert(collection, values)
+                ?: throw IOException("Unable to create destination")
+            contentResolver.openOutputStream(uri)?.use { output ->
+                inputStream.copyTo(output)
+            } ?: throw IOException("Unable to open destination")
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            contentResolver.update(uri, values, null, null)
+        } else {
+            val directory = when (message.type) {
+                ChatMessageType.IMAGE -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                ChatMessageType.VIDEO -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+                else -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            }
+            val targetDir = File(directory, "KiaKandid")
+            if (!targetDir.exists()) {
+                targetDir.mkdirs()
+            }
+            val targetFile = File(targetDir, fileName)
+            FileOutputStream(targetFile).use { output ->
+                inputStream.copyTo(output)
+            }
+            MediaScannerConnection.scanFile(
+                this,
+                arrayOf(targetFile.absolutePath),
+                arrayOf(mimeType),
+                null
+            )
+        }
+    }
+
+    private fun resolveMimeType(fileName: String, message: ChatMessage): String {
+        val extension = fileName.substringAfterLast('.', "").lowercase(Locale.getDefault())
+        return when (message.type) {
+            ChatMessageType.IMAGE -> when (extension) {
+                "png" -> "image/png"
+                "webp" -> "image/webp"
+                else -> "image/jpeg"
+            }
+            ChatMessageType.VIDEO -> when (extension) {
+                "3gp" -> "video/3gpp"
+                "mkv" -> "video/x-matroska"
+                else -> "video/mp4"
+            }
+            ChatMessageType.FILE -> when (extension) {
+                "pdf" -> "application/pdf"
+                "doc" -> "application/msword"
+                "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                "xls" -> "application/vnd.ms-excel"
+                "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                else -> "application/octet-stream"
+            }
+            ChatMessageType.VOICE_NOTE -> "audio/*"
+            else -> "application/octet-stream"
         }
     }
 
@@ -2048,7 +2309,17 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun scrollToLast() {
-        binding.recyclerMessages.scrollToPosition((messages.size - 1).coerceAtLeast(0))
+        val recycler = binding.recyclerMessages
+        val layoutManager = recycler.layoutManager as? LinearLayoutManager ?: return
+
+        recycler.post {
+            recycler.postDelayed({
+                val position = messageAdapter?.itemCount?.minus(1) ?: 0
+                if (position >= 0) {
+                    layoutManager.scrollToPositionWithOffset(position, 0)
+                }
+            }, 50)
+        }
     }
 
     private fun addMessage(text: String, isSender: Boolean, messageId: String? = null) {
@@ -2073,6 +2344,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         // If it starts with 'local_', it's a tracking ID, we might need to send it differently or not at all.
         // Assuming the server only wants integer for 'message_id' field.
         WebSocketManager.getInstance().sendMessage(json.toString())
+    }
+
+    private fun showWebSocketDisconnectedToast(message: String) {
+        Toast.makeText(this@VirtualChatRoomActivity, message, Toast.LENGTH_LONG).show()
     }
 
     private fun setupAttachmentAndMedia() {

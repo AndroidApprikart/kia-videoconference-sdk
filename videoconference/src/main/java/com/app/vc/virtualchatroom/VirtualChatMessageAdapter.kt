@@ -1,13 +1,8 @@
 package com.app.vc.virtualchatroom
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.pdf.PdfRenderer
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
-import android.os.ParcelFileDescriptor
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,8 +24,6 @@ import com.kia.vc.message.LabourListAdapter
 import com.kia.vc.message.Part
 import com.kia.vc.message.PartListAdapter
 import java.io.File
-import okhttp3.OkHttpClient
-import okhttp3.Request
 
 enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE, ESTIMATION }
 enum class MessageStatus { SENDING, SENT, READ, ERROR }
@@ -77,26 +70,6 @@ class VirtualChatMessageAdapter(
         fun parseWaveformData(waveformData: String?): FloatArray {
             if (waveformData.isNullOrBlank()) return floatArrayOf()
             return waveformData.split(",").mapNotNull { it.trim().toFloatOrNull() }.toFloatArray()
-        }
-
-        fun renderPdfFirstPageFromPath(path: String): Bitmap? {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return null
-            return try {
-                ParcelFileDescriptor.open(File(path), ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
-                    PdfRenderer(pfd).use { renderer ->
-                        if (renderer.pageCount == 0) null else {
-                            renderer.openPage(0).use { page ->
-                                val bitmap = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
-                                page.render(bitmap, null, null, 1 /* PAGE_RENDER_MODE_FOR_DISPLAY */)
-                                bitmap
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("ChatAdapter", "PDF first page: ${e.message}")
-                null
-            }
         }
     }
 
@@ -164,12 +137,19 @@ class VirtualChatMessageAdapter(
             }
             return
         }
-        val index = if (messageId.isNotEmpty()) {
+        var index = if (messageId.isNotEmpty()) {
             messages.indexOfFirst { it.messageId == messageId }
         } else {
             messages.indexOfLast { it.isSender }
         }
-        
+
+        if (index == -1 && newStatus == MessageStatus.SENT) {
+            index = messages.indexOfLast { it.isSender && it.status == MessageStatus.SENDING }
+            if (index != -1) {
+                messages[index].messageId = messageId
+            }
+        }
+
         if (index == -1) return
         if (newStatus == MessageStatus.READ) {
             // Mark this message and all previous outgoing (SENT) as READ so read ticks update in tab UI
@@ -233,14 +213,19 @@ class VirtualChatMessageAdapter(
         private val imgPlayVideo: ImageView? = itemView.findViewById(R.id.imgPlayVideo)
         private val layoutError: View? = itemView.findViewById(R.id.layoutError)
         private val btnRetry: View? = itemView.findViewById(R.id.btnRetry)
+        private val layoutFileError: View? = itemView.findViewById(R.id.layoutFileError)
+        private val btnFileRetry: View? = itemView.findViewById(R.id.btnFileRetry)
         private val imgFileThumbnail: ImageView? = itemView.findViewById(R.id.imgFileThumbnail)
         private val txtFileCaption: TextView? = itemView.findViewById(R.id.txtFileCaption)
         private val btnFileOverflow: ImageView? = itemView.findViewById(R.id.btnFileOverflow)
         private val btnImageOverflow: ImageView? = itemView.findViewById(R.id.btnImageOverflow)
 
         fun bind(message: ChatMessage) {
-            itemView.setOnClickListener { onClick(message) }
+            itemView.setOnClickListener {
+                if (message.status == MessageStatus.ERROR) onRetry(message) else onClick(message)
+            }
             btnRetry?.setOnClickListener { onRetry(message) }
+            btnFileRetry?.setOnClickListener { onRetry(message) }
 
             btnFileOverflow?.visibility = View.GONE
             btnImageOverflow?.visibility = View.GONE
@@ -252,7 +237,8 @@ class VirtualChatMessageAdapter(
             layoutVoice?.visibility = View.GONE
             txtFileName?.visibility = View.GONE
             imgPlayVideo?.visibility = View.GONE
-            layoutError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
+            layoutError?.visibility = View.GONE
+            layoutFileError?.visibility = View.GONE
             
             imgStatus?.visibility = View.VISIBLE
             when (message.status) {
@@ -270,6 +256,7 @@ class VirtualChatMessageAdapter(
                 }
                 ChatMessageType.IMAGE, ChatMessageType.VIDEO -> {
                     layoutImageContainer?.visibility = View.VISIBLE
+                    layoutError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
                     btnImageOverflow?.visibility = View.VISIBLE
                     btnImageOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     imgPlayVideo?.visibility = if (message.type == ChatMessageType.VIDEO) View.VISIBLE else View.GONE
@@ -281,8 +268,7 @@ class VirtualChatMessageAdapter(
                             loadImage(itemView.context, imgAttachment, uri)
                         }
                     }
-                    // Only show caption if it's real user text, not the filename
-                    val showCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
+                    val showCaption = !message.caption.isNullOrBlank()
                     txtImageCaption?.visibility = if (showCaption) View.VISIBLE else View.GONE
                     txtImageCaption?.text = message.caption
                 }
@@ -290,58 +276,15 @@ class VirtualChatMessageAdapter(
                     layoutImageContainer?.visibility = View.GONE
                     layoutText?.visibility = View.GONE
                     layoutFileContainer?.visibility = View.VISIBLE
+                    layoutFileError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
                     btnFileOverflow?.visibility = View.VISIBLE
                     btnFileOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     txtFileTitle?.text = message.fileName ?: "Document"
                     val isPdf = message.fileName?.endsWith(".pdf", ignoreCase = true) == true || message.mimeType?.contains("pdf") == true
                     txtFileSubtitle?.text = if (isPdf) "PDF" else "Document"
                     imgFileThumbnail?.visibility = View.GONE
-                    imgFileThumbnail?.setImageBitmap(null)
-                    if (isPdf && !message.attachmentUri.isNullOrBlank()) {
-                        val path = message.attachmentUri!!
-                        imgFileThumbnail?.setTag(message.messageId)
-                        if (!path.startsWith("http") && File(path).exists()) {
-                            imgFileThumbnail?.visibility = View.VISIBLE
-                            Thread {
-                                val bitmap = renderPdfFirstPageFromPath(path)
-                                itemView.post {
-                                    if (imgFileThumbnail?.getTag() == message.messageId) {
-                                        imgFileThumbnail?.setImageBitmap(bitmap)
-                                        imgFileThumbnail?.visibility = View.VISIBLE
-                                    }
-                                }
-                            }.start()
-                        } else if (path.startsWith("http") && !message.thumbnailUrl.isNullOrBlank()) {
-                            imgFileThumbnail?.visibility = View.VISIBLE
-                            Glide.with(itemView.context).load(message.thumbnailUrl).centerCrop().into(imgFileThumbnail!!)
-                        } else if (path.startsWith("http")) {
-                            Thread {
-                                try {
-                                    val token = PreferenceManager.getAccessToken()
-                                    val request = Request.Builder().url(path)
-                                        .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
-                                        .build()
-                                    val client = OkHttpClient()
-                                    val response = client.newCall(request).execute()
-                                    if (response.isSuccessful && response.body != null) {
-                                        val file = File(itemView.context.cacheDir, "pdf_${message.messageId}_${System.currentTimeMillis()}.pdf")
-                                        file.outputStream().use { response.body!!.byteStream().copyTo(it) }
-                                        val bitmap = renderPdfFirstPageFromPath(file.absolutePath)
-                                        file.delete()
-                                        itemView.post {
-                                            if (imgFileThumbnail?.getTag() == message.messageId && bitmap != null) {
-                                                imgFileThumbnail?.setImageBitmap(bitmap)
-                                                imgFileThumbnail?.visibility = View.VISIBLE
-                                            }
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("ChatAdapter", "PDF download first page: ${e.message}")
-                                }
-                            }.start()
-                        }
-                    }
-                    val showFileCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
+                    imgFileThumbnail?.setImageDrawable(null)
+                    val showFileCaption = !message.caption.isNullOrBlank()
                     txtFileCaption?.visibility = if (showFileCaption) View.VISIBLE else View.GONE
                     txtFileCaption?.text = message.caption
                 }
@@ -454,8 +397,7 @@ class VirtualChatMessageAdapter(
                             loadImage(itemView.context, imgAttachment, uri)
                         }
                     }
-                    // Only show caption if it's real user text, not the filename
-                    val showCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
+                    val showCaption = !message.caption.isNullOrBlank()
                     txtImageCaption?.visibility = if (showCaption) View.VISIBLE else View.GONE
                     txtImageCaption?.text = message.caption
                 }
@@ -469,52 +411,8 @@ class VirtualChatMessageAdapter(
                     val isPdf = message.fileName?.endsWith(".pdf", ignoreCase = true) == true || message.mimeType?.contains("pdf") == true
                     txtFileSubtitle?.text = if (isPdf) "PDF" else "Document"
                     imgFileThumbnail?.visibility = View.GONE
-                    imgFileThumbnail?.setImageBitmap(null)
-                    if (isPdf && !message.attachmentUri.isNullOrBlank()) {
-                        val path = message.attachmentUri!!
-                        imgFileThumbnail?.setTag(message.messageId)
-                        if (!path.startsWith("http") && File(path).exists()) {
-                            imgFileThumbnail?.visibility = View.VISIBLE
-                            Thread {
-                                val bitmap = renderPdfFirstPageFromPath(path)
-                                itemView.post {
-                                    if (imgFileThumbnail?.getTag() == message.messageId) {
-                                        imgFileThumbnail?.setImageBitmap(bitmap)
-                                        imgFileThumbnail?.visibility = View.VISIBLE
-                                    }
-                                }
-                            }.start()
-                        } else if (path.startsWith("http") && !message.thumbnailUrl.isNullOrBlank()) {
-                            imgFileThumbnail?.visibility = View.VISIBLE
-                            Glide.with(itemView.context).load(message.thumbnailUrl).centerCrop().into(imgFileThumbnail!!)
-                        } else if (path.startsWith("http")) {
-                            Thread {
-                                try {
-                                    val token = PreferenceManager.getAccessToken()
-                                    val request = Request.Builder().url(path)
-                                        .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
-                                        .build()
-                                    val client = OkHttpClient()
-                                    val response = client.newCall(request).execute()
-                                    if (response.isSuccessful && response.body != null) {
-                                        val file = File(itemView.context.cacheDir, "pdf_${message.messageId}_${System.currentTimeMillis()}.pdf")
-                                        file.outputStream().use { response.body!!.byteStream().copyTo(it) }
-                                        val bitmap = renderPdfFirstPageFromPath(file.absolutePath)
-                                        file.delete()
-                                        itemView.post {
-                                            if (imgFileThumbnail?.getTag() == message.messageId && bitmap != null) {
-                                                imgFileThumbnail?.setImageBitmap(bitmap)
-                                                imgFileThumbnail?.visibility = View.VISIBLE
-                                            }
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("ChatAdapter", "PDF download first page: ${e.message}")
-                                }
-                            }.start()
-                        }
-                    }
-                    val showFileCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
+                    imgFileThumbnail?.setImageDrawable(null)
+                    val showFileCaption = !message.caption.isNullOrBlank()
                     txtFileCaption?.visibility = if (showFileCaption) View.VISIBLE else View.GONE
                     txtFileCaption?.text = message.caption
                 }

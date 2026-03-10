@@ -17,6 +17,7 @@ class MediaFragment: Fragment() {
     private var _binding: FragmentMediaBinding? = null
     private val binding get() = _binding!!
     var TAG = "MediaFragment"
+    private var groupSlug: String? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,12 +35,15 @@ class MediaFragment: Fragment() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        groupSlug = arguments?.getString(KEY_GROUP_SLUG)
 
         binding.tabPhotoVideos.post {
             moveIndicator(binding.tabPhotoVideos)
         }
 
-        loadFragment(PhotosAndVideosFragment())
+        loadFragment(PhotosAndVideosFragment().apply {
+            arguments = Bundle().apply { putString(PhotosAndVideosFragment.KEY_GROUP_SLUG, groupSlug) }
+        })
         setupTabs()
         selectPhotoVideosTab()
 
@@ -60,7 +64,9 @@ class MediaFragment: Fragment() {
 
         binding.tabPhotoVideos.setOnClickListener {
 
-            loadFragment(PhotosAndVideosFragment())
+            loadFragment(PhotosAndVideosFragment().apply {
+                arguments = Bundle().apply { putString(PhotosAndVideosFragment.KEY_GROUP_SLUG, groupSlug) }
+            })
 
             selectPhotoVideosTab()
             moveIndicator(binding.tabPhotoVideos)
@@ -69,12 +75,18 @@ class MediaFragment: Fragment() {
 
         binding.tabDocuments.setOnClickListener {
 
-            loadFragment(DocumentsFragment())
+            loadFragment(DocumentsFragment().apply {
+                arguments = Bundle().apply { putString(DocumentsFragment.KEY_GROUP_SLUG, groupSlug) }
+            })
 
             selectDocsTab()
             moveIndicator(binding.tabDocuments)
 
         }
+    }
+
+    companion object {
+        const val KEY_GROUP_SLUG = "group_slug"
     }
 
     @RequiresApi(Build.VERSION_CODES.O)

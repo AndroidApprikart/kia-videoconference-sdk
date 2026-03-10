@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 
 import com.app.vc.databinding.ActivityRepairOrderBinding
+import com.app.vc.utils.ConnectivityBannerHandler
 
 
 class RepairOrderActivity : AppCompatActivity() {
@@ -19,6 +20,7 @@ class RepairOrderActivity : AppCompatActivity() {
     lateinit var binding : ActivityRepairOrderBinding
 
     private var groupSlug: String? = null
+    private var connectivityBannerHandler: ConnectivityBannerHandler? = null
 
     companion object {
         const val EXTRA_GROUP_SLUG = "extra_group_slug"
@@ -38,6 +40,10 @@ class RepairOrderActivity : AppCompatActivity() {
 
         groupSlug = intent.getStringExtra(EXTRA_GROUP_SLUG)
         bindRoomDetailsFromIntent()
+        connectivityBannerHandler = ConnectivityBannerHandler(
+            context = this,
+            rootViewProvider = { findViewById<View>(android.R.id.content) }
+        )
 
         binding.btnBack.setOnClickListener { finish() }
 
@@ -53,6 +59,16 @@ class RepairOrderActivity : AppCompatActivity() {
         setupTabs()
         selectParticipantsTab()
 
+    }
+
+    override fun onStart() {
+        super.onStart()
+        connectivityBannerHandler?.register()
+    }
+
+    override fun onStop() {
+        connectivityBannerHandler?.unregister()
+        super.onStop()
     }
 
     private fun bindRoomDetailsFromIntent() {
@@ -98,7 +114,11 @@ class RepairOrderActivity : AppCompatActivity() {
 
         binding.tabMedia.setOnClickListener {
 
-            loadFragment(MediaFragment())
+            loadFragment(MediaFragment().apply {
+                arguments = Bundle().apply {
+                    putString(MediaFragment.KEY_GROUP_SLUG, groupSlug)
+                }
+            })
 
             selectMediaTab()
             moveIndicator(binding.tabMedia)

@@ -96,7 +96,7 @@
             <ImageView
                 android:layout_width="96dp"
                 android:layout_height="96dp"
-                android:src="@android:drawable/ic_menu_save"
+                android:src="@drawable/file_pdf_icon"
                 android:contentDescription="@null" />
             <TextView
                 android:id="@+id/txtDocumentName"

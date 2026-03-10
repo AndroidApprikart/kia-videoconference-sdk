@@ -74,18 +74,18 @@
                 android:contentDescription="@null" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="180dp"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="12dp"
-                android:minWidth="200dp">
+                android:minWidth="180dp">
 
             <ImageView
                 android:id="@+id/imgFileIcon"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@android:drawable/ic_menu_save"
+                android:src="@drawable/file_pdf_icon"
                 android:contentDescription="@null"
                 android:padding="8dp" />
             <LinearLayout
@@ -114,13 +114,14 @@
         </LinearLayout>
             <TextView
                 android:id="@+id/txtFileCaption"
-                android:layout_width="wrap_content"
+                android:layout_width="180dp"
                 android:layout_height="wrap_content"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="8dp"
                 android:visibility="gone"
+                android:maxLines="4"
                 android:textColor="@color/color_kia_black"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -128,20 +129,21 @@
 
     <LinearLayout
         android:id="@+id/layoutImageContainer"
-        android:layout_width="wrap_content"
+        android:layout_width="160dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:visibility="gone">
 
         <FrameLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
+            android:layout_width="160dp"
+            android:layout_height="160dp">
 
             <ImageView
                 android:id="@+id/imgAttachment"
                 android:layout_width="160dp"
                 android:layout_height="160dp"
                 android:scaleType="centerCrop"
+                android:layout_gravity="center"
                 android:contentDescription="@null" />
             <ImageView
                 android:id="@+id/btnImageOverflow"
@@ -165,10 +167,12 @@
         </FrameLayout>
         <TextView
             android:id="@+id/txtImageCaption"
-            android:layout_width="wrap_content"
+            android:layout_width="160dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:gravity="center_horizontal"
             android:visibility="gone"
+            android:maxLines="4"
             android:textColor="@color/color_kia_black"
             android:textSize="12sp" />
     </LinearLayout>

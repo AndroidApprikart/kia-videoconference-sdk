@@ -2,11 +2,11 @@ package com.app.vc.participants
 
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.R
@@ -18,12 +18,19 @@ class ParticipantsAdapter(
     private var participantsList: List<GroupMemberResponse>,
 ) :
     RecyclerView.Adapter<ParticipantsAdapter.ViewHolder>() {
-        var localParticipantSuffix = " (You)"
+    var localParticipantSuffix = " (You)"
+    private var onlineUserIds: Set<String> = emptySet()
+
+    fun setOnlineUserIds(ids: Set<String>) {
+        onlineUserIds = ids
+        notifyDataSetChanged()
+    }
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         var tvParticipantName = itemView.findViewById(R.id.tctParticipantName) as TextView
         var imgParticipantMic = itemView.findViewById(R.id.txtInitial) as TextView
         var textRole = itemView.findViewById(R.id.txtLeftStatus) as TextView
+        var statusDot = itemView.findViewById<View>(R.id.statusDot)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -68,5 +75,15 @@ class ParticipantsAdapter(
             ?.uppercase()
 
         holder.imgParticipantMic.text = initial ?: "?"
+        val isOnline = member.user.id.toString() in onlineUserIds
+        ViewCompat.setBackgroundTintList(
+            holder.statusDot,
+            ColorStateList.valueOf(
+                ContextCompat.getColor(
+                    holder.itemView.context,
+                    if (isOnline) R.color.green else R.color.red
+                )
+            )
+        )
     }
 }

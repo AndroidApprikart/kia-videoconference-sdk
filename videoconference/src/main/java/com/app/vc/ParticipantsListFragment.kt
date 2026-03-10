@@ -16,6 +16,7 @@ import com.app.vc.participants.ChangeAdvisorAdapter
 import com.app.vc.participants.ManageParticipantsAdapter
 import com.app.vc.participants.ParticipantsAdapter
 import com.app.vc.participants.ParticipantsViewModel
+import com.app.vc.presence.PresenceStore
 import com.app.vc.utils.PreferenceManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -29,6 +30,9 @@ class ParticipantsListFragment : Fragment() {
 
     private lateinit var viewModel: ParticipantsViewModel
     private lateinit var participantsAdapter: ParticipantsAdapter
+    private val presenceListener: (Set<String>) -> Unit = { ids ->
+        participantsAdapter.setOnlineUserIds(ids)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -58,6 +62,7 @@ class ParticipantsListFragment : Fragment() {
         } else {
             Toast.makeText(requireContext(), "No access token found", Toast.LENGTH_SHORT).show()
         }
+        PresenceStore.addListener(presenceListener)
     }
 
     private fun setupObservers() {
@@ -173,6 +178,7 @@ class ParticipantsListFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        PresenceStore.removeListener(presenceListener)
         super.onDestroyView()
         _binding = null
     }

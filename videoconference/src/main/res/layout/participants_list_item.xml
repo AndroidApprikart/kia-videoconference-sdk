@@ -30,6 +30,14 @@
             android:background="@drawable/bg_rounded_circle"
             android:fontFamily="@font/kia_signature_fix_bold"/>
 
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="@dimen/_6sdp"
+                android:background="@drawable/vc_status_dot" />
+
             <TextView
                 android:id="@+id/tctParticipantName"
                 android:layout_width="0dp"

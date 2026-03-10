@@ -11,39 +11,47 @@
        >
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             card_view:layout_constraintTop_toTopOf="parent"
-            android:padding="@dimen/_5sdp"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             android:id="@+id/tabSwitcher"
+            android:baselineAligned="false"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:weightSum="2">
 
             <androidx.appcompat.widget.AppCompatTextView
                 android:id="@+id/tabPhotoVideos"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:paddingHorizontal="@dimen/_15sdp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingHorizontal="8dp"
                 android:text="Photos &amp; Videos"
                 android:fontFamily="@font/kia_signature_fix_bold"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textColor="@color/black"
                 android:textStyle="bold"
                 />
 
             <androidx.appcompat.widget.AppCompatTextView
                 android:id="@+id/tabDocuments"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:paddingHorizontal="@dimen/_15sdp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingHorizontal="8dp"
                 android:text="Docs"
                 android:fontFamily="@font/kia_signature_fix_regular"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textColor="#343434"
                 android:textStyle="bold"
                 />

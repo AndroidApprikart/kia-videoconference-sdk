@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/networkErrorBanner"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#CD4445"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="12dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="12dp"
+    android:visibility="gone">
+
+    <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/ic_error"
+        android:contentDescription="@null"
+        android:padding="4dp"
+        app:tint="@color/white" />
+
+    <TextView
+        android:id="@+id/txtNetworkError"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:text="Network error Please check your Internet connection."
+        android:textColor="@color/white"
+        android:textSize="14sp" />
+
+    <ImageView
+        android:id="@+id/btnDismissNetworkError"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:padding="4dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:contentDescription="Dismiss"
+        app:tint="@color/white"
+        android:background="?attr/selectableItemBackgroundBorderless" />
+</LinearLayout>
+

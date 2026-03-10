@@ -23,7 +23,7 @@
                 android:id="@+id/docImg"
                 android:layout_gravity="center"
                 android:padding="@dimen/_5sdp"
-                android:src="@drawable/file_pdf_color_red_icon_1"/>
+                android:src="@drawable/file_pdf_icon"/>
             
             
             <LinearLayout

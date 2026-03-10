@@ -14,6 +14,7 @@ import com.app.vc.R
 import com.app.vc.network.LoginApiService
 import com.app.vc.network.TokenRefreshRequest
 import com.app.vc.utils.ApiDetails
+import com.app.vc.utils.ConnectivityBannerHandler
 import com.app.vc.utils.PreferenceManager
 import com.app.vc.virtualchatroom.VirtualChatRoomActivity
 import com.google.gson.Gson
@@ -29,6 +30,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: VirtualRoomListAdapter
     private var currentRole: UserRole = UserRole.CUSTOMER
+    private var connectivityBannerHandler: ConnectivityBannerHandler? = null
 
     val TAG="VirtualRoomListActivity"
 
@@ -55,8 +57,22 @@ class VirtualRoomListActivity : AppCompatActivity() {
 //        setupRoleSelectionIfAvailable()
         setupRecycler()
         applyRoleTitle()
+        connectivityBannerHandler = ConnectivityBannerHandler(
+            context = this,
+            rootViewProvider = { findViewById<View>(android.R.id.content) }
+        )
 
         fetchGroups()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        connectivityBannerHandler?.register()
+    }
+
+    override fun onStop() {
+        connectivityBannerHandler?.unregister()
+        super.onStop()
     }
 
     private fun setupRecycler() {

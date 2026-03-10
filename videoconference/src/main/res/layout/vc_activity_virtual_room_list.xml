@@ -34,6 +34,10 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <include
+        android:id="@+id/includeNetworkErrorBanner"
+        layout="@layout/vc_layout_network_error_banner" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerVirtualRooms"
         android:layout_width="match_parent"
