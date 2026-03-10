@@ -69,6 +69,7 @@ import com.app.vc.RequestVideoCallDialog
 import com.app.vc.databinding.LayoutUniversalDialogBinding
 import com.app.vc.databinding.VcActivityVirtualChatRoomBinding
 import com.app.vc.message.ResponseModelEstimateData
+import com.app.vc.models.GroupMemberResponse
 import com.app.vc.models.MessageModel
 import com.app.vc.models.MessageStatusEnum
 import com.app.vc.network.LoginApiService
@@ -133,6 +134,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private val sharedViewModel: MainViewModel by viewModels()
     private var networkErrorVisible = false
     private var connectivityBannerHandler: ConnectivityBannerHandler? = null
+    private val memberFirstNameByUsername = mutableMapOf<String, String>()
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
@@ -208,7 +210,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
     private var isRecording = false
-
     private var isTyping = false
     private val typingHandler = Handler(Looper.getMainLooper())
     private val stopTypingRunnable = Runnable { sendTypingStatus(false) }
@@ -566,11 +567,20 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         super.onCreate(savedInstanceState)
         binding = VcActivityVirtualChatRoomBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         connectivityBannerHandler = ConnectivityBannerHandler(
             context = this,
             rootViewProvider = { findViewById(android.R.id.content) },
             onConnectionChanged = { connected ->
-                if (connected) hideNetworkErrorBanner() else showNetworkErrorBanner()
+                if (connected) {
+                    hideNetworkErrorBanner()
+                    if (!WebSocketManager.getInstance().isConnected()) {
+                        WebSocketManager.getInstance().reconnectNow()
+                    }
+                } else {
+                    showNetworkErrorBanner()
+                }
             }
         )
 
@@ -650,6 +660,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         setupVoiceNote()
         setMessagesLoading(true)
         connectToWebSocket()
+        fetchGroupMembers()
         fetchQuickReplies()
         fetchMessages()
         fetchServiceLifecycle()
@@ -699,12 +710,21 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             }
         }
     }
+    override fun onResume() {
+        super.onResume()
+
+        if (!WebSocketManager.getInstance().isConnected()) {
+            WebSocketManager.getInstance().reconnectNow()
+        }
+    }
+
 
     override fun onDestroy() {
         WebSocketManager.getInstance().clearCallback()
         typingHandler.removeCallbacks(stopTypingRunnable)
         voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
         amplitudeHandler.removeCallbacks(amplitudeRunnable)
+
         mediaRecorder?.release()
         mediaRecorder = null
         mediaPlayer?.release()
@@ -739,6 +759,29 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 }
             } catch (e: Exception) {
                 Log.e("VirtualChatRoom", "Error fetching quick replies: ${e.message}")
+            }
+        }
+    }
+
+    private fun fetchGroupMembers() {
+        val slug = room?.roNumber ?: return
+        val token = PreferenceManager.getAccessToken() ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val response = apiService.getGroupMembers("Bearer $token", slug)
+                if (response.isSuccessful && response.body() != null) {
+                    val members = response.body()!!
+                    val mapping = members.associate { member: GroupMemberResponse ->
+                        member.user.username to member.user.firstName.takeIf { it.isNotBlank() }.orEmpty()
+                    }
+                    withContext(Dispatchers.Main) {
+                        memberFirstNameByUsername.clear()
+                        memberFirstNameByUsername.putAll(mapping.filterValues { it.isNotBlank() })
+                        refreshResolvedSenderNames()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("VirtualChatRoom", "Error fetching group members: ${e.message}")
             }
         }
     }
@@ -789,6 +832,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             messageId = apiMsg.id.toString(),
                             text = if (type == ChatMessageType.TEXT) apiMsg.content else "",
                             isSender = isSender,
+                            senderName = if (isSender) null else resolveSenderDisplayName(apiMsg.sender?.username),
+                            senderUsername = apiMsg.sender?.username,
                             timeLabel = formatApiDate(apiMsg.createdAt),
                             status = if (isRead) MessageStatus.READ else MessageStatus.SENT,
                             type = type,
@@ -1420,12 +1465,42 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         WebSocketManager.getInstance().connect(url, this)
     }
 
+    private fun hasMessage(messageId: String?): Boolean {
+        if (messageId.isNullOrBlank()) return false
+        return messages.any { it.messageId == messageId }
+    }
+
+    private fun appendIncomingMessage(message: ChatMessage) {
+        if (hasMessage(message.messageId)) return
+        messageAdapter?.addMessage(message)
+    }
+
+    private fun resolveSenderDisplayName(username: String?): String? {
+        if (username.isNullOrBlank()) return null
+        return memberFirstNameByUsername[username]?.takeIf { it.isNotBlank() } ?: username
+    }
+
+    private fun refreshResolvedSenderNames() {
+        var changed = false
+        messages.forEach { message ->
+            if (!message.isSender) {
+                val resolved = resolveSenderDisplayName(message.senderUsername)
+                if (!resolved.isNullOrBlank() && message.senderName != resolved) {
+                    message.senderName = resolved
+                    changed = true
+                }
+            }
+        }
+        if (changed) {
+            messageAdapter?.notifyDataSetChanged()
+        }
+    }
+
     override fun onConnected() {
         runOnUiThread {
             Log.d("VirtualChatRoom", "WebSocket Connected Successfully")
             PresenceStore.setUserOnline(PreferenceManager.getUserId())
             if (networkErrorVisible) hideNetworkErrorBanner()
-            Toast.makeText(this, "Chat connected", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1484,6 +1559,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     messageId = messageIdFromJson(jsonObject),
                                     text = "",
                                     isSender = false,
+                                    senderName = resolveSenderDisplayName(jsonObject.get("username")?.asString),
+                                    senderUsername = jsonObject.get("username")?.asString,
                                     timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                     type = msgType,
                                     attachmentUri = fullAttachmentUrl,
@@ -1491,7 +1568,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     caption = content,
                                     mimeType = mimeType
                                 )
-                            messageAdapter?.addMessage(mediaMessage)
+                            appendIncomingMessage(mediaMessage)
                             room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
                         } else if (jsonObject.has("file_url")) {
                             // Server sent chat.message with top-level file_url (e.g. after chat.media)
@@ -1514,6 +1591,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     messageId = messageIdFromJson(jsonObject),
                                     text = "",
                                     isSender = false,
+                                    senderName = resolveSenderDisplayName(jsonObject.get("username")?.asString),
+                                    senderUsername = jsonObject.get("username")?.asString,
                                     timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                     type = msgType,
                                     attachmentUri = fullUrl,
@@ -1521,7 +1600,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     caption = caption,
                                     thumbnailUrl = thumbUrl
                                 )
-                            messageAdapter?.addMessage(mediaMessage)
+                            appendIncomingMessage(mediaMessage)
                             room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
                         }
 //                        if (attachment != null) {
@@ -1561,7 +1640,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 content.contains(".mp4", ignoreCase = true) || content.contains(".pdf", ignoreCase = true)) {
                                 fetchMessages()
                             } else {
-                                addMessage(content, false, messageIdFromJson(jsonObject))
+                                addMessage(
+                                    text = content,
+                                    isSender = false,
+                                    messageId = messageIdFromJson(jsonObject),
+                                    senderName = resolveSenderDisplayName(jsonObject.get("username")?.asString),
+                                    senderUsername = jsonObject.get("username")?.asString
+                                )
                             }
                         }
                         scrollToLast()
@@ -1609,6 +1694,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 messageId = messageIdFromJson(jsonObject),
                                 text = "",
                                 isSender = false,
+                                senderName = resolveSenderDisplayName(jsonObject.get("username")?.asString),
+                                senderUsername = jsonObject.get("username")?.asString,
                                 timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                 type = msgType,
                                 attachmentUri = fullUrl,
@@ -1616,7 +1703,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 caption = caption,
                                 thumbnailUrl = thumbUrl
                             )
-                        messageAdapter?.addMessage(mediaMessage)
+                        appendIncomingMessage(mediaMessage)
                         room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
 
                         scrollToLast()
@@ -1633,12 +1720,18 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         val currentUserId = PreferenceManager.getUserId()
                         if (userId != null && userId != currentUserId) {
                             val isTypingBroadcast = jsonObject.get("is_typing")?.asBoolean ?: false
-                            binding.txtTypingIndicator?.visibility =
-                                if (isTypingBroadcast) View.VISIBLE else View.GONE
-                            binding.txtTypingIndicator?.text =
-                                "${jsonObject.get("username")?.asString ?: "Someone"} is typing..."
+                            if (isTypingBroadcast) {
+                                val username = jsonObject.get("username")?.asString
+                                val displayName = resolveSenderDisplayName(username) ?: "Someone"
+                                binding.layoutTypingIndicator?.visibility = View.VISIBLE
+                                binding.txtTypingName?.text = displayName
+                                binding.txtTypingInitial?.text = displayName.firstOrNull()?.uppercase() ?: "?"
+                                binding.txtTypingIndicator?.text = "is typing..."
+                            } else {
+                                binding.layoutTypingIndicator?.visibility = View.GONE
+                            }
                         } else {
-                            binding.txtTypingIndicator?.visibility = View.GONE
+                            binding.layoutTypingIndicator?.visibility = View.GONE
                         }
                     }
 
@@ -1666,8 +1759,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     override fun onDisconnected(reason: String) {
         runOnUiThread {
-            Log.d("VirtualChatRoom", "WebSocket Disconnected: $reason")
-            showWebSocketDisconnectedToast("Chat connection lost")
+            Log.d(TAG, "WebSocket Disconnected: $reason")
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                connectToWebSocket()
+            }, 3000)
         }
     }
 
@@ -1693,7 +1789,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.recyclerMessages.visibility = View.GONE
         binding.layoutPreviewContainer.visibility = View.VISIBLE
         binding.cardViewBottomChat?.visibility = View.GONE
-        binding.txtTypingIndicator?.visibility = View.GONE
+        binding.layoutTypingIndicator?.visibility = View.GONE
 
         val previewRoot = binding.layoutPreviewContainer.getChildAt(0)
         val viewPager: ViewPager2 = previewRoot.findViewById(R.id.viewPagerPreview)
@@ -2322,14 +2418,23 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
-    private fun addMessage(text: String, isSender: Boolean, messageId: String? = null) {
+    private fun addMessage(
+        text: String,
+        isSender: Boolean,
+        messageId: String? = null,
+        senderName: String? = null,
+        senderUsername: String? = null
+    ) {
         if (TextUtils.isEmpty(text)) return
+        if (hasMessage(messageId)) return
         val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
         messageAdapter?.addMessage(
             ChatMessage(
                 messageId = messageId,
                 text = text,
                 isSender = isSender,
+                senderName = senderName,
+                senderUsername = senderUsername,
                 timeLabel = timeLabel,
                 status = if (isSender) MessageStatus.SENDING else MessageStatus.SENT
             )

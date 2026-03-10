@@ -2,6 +2,6 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <corners android:radius="16dp" />
-    <solid android:color="@color/bg_color_receiver_layout_message_screen" />
+    <solid android:color="@color/white" />
 </shape>
 

@@ -32,6 +32,8 @@ data class ChatMessage(
     var messageId: String? = null,
     val text: String,
     val isSender: Boolean,
+    var senderName: String? = null,
+    val senderUsername: String? = null,
     val timeLabel: String,
     var status: MessageStatus = MessageStatus.SENT,
     val type: ChatMessageType = ChatMessageType.TEXT,
@@ -197,6 +199,8 @@ class VirtualChatMessageAdapter(
         private val onClick: (ChatMessage) -> Unit,
         private val onSaveMedia: (ChatMessage) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
+        private val txtSenderName: TextView? = itemView.findViewById(R.id.txtSenderName)
+        private val txtSenderInitial: TextView? = itemView.findViewById(R.id.txtSenderInitial)
         private val txtMessage: TextView? = itemView.findViewById(R.id.txtMessage)
         private val txtTime: TextView = itemView.findViewById(R.id.txtTime)
         private val imgStatus: ImageView? = itemView.findViewById(R.id.imgStatus)
@@ -221,6 +225,7 @@ class VirtualChatMessageAdapter(
         private val btnImageOverflow: ImageView? = itemView.findViewById(R.id.btnImageOverflow)
 
         fun bind(message: ChatMessage) {
+            bindSenderInfo(message)
             itemView.setOnClickListener {
                 if (message.status == MessageStatus.ERROR) onRetry(message) else onClick(message)
             }
@@ -340,6 +345,13 @@ class VirtualChatMessageAdapter(
             val s = seconds % 60
             return "%02d:%02d".format(m, s)
         }
+
+        private fun bindSenderInfo(message: ChatMessage) {
+            val displayName = message.senderName?.takeIf { it.isNotBlank() }
+                ?: if (message.isSender) "You" else "User"
+            txtSenderName?.text = displayName
+            txtSenderInitial?.text = displayName.firstOrNull()?.uppercase() ?: "?"
+        }
     }
 
     class IncomingViewHolder(
@@ -347,6 +359,8 @@ class VirtualChatMessageAdapter(
         private val onClick: (ChatMessage) -> Unit,
         private val onSaveMedia: (ChatMessage) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
+        private val txtSenderName: TextView? = itemView.findViewById(R.id.txtSenderName)
+        private val txtSenderInitial: TextView? = itemView.findViewById(R.id.txtSenderInitial)
         private val txtMessage: TextView? = itemView.findViewById(R.id.txtMessage)
         private val txtTime: TextView = itemView.findViewById(R.id.txtTime)
         private val imgAttachment: ImageView? = itemView.findViewById(R.id.imgAttachment)
@@ -366,6 +380,7 @@ class VirtualChatMessageAdapter(
         private val btnImageOverflow: ImageView? = itemView.findViewById(R.id.btnImageOverflow)
 
         fun bind(message: ChatMessage) {
+            bindSenderInfo(message)
             itemView.setOnClickListener { onClick(message) }
             txtTime.text = message.timeLabel
             layoutText?.visibility = View.GONE
@@ -467,6 +482,13 @@ class VirtualChatMessageAdapter(
             val m = seconds / 60
             val s = seconds % 60
             return "%02d:%02d".format(m, s)
+        }
+
+        private fun bindSenderInfo(message: ChatMessage) {
+            val displayName = message.senderName?.takeIf { it.isNotBlank() }
+                ?: if (message.isSender) "You" else "User"
+            txtSenderName?.text = displayName
+            txtSenderInitial?.text = displayName.firstOrNull()?.uppercase() ?: "?"
         }
     }
 

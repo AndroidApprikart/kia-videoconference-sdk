@@ -1,5 +1,6 @@
 package com.app.vc.network
 
+import com.app.vc.models.GroupMemberResponse
 import com.app.vc.virtualchatroom.FileUploadResponse
 import com.app.vc.virtualchattoken.LoginResponse
 import com.app.vc.virtualroomlist.GroupResponse
@@ -62,6 +63,12 @@ interface LoginApiService {
         @Header("Authorization") token: String,
         @Path("slug") slug: String
     ): Response<List<ApiMessageResponse>>
+
+    @GET("api/groups/{slug}/members/")
+    suspend fun getGroupMembers(
+        @Header("Authorization") token: String,
+        @Path("slug") slug: String
+    ): Response<List<GroupMemberResponse>>
 
     @GET("api/groups/{slug}/service-lifecycle/current/")
     suspend fun getServiceLifecycleCurrent(
