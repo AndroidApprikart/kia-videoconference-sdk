@@ -13,7 +13,7 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
-import android.media.AudioTrack
+
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.media.MediaRecorder
@@ -124,6 +124,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     // Add this if you have a reference to your main ViewModel or use the Activity scope
     private val sharedViewModel: MainViewModel by viewModels()
+    private var audioTrack: AudioTrack? = null
+
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
