@@ -526,7 +526,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val roomStatus=intent.getStringExtra(STATUS)
         Log.d(TAG, "onCreate: $roomStatus")
 
-        binding.txtStatusChip?.text =roomStatus
+        val roomJson = intent.getStringExtra(EXTRA_ROOM_JSON)
+        if (roomJson != null) {
+            room = Gson().fromJson(roomJson, VirtualRoomUiModel::class.java)
+            jobNotes = room?.serviceNotes
+            statusLabel = room?.lifecycleStatusLabel
+        }
+
+        binding.txtStatusChip?.text = room?.lifecycleStatusLabel?.takeIf { it.isNotBlank() }
+            ?: roomStatus ?: room?.status ?: ""
 
         currentRole = when (roleFromIntent) {
             UserRole.SERVICE_ADVISOR.name -> UserRole.SERVICE_ADVISOR
@@ -544,6 +552,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 arguments = Bundle().apply {
                     putString(RODetailsFragment.KEY_JOB_NOTES, jobNotes ?: "")
                     putString(RODetailsFragment.KEY_STATUS_LABEL, statusLabel ?: "")
+                    putString(RODetailsFragment.KEY_RO_NUMBER, room?.roNumberDisplay ?: "")
                 }
             })
             setupTabs()
@@ -555,17 +564,22 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
 
         binding.repairOrderLayout?.setOnClickListener {
-            startActivity(Intent(this, RepairOrderActivity::class.java))
+            val intent = Intent(this, RepairOrderActivity::class.java)
+            room?.let { r ->
+                intent.putExtra(RepairOrderActivity.EXTRA_GROUP_SLUG, r.roNumber)
+                intent.putExtra(RepairOrderActivity.EXTRA_RO_NUMBER, r.roNumberDisplay)
+                intent.putExtra(RepairOrderActivity.EXTRA_STATUS_LABEL, r.lifecycleStatusLabel)
+                intent.putExtra(RepairOrderActivity.EXTRA_DESCRIPTION, r.customerName)
+                intent.putExtra(RepairOrderActivity.EXTRA_DAY_LABEL, r.dayLabel)
+                intent.putExtra(RepairOrderActivity.EXTRA_TIME_LABEL, r.timeLabel)
+            }
+            startActivity(intent)
         }
 
         binding.btnVideoCall?.setOnClickListener {
             RequestVideoCallDialog(this).show()
         }
 
-        val roomJson = intent.getStringExtra(EXTRA_ROOM_JSON)
-        if (roomJson != null) {
-            room = Gson().fromJson(roomJson, VirtualRoomUiModel::class.java)
-        }
 // Inside onCreate
 
         setupToolbar()
@@ -671,8 +685,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     val apiMessages = response.body()!!
                     
                     val chatMessages = apiMessages.map { apiMsg ->
-                        val isSender = apiMsg.sender.id.toString() == currentUserId
-                        val attachment = apiMsg.attachments.firstOrNull()
+                        val isSender = apiMsg.sender?.id?.toString() == currentUserId
+                        val attachment = apiMsg.attachments?.firstOrNull()
                         val type = when {
                             attachment != null -> when {
                                 attachment.mimeType.startsWith("image") -> ChatMessageType.IMAGE
@@ -694,7 +708,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         val thumbUrl = attachment?.thumbnailUrl?.let { url ->
                             if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
                         }
-                        val isRead = apiMsg.receipts.isNotEmpty()
+                        val isRead = (apiMsg.receipts?.isNotEmpty() == true)
                         
                         ChatMessage(
                             messageId = apiMsg.id.toString(),
@@ -736,10 +750,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     val body = response.body()!!
                     jobNotes = body.notes?.takeIf { it.isNotBlank() }
                     statusLabel = body.statusLabel?.takeIf { it.isNotBlank() }
+                    Log.d("VirtualChatRoom", "Service lifecycle response: $body")
                     withContext(Dispatchers.Main) {
-                        binding.txtJobNotes?.let { tv ->
-                            tv.visibility = if (!jobNotes.isNullOrBlank()) View.VISIBLE else View.GONE
-                            tv.text = jobNotes ?: ""
+                        binding.txtStatusChip?.let { tv ->
+                            tv.visibility = View.VISIBLE
+                            tv.text = statusLabel ?: jobNotes ?: ""
                         }
                         (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
                             frag.setJobNotes(jobNotes)
@@ -1068,7 +1083,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         tabParticipants.setOnClickListener {
 
-            loadFragment(ParticipantsListFragment())
+            loadFragment(ParticipantsListFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ParticipantsListFragment.KEY_GROUP_SLUG, room?.roNumber)
+                }
+            })
 
             selectParticipantsTab()
 
@@ -1088,6 +1107,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 arguments = Bundle().apply {
                     putString(RODetailsFragment.KEY_JOB_NOTES, jobNotes ?: "")
                     putString(RODetailsFragment.KEY_STATUS_LABEL, statusLabel ?: "")
+                    putString(RODetailsFragment.KEY_RO_NUMBER, room?.roNumberDisplay ?: "")
                 }
             })
 
@@ -1764,12 +1784,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val room = room ?: return
         binding.txtLeftCustomerName?.text = room.customerName
         binding.txtLeftRoNumber?.text = room.roNumber
-        binding.txtLeftStatus?.text = room.status.name
+        binding.txtLeftStatus?.text = room.status
     }
 
     private fun setupMessageList() {
         binding.recyclerMessages.layoutManager =
             LinearLayoutManager(this).apply { stackFromEnd = true }
+        binding.recyclerMessages.setHasFixedSize(false)
+        binding.recyclerMessages.setItemViewCacheSize(20)
+//        binding.recyclerMessages.setHasStableIds(true)
         messageAdapter = VirtualChatMessageAdapter(
             messages,
             onRetryClick = { message ->

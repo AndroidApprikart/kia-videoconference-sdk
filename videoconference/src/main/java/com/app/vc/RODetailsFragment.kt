@@ -30,6 +30,7 @@ class RODetailsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         arguments?.getString(KEY_JOB_NOTES)?.let { setJobNotes(it) }
         arguments?.getString(KEY_STATUS_LABEL)?.let { setStatusLabel(it) }
+        arguments?.getString(KEY_RO_NUMBER)?.let { setRoNumber(it) }
     }
 
     fun setJobNotes(notes: String?) {
@@ -40,6 +41,10 @@ class RODetailsFragment : Fragment() {
         binding.statusDescription.text = label?.takeIf { it.isNotBlank() } ?: "Car is in the inspection stage"
     }
 
+    fun setRoNumber(roNumber: String?) {
+        binding.roDescription.text = roNumber?.takeIf { it.isNotBlank() } ?: "--"
+    }
+
     override fun onDestroyView() {
         _binding = null
         super.onDestroyView()
@@ -48,5 +53,6 @@ class RODetailsFragment : Fragment() {
     companion object {
         const val KEY_JOB_NOTES = "job_notes"
         const val KEY_STATUS_LABEL = "status_label"
+        const val KEY_RO_NUMBER = "ro_number"
     }
 }

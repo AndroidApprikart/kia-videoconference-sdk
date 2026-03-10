@@ -21,6 +21,8 @@ import com.google.gson.GsonBuilder
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class VirtualRoomListActivity : AppCompatActivity() {
 
@@ -97,16 +99,23 @@ class VirtualRoomListActivity : AppCompatActivity() {
             when {
                 response.isSuccessful && response.body() != null -> {
                     val groups = response.body()!!
+                    Log.d(TAG, "getGroups list API response: ${Gson().toJson(groups)}")
                     val uiModels = groups.map { group ->
+                        val serviceStatus = group.currentServiceStatus
+                        val (dayLabel, timeLabel) = formatCreatedAt(group.createdAt)
+                        Log.d(TAG, "Group ${group.slug}: status_label=${serviceStatus?.statusLabel}, notes=${serviceStatus?.notes}, ro_number=${group.roNumber}, created=${dayLabel} $timeLabel")
                         VirtualRoomUiModel(
                             roNumber = group.slug,
                             subject = group.name,
-                            status = RoomStatus.OPEN,
-                            dayLabel = "Today",
-                            timeLabel = "",
+                            status = serviceStatus?.status ?: "OPEN",
+                            dayLabel = dayLabel,
+                            timeLabel = timeLabel,
                             unreadCount = 0,
                             customerName = group.description,
-                            contactNumber = ""
+                            contactNumber = "",
+                            lifecycleStatusLabel = serviceStatus?.statusLabel,
+                            roNumberDisplay = group.roNumber,
+                            serviceNotes = serviceStatus?.notes
                         )
                     }
                     GroupsResult.Success(uiModels)
@@ -117,6 +126,22 @@ class VirtualRoomListActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("VirtualRoomList", "Error: ${e.localizedMessage}")
             GroupsResult.Error(e.localizedMessage ?: e.message ?: "Unknown error")
+        }
+    }
+
+    /** Parses ISO 8601 created_at (e.g. 2026-03-05T14:51:03.871701) to "05-03-2026" and "2:51PM". */
+    private fun formatCreatedAt(createdAt: String?): Pair<String, String> {
+        if (createdAt.isNullOrBlank()) return "" to ""
+        return try {
+            val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+            parser.parse(createdAt.take(19))?.let { date ->
+                val dateStr = SimpleDateFormat("dd-MM-yyyy", Locale.US).format(date)
+                val timeStr = SimpleDateFormat("h:mma", Locale.US).format(date)
+                dateStr to timeStr
+            } ?: ("" to "")
+        } catch (e: Exception) {
+            Log.w(TAG, "formatCreatedAt failed for: $createdAt", e)
+            "" to ""
         }
     }
 
@@ -175,7 +200,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
         val gson = Gson()
         val intent = Intent(this, VirtualChatRoomActivity::class.java)
         intent.putExtra(VirtualChatRoomActivity.EXTRA_ROLE, currentRole.name)
-        intent.putExtra(VirtualChatRoomActivity.STATUS, room.status.name)
+        intent.putExtra(VirtualChatRoomActivity.STATUS, room.status)
         Log.d(TAG, "openChatRoom: ${room.status}")
         intent.putExtra(VirtualChatRoomActivity.EXTRA_ROOM_JSON, gson.toJson(room))
         startActivity(intent)

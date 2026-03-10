@@ -89,10 +89,10 @@ data class ApiMessageResponse(
     @SerializedName("id") val id: Int,
     @SerializedName("content") val content: String,
     @SerializedName("message_type") val messageType: String,
-    @SerializedName("sender") val sender: ApiSenderResponse,
-    @SerializedName("attachments") val attachments: List<ApiAttachmentResponse>,
+    @SerializedName("sender") val sender: ApiSenderResponse?,
+    @SerializedName("attachments") val attachments: List<ApiAttachmentResponse>?,
     @SerializedName("created_at") val createdAt: String,
-    @SerializedName("receipts") val receipts: List<ApiReceiptResponse>
+    @SerializedName("receipts") val receipts: List<ApiReceiptResponse>?
 )
 
 data class ApiSenderResponse(

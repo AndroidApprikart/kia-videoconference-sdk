@@ -23,8 +23,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:padding="@dimen/_5sdp"
-                android:background="@drawable/bg_comment_box">
+                android:padding="@dimen/_5sdp">
 
 
                 <TextView
@@ -64,8 +63,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:padding="@dimen/_5sdp"
-                android:layout_marginTop="@dimen/_5sdp"
-                android:background="@drawable/bg_comment_box">
+                android:layout_marginTop="@dimen/_5sdp">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -73,7 +71,7 @@
                     android:fontFamily="@font/kia_signature_fix_bold"
                     android:textColor="#999999"
                     android:textSize="14sp"
-                    android:text="Job Notes :"/>
+                    android:text="Description :"/>
 
                 <View
                     android:layout_width="0dp"
@@ -138,6 +136,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
+                android:visibility="gone"
                 android:padding="@dimen/_5sdp"
                 >
 
@@ -174,6 +173,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
+                android:visibility="gone"
                 android:padding="@dimen/_5sdp"
                 >
 
