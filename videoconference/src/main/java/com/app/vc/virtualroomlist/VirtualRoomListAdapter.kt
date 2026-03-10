@@ -52,9 +52,9 @@ class VirtualRoomListAdapter(
             txtTitle?.text = "${room.roNumber} | ${room.subject}"
             txtSubtitle?.text = "${room.dayLabel} \u2022 ${room.timeLabel}"
 
-            txtStatus.text = room.status.name.replace('_', ' ')
+            txtStatus.text = room.lifecycleStatusLabel?.takeIf { it.isNotBlank() } ?: room.status.replace('_', ' ')
             val bg = txtStatus.background as? GradientDrawable
-            bg?.setColor(ContextCompat.getColor(context, statusColor(room.status)))
+//            bg?.setColor(ContextCompat.getColor(context, statusColor(room.status)))
 
             txtUnreadBadge?.apply {
                 visibility = if (room.unreadCount > 0) View.VISIBLE else View.GONE

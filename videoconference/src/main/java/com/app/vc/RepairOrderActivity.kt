@@ -18,7 +18,16 @@ class RepairOrderActivity : AppCompatActivity() {
     private  val TAG = "RepairOrderActivity:"
     lateinit var binding : ActivityRepairOrderBinding
 
+    private var groupSlug: String? = null
 
+    companion object {
+        const val EXTRA_GROUP_SLUG = "extra_group_slug"
+        const val EXTRA_RO_NUMBER = "extra_ro_number"
+        const val EXTRA_STATUS_LABEL = "extra_status_label"
+        const val EXTRA_DESCRIPTION = "extra_description"
+        const val EXTRA_DAY_LABEL = "extra_day_label"
+        const val EXTRA_TIME_LABEL = "extra_time_label"
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,14 +36,41 @@ class RepairOrderActivity : AppCompatActivity() {
         setContentView(binding.root)
         Log.d(TAG, "onCreate: FeedbackActivity: ")
 
+        groupSlug = intent.getStringExtra(EXTRA_GROUP_SLUG)
+        bindRoomDetailsFromIntent()
+
+        binding.btnBack.setOnClickListener { finish() }
+
         binding.tabParticipants.post {
             moveIndicator(binding.tabParticipants)
         }
 
-        loadFragment(ParticipantsListFragment())
+        loadFragment(ParticipantsListFragment().apply {
+            arguments = Bundle().apply {
+                putString(ParticipantsListFragment.KEY_GROUP_SLUG, groupSlug)
+            }
+        })
         setupTabs()
         selectParticipantsTab()
 
+    }
+
+    private fun bindRoomDetailsFromIntent() {
+        intent.getStringExtra(EXTRA_RO_NUMBER)?.takeIf { it.isNotBlank() }?.let {
+            binding.orderId.text = it
+        }
+        intent.getStringExtra(EXTRA_STATUS_LABEL)?.takeIf { it.isNotBlank() }?.let {
+            binding.status.text = it
+        }
+        intent.getStringExtra(EXTRA_DESCRIPTION)?.takeIf { it.isNotBlank() }?.let {
+            binding.repairDescription.text = it
+        }
+        intent.getStringExtra(EXTRA_DAY_LABEL)?.takeIf { it.isNotBlank() }?.let {
+            binding.createdDayTv.text = it
+        }
+        intent.getStringExtra(EXTRA_TIME_LABEL)?.takeIf { it.isNotBlank() }?.let {
+            binding.timeTv.text = it
+        }
     }
 
     private fun loadFragment(fragment: Fragment) {
@@ -49,7 +85,11 @@ class RepairOrderActivity : AppCompatActivity() {
 
         binding.tabParticipants.setOnClickListener {
 
-            loadFragment(ParticipantsListFragment())
+            loadFragment(ParticipantsListFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ParticipantsListFragment.KEY_GROUP_SLUG, groupSlug)
+                }
+            })
 
             selectParticipantsTab()
             moveIndicator(binding.tabParticipants)

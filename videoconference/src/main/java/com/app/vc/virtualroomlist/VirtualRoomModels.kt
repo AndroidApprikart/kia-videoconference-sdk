@@ -28,12 +28,15 @@ data class VirtualRoomDto(
 data class VirtualRoomUiModel(
     val roNumber: String,
     val subject: String,
-    val status: RoomStatus,
+    val status: String,
     val dayLabel: String,
     val timeLabel: String,
     val unreadCount: Int,
     val customerName: String,
-    val contactNumber: String
+    val contactNumber: String,
+    val lifecycleStatusLabel: String? = null,
+    val roNumberDisplay: String? = null,
+    val serviceNotes: String? = null
 )
 
 internal fun VirtualRoomDto.toUiModel(): VirtualRoomUiModel {
@@ -45,7 +48,7 @@ internal fun VirtualRoomDto.toUiModel(): VirtualRoomUiModel {
     return VirtualRoomUiModel(
         roNumber = roNumber,
         subject = subject,
-        status = safeStatus,
+        status = status,
         dayLabel = dayLabel,
         timeLabel = timeLabel,
         unreadCount = unreadCount,

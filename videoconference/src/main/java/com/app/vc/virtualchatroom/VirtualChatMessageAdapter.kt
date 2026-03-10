@@ -29,6 +29,8 @@ import com.kia.vc.message.LabourListAdapter
 import com.kia.vc.message.Part
 import com.kia.vc.message.PartListAdapter
 import java.io.File
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE, ESTIMATION }
 enum class MessageStatus { SENDING, SENT, READ, ERROR }
@@ -141,6 +143,11 @@ class VirtualChatMessageAdapter(
     }
 
     override fun getItemCount(): Int = messages.size
+
+    override fun getItemId(position: Int): Long {
+        val id = messages.getOrNull(position)?.messageId ?: position.toString()
+        return id.hashCode().toLong()
+    }
 
     fun addMessage(message: ChatMessage) {
         messages.add(message)
@@ -292,15 +299,46 @@ class VirtualChatMessageAdapter(
                     imgFileThumbnail?.setImageBitmap(null)
                     if (isPdf && !message.attachmentUri.isNullOrBlank()) {
                         val path = message.attachmentUri!!
+                        imgFileThumbnail?.setTag(message.messageId)
                         if (!path.startsWith("http") && File(path).exists()) {
                             imgFileThumbnail?.visibility = View.VISIBLE
                             Thread {
                                 val bitmap = renderPdfFirstPageFromPath(path)
-                                itemView.post { imgFileThumbnail?.setImageBitmap(bitmap) }
+                                itemView.post {
+                                    if (imgFileThumbnail?.getTag() == message.messageId) {
+                                        imgFileThumbnail?.setImageBitmap(bitmap)
+                                        imgFileThumbnail?.visibility = View.VISIBLE
+                                    }
+                                }
                             }.start()
                         } else if (path.startsWith("http") && !message.thumbnailUrl.isNullOrBlank()) {
                             imgFileThumbnail?.visibility = View.VISIBLE
                             Glide.with(itemView.context).load(message.thumbnailUrl).centerCrop().into(imgFileThumbnail!!)
+                        } else if (path.startsWith("http")) {
+                            Thread {
+                                try {
+                                    val token = PreferenceManager.getAccessToken()
+                                    val request = Request.Builder().url(path)
+                                        .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+                                        .build()
+                                    val client = OkHttpClient()
+                                    val response = client.newCall(request).execute()
+                                    if (response.isSuccessful && response.body != null) {
+                                        val file = File(itemView.context.cacheDir, "pdf_${message.messageId}_${System.currentTimeMillis()}.pdf")
+                                        file.outputStream().use { response.body!!.byteStream().copyTo(it) }
+                                        val bitmap = renderPdfFirstPageFromPath(file.absolutePath)
+                                        file.delete()
+                                        itemView.post {
+                                            if (imgFileThumbnail?.getTag() == message.messageId && bitmap != null) {
+                                                imgFileThumbnail?.setImageBitmap(bitmap)
+                                                imgFileThumbnail?.visibility = View.VISIBLE
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("ChatAdapter", "PDF download first page: ${e.message}")
+                                }
+                            }.start()
                         }
                     }
                     val showFileCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName
@@ -434,15 +472,46 @@ class VirtualChatMessageAdapter(
                     imgFileThumbnail?.setImageBitmap(null)
                     if (isPdf && !message.attachmentUri.isNullOrBlank()) {
                         val path = message.attachmentUri!!
+                        imgFileThumbnail?.setTag(message.messageId)
                         if (!path.startsWith("http") && File(path).exists()) {
                             imgFileThumbnail?.visibility = View.VISIBLE
                             Thread {
                                 val bitmap = renderPdfFirstPageFromPath(path)
-                                itemView.post { imgFileThumbnail?.setImageBitmap(bitmap) }
+                                itemView.post {
+                                    if (imgFileThumbnail?.getTag() == message.messageId) {
+                                        imgFileThumbnail?.setImageBitmap(bitmap)
+                                        imgFileThumbnail?.visibility = View.VISIBLE
+                                    }
+                                }
                             }.start()
                         } else if (path.startsWith("http") && !message.thumbnailUrl.isNullOrBlank()) {
                             imgFileThumbnail?.visibility = View.VISIBLE
                             Glide.with(itemView.context).load(message.thumbnailUrl).centerCrop().into(imgFileThumbnail!!)
+                        } else if (path.startsWith("http")) {
+                            Thread {
+                                try {
+                                    val token = PreferenceManager.getAccessToken()
+                                    val request = Request.Builder().url(path)
+                                        .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+                                        .build()
+                                    val client = OkHttpClient()
+                                    val response = client.newCall(request).execute()
+                                    if (response.isSuccessful && response.body != null) {
+                                        val file = File(itemView.context.cacheDir, "pdf_${message.messageId}_${System.currentTimeMillis()}.pdf")
+                                        file.outputStream().use { response.body!!.byteStream().copyTo(it) }
+                                        val bitmap = renderPdfFirstPageFromPath(file.absolutePath)
+                                        file.delete()
+                                        itemView.post {
+                                            if (imgFileThumbnail?.getTag() == message.messageId && bitmap != null) {
+                                                imgFileThumbnail?.setImageBitmap(bitmap)
+                                                imgFileThumbnail?.visibility = View.VISIBLE
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("ChatAdapter", "PDF download first page: ${e.message}")
+                                }
+                            }.start()
                         }
                     }
                     val showFileCaption = !message.caption.isNullOrBlank() && message.caption != message.fileName

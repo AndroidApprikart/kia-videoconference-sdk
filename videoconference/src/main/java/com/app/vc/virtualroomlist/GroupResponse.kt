@@ -7,9 +7,24 @@ data class GroupResponse(
     @SerializedName("name") val name: String,
     @SerializedName("slug") val slug: String,
     @SerializedName("description") val description: String,
+    @SerializedName("vehicle_number") val vehicleNumber: String? = null,
+    @SerializedName("ro_number") val roNumber: String? = null,
+    @SerializedName("current_service_status") val currentServiceStatus: GroupCurrentServiceStatus? = null,
     @SerializedName("member_count") val memberCount: Int,
     @SerializedName("members") val members: List<GroupMember>,
     @SerializedName("created_at") val createdAt: String
+)
+
+data class GroupCurrentServiceStatus(
+    @SerializedName("id") val id: Int,
+    @SerializedName("group") val group: Int,
+    @SerializedName("status") val status: String,
+    @SerializedName("status_label") val statusLabel: String?,
+    @SerializedName("previous_status") val previousStatus: String?,
+    @SerializedName("previous_status_label") val previousStatusLabel: String?,
+    @SerializedName("updated_by") val updatedBy: String?,
+    @SerializedName("notes") val notes: String?,
+    @SerializedName("timestamp") val timestamp: String?
 )
 
 data class GroupMember(
