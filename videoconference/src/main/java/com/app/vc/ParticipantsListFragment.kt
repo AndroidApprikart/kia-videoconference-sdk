@@ -50,10 +50,11 @@ class ParticipantsListFragment : Fragment() {
 
         setupObservers()
 
-        // Fetch participants using token from PreferenceManager
+        // Fetch participants using token and group slug from arguments
         val token = PreferenceManager.getAccessToken() ?: ""
+        val groupSlug = arguments?.getString(KEY_GROUP_SLUG)
         if (token.isNotEmpty()) {
-            viewModel.fetchParticipants(token)
+            viewModel.fetchParticipants(token, groupSlug)
         } else {
             Toast.makeText(requireContext(), "No access token found", Toast.LENGTH_SHORT).show()
         }
@@ -165,6 +166,10 @@ class ParticipantsListFragment : Fragment() {
             behavior.state = BottomSheetBehavior.STATE_EXPANDED
             behavior.skipCollapsed = true
         }
+    }
+
+    companion object {
+        const val KEY_GROUP_SLUG = "group_slug"
     }
 
     override fun onDestroyView() {

@@ -9,6 +9,8 @@ class WebSocketManager {
     private var client: OkHttpClient = OkHttpClient()
     private var webSocket: WebSocket? = null
     private var listener: WebSocketListener? = null
+    private var callback: WebSocketCallback? = null
+    private var currentUrl: String? = null
 
     companion object {
         private const val TAG = "WebSocketManager"
@@ -30,19 +32,28 @@ class WebSocketManager {
     }
 
     fun connect(url: String, callback: WebSocketCallback) {
+        if (webSocket != null && currentUrl == url) {
+            Log.d(TAG, "Already connected to $url, updating callback")
+            this.callback = callback
+            callback.onConnected()
+            return
+        }
+        disconnect()
         Log.d(TAG, "Connecting to: $url")
+        currentUrl = url
+        this.callback = callback
         val request = Request.Builder().url(url).build()
         
         listener = object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 this@WebSocketManager.webSocket = webSocket
                 Log.d(TAG, "Connected!")
-                callback.onConnected()
+                this@WebSocketManager.callback?.onConnected()
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 Log.d(TAG, "Received message: $text")
-                callback.onMessageReceived(text)
+                this@WebSocketManager.callback?.onMessageReceived(text)
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
@@ -56,12 +67,16 @@ class WebSocketManager {
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "Closed: $code / $reason")
-                callback.onDisconnected(reason)
+                currentUrl = null
+                this@WebSocketManager.webSocket = null
+                this@WebSocketManager.callback?.onDisconnected(reason)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "Error: ${t.message}")
-                callback.onError(t.message ?: "Unknown error")
+                currentUrl = null
+                this@WebSocketManager.webSocket = null
+                this@WebSocketManager.callback?.onError(t.message ?: "Unknown error")
             }
         }
 
@@ -74,7 +89,19 @@ class WebSocketManager {
     }
 
     fun disconnect() {
+        callback = null
+        currentUrl = null
         webSocket?.close(1000, "User disconnected")
         webSocket = null
+        listener = null
+    }
+
+    /**
+     * Clears the activity callback without closing the WebSocket.
+     * Use when leaving the chat screen so the connection stays alive in the background
+     * until the app is killed or the user opens a different room.
+     */
+    fun clearCallback() {
+        callback = null
     }
 }

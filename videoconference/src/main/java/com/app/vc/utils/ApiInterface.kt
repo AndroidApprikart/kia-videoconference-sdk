@@ -31,6 +31,7 @@ import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 /* created by Naghma 06/10/23*/
@@ -145,6 +146,7 @@ interface ApiInterface {
     @GET(ApiDetails.GET_GROUP_MEMBERS)
     suspend fun getGroupMembers(
         @Header("Authorization") token: String,
+        @Path("slug") slug: String
     ): Response<List<GroupMemberResponse>>
 
 }

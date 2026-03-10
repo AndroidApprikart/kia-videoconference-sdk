@@ -85,6 +85,17 @@
                     android:textColor="@color/white"
                     android:textSize="8sp" />
 
+                <TextView
+                    android:id="@+id/txtJobNotes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/_5sdp"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:visibility="gone" />
+
             </LinearLayout>
 
         </LinearLayout>
@@ -109,6 +120,20 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp" />
 
+    <!-- In-place media preview (replaces chat when visible) -->
+    <FrameLayout
+        android:id="@+id/layoutPreviewContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone"
+        android:background="@color/white">
+
+        <include
+            android:id="@+id/includePreviewContent"
+            layout="@layout/vc_layout_media_preview" />
+    </FrameLayout>
+
     <!-- Typing Indicator -->
     <TextView
         android:id="@+id/txtTypingIndicator"
@@ -128,8 +153,9 @@
             android:layout_marginTop="8dp"
             android:background="@color/grey"/>
 
-        <!-- Bottom unified container -->
+        <!-- Bottom unified container (hidden when preview is visible) -->
         <androidx.cardview.widget.CardView
+            android:id="@+id/cardViewBottomChat"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardElevation="0dp"

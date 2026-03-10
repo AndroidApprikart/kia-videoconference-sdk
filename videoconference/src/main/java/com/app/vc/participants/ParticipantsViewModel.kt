@@ -39,11 +39,15 @@ class ParticipantsViewModel : ViewModel() {
             .create(ApiInterface::class.java)
     }
 
-    fun fetchParticipants(token: String) {
+    fun fetchParticipants(token: String, groupSlug: String?) {
+        if (groupSlug.isNullOrBlank()) {
+            _members.value = emptyList()
+            return
+        }
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                val response = getApiInterface().getGroupMembers("Bearer $token")
+                val response = getApiInterface().getGroupMembers("Bearer $token", groupSlug)
                 if (response.isSuccessful) {
                     _members.postValue(response.body())
                 } else {

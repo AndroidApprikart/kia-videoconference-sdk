@@ -14,8 +14,6 @@ class RODetailsFragment : Fragment() {
     private val binding get() = _binding!!
     var TAG = "RODetailsFragment"
 
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
     }
@@ -30,11 +28,25 @@ class RODetailsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-
+        arguments?.getString(KEY_JOB_NOTES)?.let { setJobNotes(it) }
+        arguments?.getString(KEY_STATUS_LABEL)?.let { setStatusLabel(it) }
     }
 
+    fun setJobNotes(notes: String?) {
+        binding.txtJobNotes.text = notes?.takeIf { it.isNotBlank() } ?: "--"
+    }
 
+    fun setStatusLabel(label: String?) {
+        binding.statusDescription.text = label?.takeIf { it.isNotBlank() } ?: "Car is in the inspection stage"
+    }
 
+    override fun onDestroyView() {
+        _binding = null
+        super.onDestroyView()
+    }
 
+    companion object {
+        const val KEY_JOB_NOTES = "job_notes"
+        const val KEY_STATUS_LABEL = "status_label"
+    }
 }
