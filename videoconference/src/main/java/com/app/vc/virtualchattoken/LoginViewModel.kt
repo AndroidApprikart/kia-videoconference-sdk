@@ -62,6 +62,7 @@ class LoginViewModel : ViewModel() {
 
                     Log.d("LoginViewModel", "Access Token Received: ${loginData.access}")
                     Log.d("LoginViewModel", "Refresh Token Received: ${loginData.refresh}")
+                    Log.d("LoginViewModel", "Role Received: ${loginData.role}")
 
                     // Decode JWT and save user ID
                     if (loginData.access != null) {
@@ -72,6 +73,8 @@ class LoginViewModel : ViewModel() {
 
                     PreferenceManager.setAccessToken(loginData.access)
                     PreferenceManager.setRefreshToken(loginData.refresh)
+                    // Save role in preference
+                    PreferenceManager.setUserType(loginData.role)
 
                     verifyToken(loginData.access!!)
                 } else {

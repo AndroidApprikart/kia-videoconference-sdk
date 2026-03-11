@@ -29,8 +29,8 @@ data class GroupCurrentServiceStatus(
 
 data class GroupMember(
     @SerializedName("id") val id: Int,
-    @SerializedName("user") val user: GroupUser,
-    @SerializedName("role") val role: String,
+    @SerializedName("user") val user: GroupUser? = null,
+    @SerializedName("role") val role: String? = null,
     @SerializedName("joined_at") val joinedAt: String
 )
 

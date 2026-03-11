@@ -54,6 +54,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
             else -> UserRole.CUSTOMER
         }
 
+
 //        setupRoleSelectionIfAvailable()
         setupRecycler()
         applyRoleTitle()
@@ -120,17 +121,22 @@ class VirtualRoomListActivity : AppCompatActivity() {
                         val serviceStatus = group.currentServiceStatus
                         val (dayLabel, timeLabel) = formatCreatedAt(group.createdAt)
                         Log.d(TAG, "Group ${group.slug}: status_label=${serviceStatus?.statusLabel}, notes=${serviceStatus?.notes}, ro_number=${group.roNumber}, created=${dayLabel} $timeLabel")
+                        
+                        // Requirement: Check for username which has "customer" in it and fetch that member's first name (when user object is present)
+                        val customerMember = group.members.find { it.user?.username?.contains("customer", ignoreCase = true) == true }
+                        val customerName = customerMember?.user?.firstName ?: ""
+
                         VirtualRoomUiModel(
                             roNumber = group.slug,
-                            subject = group.name,
+                            subject = group.name, // Phone view uses this as "groupname"
                             status = serviceStatus?.status ?: "OPEN",
                             dayLabel = dayLabel,
                             timeLabel = timeLabel,
                             unreadCount = 0,
-                            customerName = group.description,
+                            customerName = if (customerName.isNotBlank()) customerName else group.description,
                             contactNumber = "",
                             lifecycleStatusLabel = serviceStatus?.statusLabel,
-                            roNumberDisplay = group.roNumber,
+                            roNumberDisplay = group.roNumber, // Tablet view displays this as RO No
                             serviceNotes = serviceStatus?.notes
                         )
                     }
@@ -227,59 +233,3 @@ class VirtualRoomListActivity : AppCompatActivity() {
         const val STATUS = "room_status"
     }
 }
-
-private const val DUMMY_ROOMS_JSON = """
-[
-  {
-    "roNumber": "RO R02401012",
-    "subject": "About car Engine",
-    "status": "OPEN",
-    "dayLabel": "Thu",
-    "timeLabel": "11:32am",
-    "unreadCount": 2,
-    "customerName": "Lata",
-    "contactNumber": "9876543210"
-  },
-  {
-    "roNumber": "RO R02568783",
-    "subject": "About car annual service",
-    "status": "IN_PROGRESS",
-    "dayLabel": "Mon",
-    "timeLabel": "03:12pm",
-    "unreadCount": 0,
-    "customerName": "Rahul",
-    "contactNumber": "9709853542"
-  },
-  {
-    "roNumber": "RO R02568784",
-    "subject": "Insurance claim status",
-    "status": "CLOSED",
-    "dayLabel": "Wed",
-    "timeLabel": "09:45am",
-    "unreadCount": 0,
-    "customerName": "Naveen",
-    "contactNumber": "9876500000"
-  },
-  {
-    "roNumber": "RO R02568785",
-    "subject": "Re-opened brake issue",
-    "status": "REOPENED",
-    "dayLabel": "Tue",
-    "timeLabel": "05:10pm",
-    "unreadCount": 1,
-    "customerName": "Anita",
-    "contactNumber": "9000012345"
-  },
-  {
-    "roNumber": "RO R02568786",
-    "subject": "Booking cancelled",
-    "status": "CANCELLED",
-    "dayLabel": "Sun",
-    "timeLabel": "10:05am",
-    "unreadCount": 0,
-    "customerName": "Kiran",
-    "contactNumber": "9898989898"
-  }
-]
-"""
-

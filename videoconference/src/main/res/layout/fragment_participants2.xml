@@ -19,21 +19,21 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-<!--        <androidx.appcompat.widget.AppCompatButton-->
-<!--            android:id="@+id/btnManageParticipants"-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:text="Manage Participants"-->
-<!--            android:textAllCaps="false"-->
-<!--            android:padding="@dimen/_6sdp"-->
-<!--            android:gravity="center"-->
-<!--            android:fontFamily="@font/kia_signature_fix_bold"-->
-<!--            android:layout_margin="@dimen/_4sdp"-->
-<!--            android:background="@drawable/bg_kiablack_square"-->
-<!--            android:textColor="@color/color_kia_black"-->
-<!--            android:layout_gravity="center"-->
-<!--            app:layout_constraintTop_toTopOf="@id/tvParticipantsTitle"-->
-<!--            app:layout_constraintEnd_toEndOf="parent" />-->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnManageParticipants"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Manage Participants"
+            android:textAllCaps="false"
+            android:padding="@dimen/_6sdp"
+            android:gravity="center"
+            android:fontFamily="@font/kia_signature_fix_bold"
+            android:layout_margin="@dimen/_4sdp"
+            android:background="@drawable/bg_kiablack_square"
+            android:textColor="@color/color_kia_black"
+            android:layout_gravity="center"
+            app:layout_constraintTop_toTopOf="@id/tvParticipantsTitle"
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvParticipants"

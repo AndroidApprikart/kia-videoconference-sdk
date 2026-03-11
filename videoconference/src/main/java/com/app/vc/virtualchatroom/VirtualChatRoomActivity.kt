@@ -14,7 +14,7 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
-
+import androidx.exifinterface.media.ExifInterface
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.media.MediaRecorder
@@ -121,6 +121,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var audioRecord: AudioRecord? = null
     private var pcmFile: File? = null
     private val playbackHandler = Handler(Looper.getMainLooper())
+
     private var currentRole: UserRole = UserRole.CUSTOMER
     private var room: VirtualRoomUiModel? = null
     private var mediaPlayer: MediaPlayer? = null
@@ -135,6 +136,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var networkErrorVisible = false
     private var connectivityBannerHandler: ConnectivityBannerHandler? = null
     private val memberFirstNameByUsername = mutableMapOf<String, String>()
+    private val memberUserIdToDisplayName = mutableMapOf<Int, String>()
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
@@ -771,12 +773,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.getGroupMembers("Bearer $token", slug)
                 if (response.isSuccessful && response.body() != null) {
                     val members = response.body()!!
-                    val mapping = members.associate { member: GroupMemberResponse ->
-                        member.user.username to member.user.firstName.takeIf { it.isNotBlank() }.orEmpty()
+                    val userIdToDisplay: Map<Int, String> = members.associate { member: GroupMemberResponse ->
+                        member.userId to (member.displayName.takeIf { it.isNotBlank() }.orEmpty())
                     }
                     withContext(Dispatchers.Main) {
-                        memberFirstNameByUsername.clear()
-                        memberFirstNameByUsername.putAll(mapping.filterValues { it.isNotBlank() })
+                        memberUserIdToDisplayName.clear()
+                        memberUserIdToDisplayName.putAll(userIdToDisplay.filterValues { it.isNotBlank() })
                         refreshResolvedSenderNames()
                     }
                 }
@@ -832,7 +834,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             messageId = apiMsg.id.toString(),
                             text = if (type == ChatMessageType.TEXT) apiMsg.content else "",
                             isSender = isSender,
-                            senderName = if (isSender) null else resolveSenderDisplayName(apiMsg.sender?.username),
+                            senderName = if (isSender) null else resolveDisplayName(apiMsg.sender?.id, apiMsg.sender?.username),
                             senderUsername = apiMsg.sender?.username,
                             timeLabel = formatApiDate(apiMsg.createdAt),
                             status = if (isRead) MessageStatus.READ else MessageStatus.SENT,
@@ -895,6 +897,17 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var jobNotes: String? = null
     private var statusLabel: String? = null
 
+    /** Builds the text shown in the pinned lifecycle banner (API and WebSocket). */
+    private fun buildPinnedLifecycleText(
+        statusLabel: String?,
+        previousStatusLabel: String? = null,
+        notes: String? = null
+    ): String {
+        val status = statusLabel?.takeIf { it.isNotBlank() } ?: return notes ?: ""
+        val suffix = listOfNotNull(previousStatusLabel?.takeIf { it.isNotBlank() }, notes?.takeIf { it.isNotBlank() }).firstOrNull()
+        return  "Service stage updated to: $status"
+    }
+
     private fun fetchServiceLifecycle() {
         val slug = room?.roNumber ?: return
         val token = PreferenceManager.getAccessToken() ?: return
@@ -907,6 +920,16 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     statusLabel = body.statusLabel?.takeIf { it.isNotBlank() }
                     Log.d("VirtualChatRoom", "Service lifecycle response: $body")
                     withContext(Dispatchers.Main) {
+                        // Pin lifecycle status at chat top (same as WebSocket service.lifecycle)
+                        val pinnedText = buildPinnedLifecycleText(
+                            statusLabel = statusLabel,
+                            previousStatusLabel = body.previousStatusLabel?.takeIf { it.isNotBlank() },
+                            notes = jobNotes
+                        )
+                        binding.txtPinnedLifecycle?.let { tv ->
+                            tv.visibility = if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
+                            tv.text = pinnedText
+                        }
                         binding.txtStatusChip?.let { tv ->
                             tv.visibility = View.VISIBLE
                             tv.text = statusLabel ?: jobNotes ?: ""
@@ -1480,6 +1503,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         return memberFirstNameByUsername[username]?.takeIf { it.isNotBlank() } ?: username
     }
 
+    private fun resolveSenderDisplayNameByUserId(userId: Int?): String? {
+        if (userId == null) return null
+        return memberUserIdToDisplayName[userId]?.takeIf { it.isNotBlank() }
+    }
+
+    /** Resolves display name from WebSocket/API payload: prefer userId lookup, then username. */
+    private fun resolveDisplayName(userId: Int?, username: String?): String? =
+        resolveSenderDisplayNameByUserId(userId) ?: resolveSenderDisplayName(username)
+
     private fun refreshResolvedSenderNames() {
         var changed = false
         messages.forEach { message ->
@@ -1559,7 +1591,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     messageId = messageIdFromJson(jsonObject),
                                     text = "",
                                     isSender = false,
-                                    senderName = resolveSenderDisplayName(jsonObject.get("username")?.asString),
+                                    senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
                                     senderUsername = jsonObject.get("username")?.asString,
                                     timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                     type = msgType,
@@ -1591,7 +1623,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     messageId = messageIdFromJson(jsonObject),
                                     text = "",
                                     isSender = false,
-                                    senderName = resolveSenderDisplayName(jsonObject.get("username")?.asString),
+                                    senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
                                     senderUsername = jsonObject.get("username")?.asString,
                                     timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                     type = msgType,
@@ -1644,7 +1676,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     text = content,
                                     isSender = false,
                                     messageId = messageIdFromJson(jsonObject),
-                                    senderName = resolveSenderDisplayName(jsonObject.get("username")?.asString),
+                                    senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
                                     senderUsername = jsonObject.get("username")?.asString
                                 )
                             }
@@ -1694,7 +1726,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 messageId = messageIdFromJson(jsonObject),
                                 text = "",
                                 isSender = false,
-                                senderName = resolveSenderDisplayName(jsonObject.get("username")?.asString),
+                                senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
                                 senderUsername = jsonObject.get("username")?.asString,
                                 timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                 type = msgType,
@@ -1722,7 +1754,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             val isTypingBroadcast = jsonObject.get("is_typing")?.asBoolean ?: false
                             if (isTypingBroadcast) {
                                 val username = jsonObject.get("username")?.asString
-                                val displayName = resolveSenderDisplayName(username) ?: "Someone"
+                                val displayName = resolveDisplayName(userId?.toIntOrNull(), username) ?: "Someone"
                                 binding.layoutTypingIndicator?.visibility = View.VISIBLE
                                 binding.txtTypingName?.text = displayName
                                 binding.txtTypingInitial?.text = displayName.firstOrNull()?.uppercase() ?: "?"
@@ -1749,6 +1781,100 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             "online" -> PresenceStore.setUserOnline(userId)
                             "offline" -> PresenceStore.setUserOffline(userId)
                         }
+                    }
+
+                    // Real-time service lifecycle update from server
+                    "service.lifecycle" -> {
+                        val newStatusLabel = jsonObject.get("status_label")?.asString?.takeIf { it.isNotBlank() }
+                        val newNotes = jsonObject.get("notes")?.asString?.takeIf { it.isNotBlank() }
+                        val previousStatusLabel = jsonObject.get("previous_status_label")?.asString?.takeIf { it.isNotBlank() }
+                        val content = jsonObject.get("content")?.asString?.takeIf { it.isNotBlank() }
+
+                        jobNotes = newNotes ?: jobNotes
+                        statusLabel = newStatusLabel ?: statusLabel
+
+                        val pinnedText = content ?: buildPinnedLifecycleText(statusLabel, previousStatusLabel, jobNotes)
+                        binding.txtPinnedLifecycle?.let { tv ->
+                            tv.visibility = if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
+                            tv.text = pinnedText
+                        }
+
+                        binding.txtStatusChip?.let { tv ->
+                            tv.visibility = View.VISIBLE
+                            tv.text = statusLabel ?: jobNotes ?: tv.text
+                        }
+                        binding.txtJobNotes?.let { tv ->
+                            if (!jobNotes.isNullOrBlank()) {
+                                tv.visibility = View.VISIBLE
+                                tv.text = jobNotes
+                            }
+                        }
+
+                        (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
+                            frag.setJobNotes(jobNotes)
+                            frag.setStatusLabel(statusLabel)
+                        }
+                    }
+
+                    // Simple status change event (e.g. label only)
+                    "service.status" -> {
+                        val newStatusLabel = jsonObject.get("status_label")?.asString
+                            ?.takeIf { it.isNotBlank() }
+                        val newNotes = jsonObject.get("notes")?.asString
+                            ?.takeIf { it.isNotBlank() }
+
+                        jobNotes = newNotes ?: jobNotes
+                        statusLabel = newStatusLabel ?: statusLabel
+
+                        val pinnedText = buildPinnedLifecycleText(statusLabel, notes = jobNotes)
+                        binding.txtPinnedLifecycle?.let { tv ->
+                            tv.visibility = if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
+                            tv.text = pinnedText
+                        }
+                        binding.txtStatusChip?.let { tv ->
+                            tv.visibility = View.VISIBLE
+                            tv.text = statusLabel ?: jobNotes ?: tv.text
+                        }
+                        binding.txtJobNotes?.let { tv ->
+                            if (!jobNotes.isNullOrBlank()) {
+                                tv.visibility = View.VISIBLE
+                                tv.text = jobNotes
+                            }
+                        }
+
+                        (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
+                            frag.setJobNotes(jobNotes)
+                            frag.setStatusLabel(statusLabel)
+                        }
+                    }
+
+                    // RO number updated for this appointment
+                    "ro.number.updated" -> {
+                        // Expected payload (example):
+                        // { "type": "ro.number.updated", "ro_number": "RO-2026-12345" }
+                        val newRoNumber = jsonObject.get("ro_number")?.asString
+                            ?.takeIf { it.isNotBlank() }
+
+                        if (!newRoNumber.isNullOrBlank()) {
+                            // Update in-memory room model so future intents use latest RO
+                            room = room?.copy(roNumberDisplay = newRoNumber)
+
+                            // Update header title: "RO-XXXX | <subject>"
+                            val titlePrefix = "$newRoNumber | "
+                            binding.txtRoomTitle?.text = titlePrefix + (room?.subject ?: "")
+
+                            // Update RO details fragment on tablet
+                            (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)
+                                ?.setRoNumber(newRoNumber)
+                        }
+                    }
+
+                    // Generic error event from backend
+                    "error" -> {
+                        val errorMessage = jsonObject.get("message")?.asString
+                            ?: "Unexpected error from server"
+                        Log.e(TAG, "Server error event: $errorMessage")
+                        Toast.makeText(this@VirtualChatRoomActivity, errorMessage, Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
@@ -1938,12 +2064,41 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
 
     private suspend fun compressImage(file: File): File = withContext(Dispatchers.IO) {
-        val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+
+        var bitmap = BitmapFactory.decodeFile(file.absolutePath)
+
+        val exif = ExifInterface(file.absolutePath)
+        val orientation = exif.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL
+        )
+
+        val matrix = android.graphics.Matrix()
+
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        }
+
+        bitmap = Bitmap.createBitmap(
+            bitmap,
+            0,
+            0,
+            bitmap.width,
+            bitmap.height,
+            matrix,
+            true
+        )
+
         val out = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, out)
-//        val compressedFile = File(cacheDir, "compressed_${file.name}")
+
         val compressedFile = File(cacheDir, file.name)
-        FileOutputStream(compressedFile).use { it.write(out.toByteArray()) }
+        FileOutputStream(compressedFile).use {
+            it.write(out.toByteArray())
+        }
+
         compressedFile
     }
 
@@ -2124,7 +2279,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun bindStaticPhoneHeader() {
         val room = room ?: return
-        binding.txtRoomTitle?.text = "${room.roNumber} | ${room.subject}"
+//        binding.txtRoomTitle?.text = "${room.roNumber} | ${room.subject}"
+        binding.txtRoomTitle?.text = " ${room.subject}"
+
     }
 
     private fun bindStaticTabletPanels() {

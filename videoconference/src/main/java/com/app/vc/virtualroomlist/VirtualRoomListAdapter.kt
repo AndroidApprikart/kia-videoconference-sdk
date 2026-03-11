@@ -49,35 +49,24 @@ class VirtualRoomListAdapter(
         fun bind(room: VirtualRoomUiModel, onRoomClick: (VirtualRoomUiModel) -> Unit) {
             val context = itemView.context
 
-            txtTitle?.text = "${room.roNumber} | ${room.subject}"
+            // Phone view: group name only, no appointment/RO number
+            txtTitle?.text = room.subject
             txtSubtitle?.text = "${room.dayLabel} \u2022 ${room.timeLabel}"
 
             txtStatus.text = room.lifecycleStatusLabel?.takeIf { it.isNotBlank() } ?: room.status.replace('_', ' ')
-            val bg = txtStatus.background as? GradientDrawable
-//            bg?.setColor(ContextCompat.getColor(context, statusColor(room.status)))
-
+            
             txtUnreadBadge?.apply {
                 visibility = if (room.unreadCount > 0) View.VISIBLE else View.GONE
                 text = room.unreadCount.toString()
             }
 
+            // Tablet view: display RO Number and Customer Name; show "-" when RO number is absent
             txtCustomerName?.text = room.customerName
-            txtRoNumber?.text = room.roNumber
+            txtRoNumber?.text = (room.roNumberDisplay ?: room.roNumber)?.takeIf { it.isNotBlank() } ?: "-"
             txtContactNumber?.text = room.contactNumber
 
             itemView.setOnClickListener { onRoomClick(room) }
             btnViewRoom?.setOnClickListener { onRoomClick(room) }
         }
-
-        private fun statusColor(status: RoomStatus): Int {
-            return when (status) {
-                RoomStatus.OPEN -> R.color.vc_status_open
-                RoomStatus.IN_PROGRESS -> R.color.vc_status_in_progress
-                RoomStatus.CLOSED -> R.color.vc_status_closed
-                RoomStatus.REOPENED -> R.color.vc_status_reopened
-                RoomStatus.CANCELLED -> R.color.vc_status_cancelled
-            }
-        }
     }
 }
-

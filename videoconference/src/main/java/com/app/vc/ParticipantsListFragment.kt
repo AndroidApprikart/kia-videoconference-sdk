@@ -88,8 +88,18 @@ class ParticipantsListFragment : Fragment() {
     }
 
     private fun setupManageParticipants() {
-        binding.btnManageParticipants?.setOnClickListener {
-            showManageParticipantsSheet()
+        val userRole = PreferenceManager.getuserType() ?: ""
+        val isManager = userRole.equals("service_manager", ignoreCase = true) ||
+                userRole.equals("manager", ignoreCase = true) ||
+                userRole.equals("service manager", ignoreCase = true)
+
+        if (isManager) {
+            binding.btnManageParticipants.visibility = View.VISIBLE
+            binding.btnManageParticipants.setOnClickListener {
+                showManageParticipantsSheet()
+            }
+        } else {
+            binding.btnManageParticipants.visibility = View.GONE
         }
     }
 
@@ -145,8 +155,8 @@ class ParticipantsListFragment : Fragment() {
         dialog.setContentView(view)
 
         val members = viewModel.members.value ?: emptyList()
-        val adminMember = members.find { it.role.equals("admin", ignoreCase = true) }
-        val otherMembers = members.filter { !it.role.equals("admin", ignoreCase = true) }
+        val adminMember = members.find { it.chatRole.equals("admin", ignoreCase = true) }
+        val otherMembers = members.filter { !it.chatRole.equals("admin", ignoreCase = true) }
 
         // Update Admin info in the header of the bottom sheet
         adminMember?.let { admin ->
@@ -154,10 +164,10 @@ class ParticipantsListFragment : Fragment() {
             val tctParticipantName = view.findViewById<TextView>(R.id.tctParticipantName)
             val txtLeftStatus = view.findViewById<TextView>(R.id.txtLeftStatus)
 
-            val displayName = "${admin.user.firstName} ${admin.user.lastName}".trim().ifEmpty { admin.user.username }
+            val displayName = admin.displayName
             tctParticipantName.text = displayName
             txtInitial.text = displayName.firstOrNull()?.uppercase() ?: "?"
-            txtLeftStatus.text = admin.role
+            txtLeftStatus.text = admin.participantRole ?: ""
         }
 
         setupRecycler(view, otherMembers)

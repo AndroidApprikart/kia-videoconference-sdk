@@ -54,13 +54,12 @@ class ParticipantsAdapter(
         ViewCompat.setBackgroundTintList(holder.imgParticipantMic, blackTint)
 
         val currentUserId = PreferenceManager.getUserId()
-        val isLocal = member.user.id.toString() == currentUserId
+        val isLocal = member.userId.toString() == currentUserId
 
-        val role=member.role
-
-        holder.textRole.text=role
+        // Display participant_role
+        holder.textRole.text = member.participantRole ?: ""
         
-        val displayName = "${member.user.firstName} ${member.user.lastName}".trim().ifEmpty { member.user.username }
+        val displayName = member.displayName
         
         if (isLocal) {
             holder.tvParticipantName.text = displayName.plus(localParticipantSuffix)
@@ -75,7 +74,7 @@ class ParticipantsAdapter(
             ?.uppercase()
 
         holder.imgParticipantMic.text = initial ?: "?"
-        val isOnline = member.user.id.toString() in onlineUserIds
+        val isOnline = member.userId.toString() in onlineUserIds
         ViewCompat.setBackgroundTintList(
             holder.statusDot,
             ColorStateList.valueOf(

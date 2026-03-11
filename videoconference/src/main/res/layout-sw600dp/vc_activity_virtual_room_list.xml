@@ -245,7 +245,7 @@
             android:id="@+id/layoutPagination"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-
+android:visibility="gone"
             android:paddingHorizontal="16dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">

@@ -115,7 +115,7 @@ data class ApiAttachmentResponse(
 )
 
 data class ApiReceiptResponse(
-    @SerializedName("user") val user: ApiSenderResponse
+    @SerializedName("user") val user: ApiSenderResponse? = null
 )
 
 data class ServiceLifecycleCurrentResponse(

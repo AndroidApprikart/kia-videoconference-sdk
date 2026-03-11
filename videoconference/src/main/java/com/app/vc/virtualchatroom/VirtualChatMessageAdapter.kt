@@ -34,6 +34,7 @@ data class ChatMessage(
     val isSender: Boolean,
     var senderName: String? = null,
     val senderUsername: String? = null,
+    val senderId: String? = null,
     val timeLabel: String,
     var status: MessageStatus = MessageStatus.SENT,
     val type: ChatMessageType = ChatMessageType.TEXT,

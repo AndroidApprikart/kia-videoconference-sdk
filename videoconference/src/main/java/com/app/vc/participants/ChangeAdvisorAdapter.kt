@@ -40,7 +40,7 @@ class ChangeAdvisorAdapter(
     override fun onBindViewHolder(holder: ViewHolder, @SuppressLint("RecyclerView") position: Int) {
 
         val item = list[position]
-        val displayName = "${item.user.firstName} ${item.user.lastName}".trim().ifEmpty { item.user.username }
+        val displayName = item.displayName
 
         holder.name.text = displayName
 

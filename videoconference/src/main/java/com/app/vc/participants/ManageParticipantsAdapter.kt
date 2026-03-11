@@ -45,15 +45,9 @@ class ManageParticipantsAdapter(
         ViewCompat.setBackgroundTintList(holder.imgParticipantMic, blackTint)
 
         val currentUserId = PreferenceManager.getUserId()
-        val isLocal = member.user.id.toString() == currentUserId
+        val isLocal = member.userId.toString() == currentUserId
         
-        val displayName = "${member.user.firstName} ${member.user.lastName}".trim().ifEmpty { member.user.username }
-
-        if (member.role.equals("admin", ignoreCase = true)) {
-            holder.change.visibility = View.VISIBLE
-        } else {
-            holder.change.visibility = View.GONE
-        }
+        val displayName = member.displayName
 
         if (isLocal) {
             holder.tvParticipantName.text = displayName.plus(" (You)")
@@ -69,11 +63,11 @@ class ManageParticipantsAdapter(
 
         holder.imgParticipantMic.text = initial ?: "?"
         
-        // Update user type/role if needed
-        holder.typeOfUser.text = member.role
+        // Display participant_role
+        holder.typeOfUser.text = member.participantRole ?: ""
 
-        // ✅ Visibility logic for "change" button: Show only if role is admin
-        if (member.role.equals("admin", ignoreCase = true)) {
+        // ✅ Visibility logic for "change" button: Show only if participant_role is service_advisor
+        if (member.participantRole.equals("service_advisor", ignoreCase = true)) {
             holder.change.visibility = View.VISIBLE
         } else {
             holder.change.visibility = View.GONE

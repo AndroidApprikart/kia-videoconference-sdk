@@ -114,39 +114,54 @@
         android:id="@+id/includeNetworkErrorBanner"
         layout="@layout/vc_layout_network_error_banner" />
 
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <!-- Messages list -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerMessages"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp" />
-
-        <ProgressBar
-            android:id="@+id/progressLoadingMessages"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:visibility="gone" />
-
-        <!-- In-place media preview (replaces chat when visible) -->
         <FrameLayout
-            android:id="@+id/layoutPreviewContainer"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone"
-            android:background="@color/white">
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
-            <include
-                android:id="@+id/includePreviewContent"
-                layout="@layout/vc_layout_media_preview" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txtPinnedLifecycle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/vc_bg_status_chip"
+                    android:gravity="center"
+                    android:paddingVertical="8dp"
+                    android:paddingHorizontal="12dp"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerMessages"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/progressLoadingMessages"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+
+            <!-- In-place media preview (replaces chat when visible) -->
+            <FrameLayout
+                android:id="@+id/layoutPreviewContainer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone"
+                android:background="@color/white">
+                <include
+                    android:id="@+id/includePreviewContent"
+                    layout="@layout/vc_layout_media_preview" />
+            </FrameLayout>
         </FrameLayout>
-    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/layoutTypingIndicator"

@@ -49,12 +49,14 @@ class ParticipantsViewModel : ViewModel() {
             try {
                 val response = getApiInterface().getGroupMembers("Bearer $token", groupSlug)
                 if (response.isSuccessful) {
-                    _members.postValue(response.body())
+                    val body = response.body()
+                    _members.postValue(body ?: emptyList())
                 } else {
                     _error.postValue("Error: ${response.code()}")
                 }
             } catch (e: Exception) {
                 _error.postValue(e.message ?: "Unknown Error")
+                _members.postValue(emptyList())
             } finally {
                 _isLoading.postValue(false)
             }
