@@ -25,6 +25,7 @@ class PreferenceManager {
         private const val ACCESS_TOKEN = "ACCESS_TOKEN"
         private const val REFRESH_TOKEN = "REFRESH_TOKEN"
         private const val USER_ID = "USER_ID"
+        private const val NAME = "NAME"
 
 
         fun isChatScreenOpen(): Boolean? {
@@ -95,5 +96,14 @@ class PreferenceManager {
         fun getUserId(): String? {
             return mSharedPrefs?.getString(USER_ID, "")
         }
+  fun setName(name: String?) {
+            mSharedPrefs?.edit()?.putString(NAME, name)?.apply()
+        }
+
+        fun getName(): String? {
+            return mSharedPrefs?.getString(NAME, "")
+        }
+
+
     }
 }

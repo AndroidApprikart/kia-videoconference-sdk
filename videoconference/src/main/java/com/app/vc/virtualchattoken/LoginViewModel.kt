@@ -64,6 +64,9 @@ class LoginViewModel : ViewModel() {
                     Log.d("LoginViewModel", "Refresh Token Received: ${loginData.refresh}")
                     Log.d("LoginViewModel", "Role Received: ${loginData.role}")
 
+                    PreferenceManager.setName(loginData.display_name)
+
+
                     // Decode JWT and save user ID
                     if (loginData.access != null) {
                         val userId = JwtUtils.getUserIdFromToken(loginData.access)

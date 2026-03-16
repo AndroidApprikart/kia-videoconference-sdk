@@ -238,6 +238,7 @@ class VirtualChatMessageAdapter(
 
             txtTime.text = message.timeLabel
             layoutText?.visibility = View.GONE
+
             layoutImageContainer?.visibility = View.GONE
             layoutFileContainer?.visibility = View.GONE
             layoutVoice?.visibility = View.GONE
@@ -248,9 +249,9 @@ class VirtualChatMessageAdapter(
             
             imgStatus?.visibility = View.VISIBLE
             when (message.status) {
-                MessageStatus.SENDING -> imgStatus?.setImageResource(R.drawable.ic_back) // Placeholder
-                MessageStatus.SENT -> imgStatus?.setImageResource(R.drawable.ic_status_sent)
-                MessageStatus.READ -> imgStatus?.setImageResource(R.drawable.ic_status_read)
+                MessageStatus.SENDING -> imgStatus?.setImageResource(R.drawable.arrow_back) // Placeholder
+                MessageStatus.SENT -> imgStatus?.setImageResource(R.drawable.tick_mark_delivered)
+                MessageStatus.READ -> imgStatus?.setImageResource(R.drawable.read_status)
                 MessageStatus.ERROR -> imgStatus?.visibility = View.GONE
             }
 
@@ -262,6 +263,7 @@ class VirtualChatMessageAdapter(
                 }
                 ChatMessageType.IMAGE, ChatMessageType.VIDEO -> {
                     layoutImageContainer?.visibility = View.VISIBLE
+
                     layoutError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
                     btnImageOverflow?.visibility = View.VISIBLE
                     btnImageOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
@@ -280,7 +282,6 @@ class VirtualChatMessageAdapter(
                 }
                 ChatMessageType.FILE -> {
                     layoutImageContainer?.visibility = View.GONE
-                    layoutText?.visibility = View.GONE
                     layoutFileContainer?.visibility = View.VISIBLE
                     layoutFileError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
                     btnFileOverflow?.visibility = View.VISIBLE

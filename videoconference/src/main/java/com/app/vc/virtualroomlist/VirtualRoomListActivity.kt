@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -54,7 +55,10 @@ class VirtualRoomListActivity : AppCompatActivity() {
             else -> UserRole.CUSTOMER
         }
 
-
+        val btnBack=findViewById<ImageView>(R.id.btnBack)
+        val backTv=findViewById<TextView>(R.id.txtBackToHome)
+        btnBack?.setOnClickListener { finish() }
+        backTv?.setOnClickListener { finish() }
 //        setupRoleSelectionIfAvailable()
         setupRecycler()
         applyRoleTitle()

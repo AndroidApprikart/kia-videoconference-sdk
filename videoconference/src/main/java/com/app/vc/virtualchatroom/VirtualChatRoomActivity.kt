@@ -570,7 +570,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding = VcActivityVirtualChatRoomBinding.inflate(layoutInflater)
         setContentView(binding.root)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
+        PreferenceManager.init(this)
         connectivityBannerHandler = ConnectivityBannerHandler(
             context = this,
             rootViewProvider = { findViewById(android.R.id.content) },
@@ -2269,6 +2269,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun setupToolbar() {
         binding.btnBack.setOnClickListener { finish() }
+        binding.repairordertv?.setOnClickListener { finish() }
         val titleView = binding.txtRoomTitle
         titleView?.text = when (currentRole) {
             UserRole.CUSTOMER -> getString(R.string.vc_title_virtual_chat_room_customer)
@@ -2289,6 +2290,16 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.txtLeftCustomerName?.text = room.customerName
         binding.txtLeftRoNumber?.text = room.roNumber
         binding.txtLeftStatus?.text = room.status
+//        binding.txtLeftCustomerName?.text= PreferenceManager.getName()
+
+        Log.d(TAG, "bindStaticTabletPanels:  ${PreferenceManager.getName()}")
+
+        val initial = room.customerName
+            ?.trim()
+            ?.firstOrNull()
+            ?.toString()
+            ?.uppercase()
+         binding.txtInitial?.text=initial
     }
 
     private fun setupMessageList() {

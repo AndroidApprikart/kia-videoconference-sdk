@@ -63,6 +63,7 @@
                     android:contentDescription="More options"
                     android:padding="2dp" />
             </LinearLayout>
+
             <ImageView
                 android:id="@+id/imgFileThumbnail"
                 android:layout_width="match_parent"
@@ -120,6 +121,7 @@
                 android:paddingBottom="8dp"
                 android:visibility="gone"
                 android:maxLines="4"
+                android:gravity="start"
                 android:textColor="@color/color_kia_black"
                 android:textSize="12sp" />
 
@@ -255,7 +257,7 @@
             android:layout_width="160dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:gravity="center_horizontal"
+            android:gravity="start"
             android:visibility="gone"
             android:maxLines="4"
             android:textColor="@color/color_kia_black"
