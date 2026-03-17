@@ -165,6 +165,17 @@
         android:orientation="vertical"
         android:visibility="gone">
 
+        <TextView
+            android:id="@+id/txtImageCaption"
+            android:layout_width="160dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:gravity="start"
+            android:visibility="gone"
+            android:maxLines="4"
+            android:textColor="@color/color_kia_black"
+            android:textSize="12sp" />
+
         <com.google.android.material.card.MaterialCardView
             android:layout_width="160dp"
             android:layout_height="160dp"
@@ -203,6 +214,35 @@
                     android:src="@drawable/play_circle"
                     android:visibility="gone"
                     app:tint="@color/white" />
+
+                <LinearLayout
+                    android:id="@+id/layoutUploadProgress"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#66000000"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <ProgressBar
+                        android:id="@+id/progressUpload"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="120dp"
+                        android:layout_height="wrap_content"
+                        android:indeterminate="false"
+                        android:max="100"
+                        android:progress="0" />
+
+                    <TextView
+                        android:id="@+id/txtUploadPercent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="0%"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
                 <!-- Error Overlay -->
                 <LinearLayout
@@ -251,17 +291,6 @@
                 </LinearLayout>
             </RelativeLayout>
         </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:id="@+id/txtImageCaption"
-            android:layout_width="160dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:gravity="start"
-            android:visibility="gone"
-            android:maxLines="4"
-            android:textColor="@color/color_kia_black"
-            android:textSize="12sp" />
     </LinearLayout>
 
     <!-- ... rest of layout (voice etc) ... -->

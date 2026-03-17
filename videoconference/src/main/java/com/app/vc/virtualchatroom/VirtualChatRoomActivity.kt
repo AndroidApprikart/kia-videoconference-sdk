@@ -76,6 +76,7 @@ import com.app.vc.network.LoginApiService
 import com.app.vc.presence.PresenceStore
 import com.app.vc.utils.ApiDetails
 import com.app.vc.utils.ConnectivityBannerHandler
+import com.app.vc.utils.ProgressRequestBody
 import com.app.vc.utils.PreferenceManager
 import com.app.vc.utils.VCConstants
 import com.app.vc.virtualroomlist.UserRole
@@ -137,6 +138,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var connectivityBannerHandler: ConnectivityBannerHandler? = null
     private val memberFirstNameByUsername = mutableMapOf<String, String>()
     private val memberUserIdToDisplayName = mutableMapOf<Int, String>()
+    private val memberUserIdToRoleAbbrev = mutableMapOf<Int, String>()
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
@@ -781,9 +783,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     val userIdToDisplay: Map<Int, String> = members.associate { member: GroupMemberResponse ->
                         member.userId to (member.displayName.takeIf { it.isNotBlank() }.orEmpty())
                     }
+                    val userIdToRole: Map<Int, String> = members.associate { member: GroupMemberResponse ->
+                        member.userId to roleAbbrev(member.participantRole)
+                    }
                     withContext(Dispatchers.Main) {
                         memberUserIdToDisplayName.clear()
                         memberUserIdToDisplayName.putAll(userIdToDisplay.filterValues { it.isNotBlank() })
+                        memberUserIdToRoleAbbrev.clear()
+                        memberUserIdToRoleAbbrev.putAll(userIdToRole.filterValues { it.isNotBlank() })
                         refreshResolvedSenderNames()
                     }
                 }
@@ -791,6 +798,21 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 Log.e("VirtualChatRoom", "Error fetching group members: ${e.message}")
             }
         }
+    }
+
+    private fun roleAbbrev(participantRole: String?): String {
+        return when (participantRole?.lowercase(Locale.getDefault())) {
+            "service_advisor" -> "SA"
+            "service_manager" -> "SM"
+            "manager" -> "M"
+            "customer" -> "C"
+            else -> ""
+        }
+    }
+
+    private fun resolveRoleAbbrevByUserId(userId: Int?): String? {
+        if (userId == null) return null
+        return memberUserIdToRoleAbbrev[userId]?.takeIf { it.isNotBlank() }
     }
 
     private fun fetchMessages() {
@@ -841,7 +863,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             isSender = isSender,
                             senderName = if (isSender) null else resolveDisplayName(apiMsg.sender?.id, apiMsg.sender?.username),
                             senderUsername = apiMsg.sender?.username,
+                            senderId = apiMsg.sender?.id?.toString(),
+                            senderRoleAbbrev = if (isSender) roleAbbrev(PreferenceManager.getuserType()) else resolveRoleAbbrevByUserId(apiMsg.sender?.id),
                             timeLabel = formatApiDate(apiMsg.createdAt),
+                            createdAtMillis = parseApiCreatedAtMillis(apiMsg.createdAt),
                             status = if (isRead) MessageStatus.READ else MessageStatus.SENT,
                             type = type,
                             attachmentUri = attachmentUri,
@@ -852,8 +877,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     }
                     
                     withContext(Dispatchers.Main) {
+                        val withHeaders = buildMessagesWithDateHeaders(chatMessages)
                         messages.clear()
-                        messages.addAll(chatMessages)
+                        messages.addAll(withHeaders)
                         ChatMediaStore.replaceMessages(slug, chatMessages)
                         messageAdapter?.notifyDataSetChanged()
                         scrollToLast()
@@ -975,6 +1001,61 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         } catch (e: Exception) {
             ""
         }
+    }
+
+    private fun parseApiCreatedAtMillis(dateStr: String?): Long? {
+        if (dateStr.isNullOrBlank()) return null
+        return try {
+            // API uses microseconds; we parse first 19 chars (seconds precision)
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            inputFormat.parse(dateStr.take(19))?.time
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun buildMessagesWithDateHeaders(source: List<ChatMessage>): List<ChatMessage> {
+        if (source.isEmpty()) return emptyList()
+        val out = ArrayList<ChatMessage>(source.size + 8)
+
+        fun dayKey(ms: Long): String {
+            return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(ms))
+        }
+
+        fun headerLabelFor(ms: Long): String {
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = ms
+            val today = java.util.Calendar.getInstance()
+            val yday = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }
+            val key = dayKey(ms)
+            return when (key) {
+                dayKey(today.timeInMillis) -> "Today"
+                dayKey(yday.timeInMillis) -> "Yesterday"
+                else -> SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(ms))
+            }
+        }
+
+        var lastDay: String? = null
+        source.forEach { msg ->
+            if (msg.type == ChatMessageType.DATE_HEADER) return@forEach
+            val ms = msg.createdAtMillis ?: System.currentTimeMillis()
+            val d = dayKey(ms)
+            if (d != lastDay) {
+                lastDay = d
+                out.add(
+                    ChatMessage(
+                        messageId = "date_$d",
+                        text = headerLabelFor(ms),
+                        isSender = false,
+                        timeLabel = "",
+                        type = ChatMessageType.DATE_HEADER,
+                        createdAtMillis = ms
+                    )
+                )
+            }
+            out.add(msg)
+        }
+        return out
     }
 
     private fun updateEstimateStatusApi(estimationStatus: Boolean) {
@@ -1492,6 +1573,27 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun appendIncomingMessage(message: ChatMessage) {
         if (hasMessage(message.messageId)) return
+        val ms = message.createdAtMillis ?: System.currentTimeMillis()
+        val key = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(ms))
+        val hasHeaderForDay = messages.any { it.type == ChatMessageType.DATE_HEADER && it.messageId == "date_$key" }
+        if (!hasHeaderForDay) {
+            val label = buildMessagesWithDateHeaders(listOf(message))
+                .firstOrNull { it.type == ChatMessageType.DATE_HEADER }
+                ?.text
+                ?.takeIf { it.isNotBlank() }
+            if (label != null) {
+                messageAdapter?.addMessage(
+                    ChatMessage(
+                        messageId = "date_$key",
+                        text = label,
+                        isSender = false,
+                        timeLabel = "",
+                        type = ChatMessageType.DATE_HEADER,
+                        createdAtMillis = ms
+                    )
+                )
+            }
+        }
         messageAdapter?.addMessage(message)
     }
 
@@ -1512,10 +1614,22 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun refreshResolvedSenderNames() {
         var changed = false
         messages.forEach { message ->
-            if (!message.isSender) {
-                val resolved = resolveSenderDisplayName(message.senderUsername)
-                if (!resolved.isNullOrBlank() && message.senderName != resolved) {
-                    message.senderName = resolved
+            if (!message.isSender && message.type != ChatMessageType.DATE_HEADER) {
+                val userId = message.senderId?.toIntOrNull()
+                val resolvedName = if (userId != null) {
+                    memberUserIdToDisplayName[userId]?.takeIf { it.isNotBlank() }
+                } else {
+                    resolveSenderDisplayName(message.senderUsername)
+                }
+                if (!resolvedName.isNullOrBlank() && message.senderName != resolvedName) {
+                    message.senderName = resolvedName
+                    changed = true
+                }
+                val resolvedRole = if (userId != null) {
+                    memberUserIdToRoleAbbrev[userId]?.takeIf { it.isNotBlank() }
+                } else null
+                if (resolvedRole != null && message.senderRoleAbbrev != resolvedRole) {
+                    message.senderRoleAbbrev = resolvedRole
                     changed = true
                 }
             }
@@ -1590,6 +1704,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     isSender = false,
                                     senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
                                     senderUsername = jsonObject.get("username")?.asString,
+                                    senderId = senderId,
+                                    senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
                                     timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                     type = msgType,
                                     attachmentUri = fullAttachmentUrl,
@@ -1620,8 +1736,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     messageId = messageIdFromJson(jsonObject),
                                     text = "",
                                     isSender = false,
-                                    senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
+                                    senderName = resolveDisplayName(senderId?.toIntOrNull(), jsonObject.get("username")?.asString),
                                     senderUsername = jsonObject.get("username")?.asString,
+                                    senderId = senderId,
+                                    senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
                                     timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                     type = msgType,
                                     attachmentUri = fullUrl,
@@ -1725,6 +1843,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 isSender = false,
                                 senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
                                 senderUsername = jsonObject.get("username")?.asString,
+                                senderId = senderId,
+                                senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
                                 timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
                                 type = msgType,
                                 attachmentUri = fullUrl,
@@ -1995,7 +2115,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             binding.layoutPreviewContainer.visibility = View.GONE
             binding.recyclerMessages.visibility = View.VISIBLE
             binding.cardViewBottomChat?.visibility = View.VISIBLE
-            selectedFiles.forEach { (file, type) ->
+            val groupId = "grp_${System.currentTimeMillis()}"
+            selectedFiles.forEachIndexed { index, (file, type) ->
                 val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
                 val localId = "local_${System.currentTimeMillis()}_${file.name}"
                 messageAdapter?.addMessage(
@@ -2006,9 +2127,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         timeLabel = timeLabel,
                         type = type,
                         attachmentUri = file.absolutePath,
-                        caption = if (selectedFiles.size == 1) caption else null,
+                        // Multi-select: show caption on first item only (like WhatsApp group). Single-select: show caption on the item.
+                        caption = if (selectedFiles.size == 1) caption else if (index == 0) caption else null,
                         status = MessageStatus.SENDING,
-                        fileName = file.name
+                        fileName = file.name,
+                        groupId = groupId,
+                        uploadProgressPercent = 0
                     )
                 )
                 scrollToLast()
@@ -2016,7 +2140,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     val fileToUpload = if (type == ChatMessageType.IMAGE) {
                         try { compressImage(file) } catch (e: Exception) { file }
                     } else file
-                    performUpload(fileToUpload, if (selectedFiles.size == 1) caption else "", type, localId)
+                    // Multi-select: send caption with first upload only (server still receives one caption).
+                    val captionToSend = if (selectedFiles.size == 1) caption else if (index == 0) caption else ""
+                    performUpload(fileToUpload, captionToSend, type, localId)
                 }
             }
         }
@@ -2114,7 +2240,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             else -> "application/octet-stream"
         }
 
-        val requestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
+        val requestFile = ProgressRequestBody(
+            file = file,
+            contentType = mimeType.toMediaTypeOrNull()
+        ) { written, total ->
+            val percent = ((written * 100L) / total.coerceAtLeast(1L)).toInt()
+            runOnUiThread {
+                messageAdapter?.updateUploadProgress(localId, percent)
+            }
+        }
         val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
         val captionPart = caption.toRequestBody("text/plain; charset=utf-8".toMediaTypeOrNull())
 

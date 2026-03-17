@@ -25,7 +25,7 @@ import com.kia.vc.message.Part
 import com.kia.vc.message.PartListAdapter
 import java.io.File
 
-enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE, ESTIMATION }
+enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE, ESTIMATION, DATE_HEADER }
 enum class MessageStatus { SENDING, SENT, READ, ERROR }
 
 data class ChatMessage(
@@ -35,13 +35,17 @@ data class ChatMessage(
     var senderName: String? = null,
     val senderUsername: String? = null,
     val senderId: String? = null,
+    var senderRoleAbbrev: String? = null,
     val timeLabel: String,
+    val createdAtMillis: Long? = null,
     var status: MessageStatus = MessageStatus.SENT,
     val type: ChatMessageType = ChatMessageType.TEXT,
     var attachmentUri: String? = null,
     val durationSeconds: Int? = null,
     val fileName: String? = null,
     val caption: String? = null,
+    val groupId: String? = null,
+    var uploadProgressPercent: Int? = null,
     val waveformData: String? = null,
     val mimeType: String? = null,
     var thumbnailUrl: String? = null,
@@ -69,6 +73,7 @@ class VirtualChatMessageAdapter(
         private const val VIEW_TYPE_INCOMING = 2
         private const val VIEW_TYPE_ESTIMATION_OUTGOING = 3
         private const val VIEW_TYPE_ESTIMATION_INCOMING = 4
+        private const val VIEW_TYPE_DATE_HEADER = 5
 
         fun parseWaveformData(waveformData: String?): FloatArray {
             if (waveformData.isNullOrBlank()) return floatArrayOf()
@@ -78,6 +83,7 @@ class VirtualChatMessageAdapter(
 
     override fun getItemViewType(position: Int): Int {
         val message = messages[position]
+        if (message.type == ChatMessageType.DATE_HEADER) return VIEW_TYPE_DATE_HEADER
         return if (message.type == ChatMessageType.ESTIMATION) {
             if (message.isSender) VIEW_TYPE_ESTIMATION_OUTGOING else VIEW_TYPE_ESTIMATION_INCOMING
         } else {
@@ -88,6 +94,10 @@ class VirtualChatMessageAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
+            VIEW_TYPE_DATE_HEADER -> {
+                val view = inflater.inflate(R.layout.vc_item_chat_date_header, parent, false)
+                DateHeaderViewHolder(view)
+            }
             VIEW_TYPE_OUTGOING -> {
                 val view = inflater.inflate(R.layout.vc_item_chat_message_outgoing, parent, false)
                 OutgoingViewHolder(view, onRetryClick, onItemClick, onSaveMedia)
@@ -111,6 +121,7 @@ class VirtualChatMessageAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messages[position]
         when (holder) {
+            is DateHeaderViewHolder -> holder.bind(message)
             is OutgoingViewHolder -> holder.bind(message)
             is IncomingViewHolder -> holder.bind(message)
             is EstimationOutgoingViewHolder -> holder.bind(message, position)
@@ -128,6 +139,19 @@ class VirtualChatMessageAdapter(
     fun addMessage(message: ChatMessage) {
         messages.add(message)
         notifyItemInserted(messages.size - 1)
+    }
+
+    fun replaceAll(newMessages: List<ChatMessage>) {
+        messages.clear()
+        messages.addAll(newMessages)
+        notifyDataSetChanged()
+    }
+
+    class DateHeaderViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val txtDate: TextView = itemView.findViewById(R.id.txtDateHeader)
+        fun bind(message: ChatMessage) {
+            txtDate.text = message.text
+        }
     }
     
     fun updateMessageStatus(messageId: String, newStatus: MessageStatus) {
@@ -166,6 +190,13 @@ class VirtualChatMessageAdapter(
             messages[index].status = newStatus
             notifyItemChanged(index)
         }
+    }
+
+    fun updateUploadProgress(messageId: String, percent: Int) {
+        val idx = messages.indexOfFirst { it.messageId == messageId }
+        if (idx == -1) return
+        messages[idx].uploadProgressPercent = percent.coerceIn(0, 100)
+        notifyItemChanged(idx)
     }
 
     fun updateMessageId(localId: String, serverId: String) {
@@ -216,6 +247,9 @@ class VirtualChatMessageAdapter(
         private val txtVoiceDuration: TextView? = itemView.findViewById(R.id.txtVoiceDuration)
         private val txtFileName: TextView? = itemView.findViewById(R.id.txtFileName)
         private val imgPlayVideo: ImageView? = itemView.findViewById(R.id.imgPlayVideo)
+        private val layoutUploadProgress: View? = itemView.findViewById(R.id.layoutUploadProgress)
+        private val progressUpload: android.widget.ProgressBar? = itemView.findViewById(R.id.progressUpload)
+        private val txtUploadPercent: TextView? = itemView.findViewById(R.id.txtUploadPercent)
         private val layoutError: View? = itemView.findViewById(R.id.layoutError)
         private val btnRetry: View? = itemView.findViewById(R.id.btnRetry)
         private val layoutFileError: View? = itemView.findViewById(R.id.layoutFileError)
@@ -279,6 +313,12 @@ class VirtualChatMessageAdapter(
                     val showCaption = !message.caption.isNullOrBlank()
                     txtImageCaption?.visibility = if (showCaption) View.VISIBLE else View.GONE
                     txtImageCaption?.text = message.caption
+
+                    val showProgress = message.status == MessageStatus.SENDING && (message.uploadProgressPercent ?: 0) in 0..99
+                    layoutUploadProgress?.visibility = if (showProgress) View.VISIBLE else View.GONE
+                    val p = (message.uploadProgressPercent ?: 0).coerceIn(0, 100)
+                    progressUpload?.progress = p
+                    txtUploadPercent?.text = "$p%"
                 }
                 ChatMessageType.FILE -> {
                     layoutImageContainer?.visibility = View.GONE
@@ -294,6 +334,10 @@ class VirtualChatMessageAdapter(
                     val showFileCaption = !message.caption.isNullOrBlank()
                     txtFileCaption?.visibility = if (showFileCaption) View.VISIBLE else View.GONE
                     txtFileCaption?.text = message.caption
+
+                    val showProgress = message.status == MessageStatus.SENDING && (message.uploadProgressPercent ?: 0) in 0..99
+                    layoutFileError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
+                    // (File upload progress UI can be added later if needed)
                 }
                 ChatMessageType.VOICE_NOTE -> {
                     layoutVoice?.visibility = View.VISIBLE
@@ -363,12 +407,16 @@ class VirtualChatMessageAdapter(
     ) : RecyclerView.ViewHolder(itemView) {
         private val txtSenderName: TextView? = itemView.findViewById(R.id.txtSenderName)
         private val txtSenderInitial: TextView? = itemView.findViewById(R.id.txtSenderInitial)
+        private val txtSenderRole: TextView? = itemView.findViewById(R.id.txtSenderRole)
         private val txtMessage: TextView? = itemView.findViewById(R.id.txtMessage)
         private val txtTime: TextView = itemView.findViewById(R.id.txtTime)
         private val imgAttachment: ImageView? = itemView.findViewById(R.id.imgAttachment)
         private val layoutText: View? = itemView.findViewById(R.id.layoutText)
         private val layoutImageContainer: View? = itemView.findViewById(R.id.layoutImageContainer)
         private val txtImageCaption: TextView? = itemView.findViewById(R.id.txtImageCaption)
+        private val txtMediaSenderName: TextView? = itemView.findViewById(R.id.txtMediaSenderName)
+        private val txtMediaSenderInitial: TextView? = itemView.findViewById(R.id.txtMediaSenderInitial)
+        private val txtMediaSenderRole: TextView? = itemView.findViewById(R.id.txtMediaSenderRole)
         private val layoutFileContainer: View? = itemView.findViewById(R.id.layoutFileContainer)
         private val txtFileTitle: TextView? = itemView.findViewById(R.id.txtFileTitle)
         private val txtFileSubtitle: TextView? = itemView.findViewById(R.id.txtFileSubtitle)
@@ -380,9 +428,13 @@ class VirtualChatMessageAdapter(
         private val txtFileCaption: TextView? = itemView.findViewById(R.id.txtFileCaption)
         private val btnFileOverflow: ImageView? = itemView.findViewById(R.id.btnFileOverflow)
         private val btnImageOverflow: ImageView? = itemView.findViewById(R.id.btnImageOverflow)
+        private val txtFileSenderName: TextView? = itemView.findViewById(R.id.txtFileSenderName)
+        private val txtFileSenderInitial: TextView? = itemView.findViewById(R.id.txtFileSenderInitial)
+        private val txtFileSenderRole: TextView? = itemView.findViewById(R.id.txtFileSenderRole)
+        private val layoutMediaSenderRow: View? = itemView.findViewById(R.id.layoutMediaSenderRow)
+        private val layoutFileSenderRow: View? = itemView.findViewById(R.id.layoutFileSenderRow)
 
         fun bind(message: ChatMessage) {
-            bindSenderInfo(message)
             itemView.setOnClickListener { onClick(message) }
             txtTime.text = message.timeLabel
             layoutText?.visibility = View.GONE
@@ -391,18 +443,20 @@ class VirtualChatMessageAdapter(
             layoutVoice?.visibility = View.GONE
             txtFileName?.visibility = View.GONE
             imgPlayVideo?.visibility = View.GONE
-
             btnFileOverflow?.visibility = View.GONE
             btnImageOverflow?.visibility = View.GONE
 
             when (message.type) {
                 ChatMessageType.TEXT -> {
                     layoutText?.visibility = View.VISIBLE
+                    bindSenderInfo(message)
                     txtMessage?.visibility = View.VISIBLE
                     txtMessage?.text = message.text
                 }
                 ChatMessageType.IMAGE, ChatMessageType.VIDEO -> {
                     layoutImageContainer?.visibility = View.VISIBLE
+                    layoutMediaSenderRow?.visibility = View.VISIBLE
+                    bindMediaSenderInfo(message)
                     btnImageOverflow?.visibility = View.VISIBLE
                     btnImageOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     imgPlayVideo?.visibility = if (message.type == ChatMessageType.VIDEO) View.VISIBLE else View.GONE
@@ -422,6 +476,8 @@ class VirtualChatMessageAdapter(
                     layoutImageContainer?.visibility = View.GONE
                     layoutText?.visibility = View.GONE
                     layoutFileContainer?.visibility = View.VISIBLE
+                    layoutFileSenderRow?.visibility = View.VISIBLE
+                    bindFileSenderInfo(message)
                     btnFileOverflow?.visibility = View.VISIBLE
                     btnFileOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     txtFileTitle?.text = message.fileName ?: "Document"
@@ -491,6 +547,27 @@ class VirtualChatMessageAdapter(
                 ?: if (message.isSender) "You" else "User"
             txtSenderName?.text = displayName
             txtSenderInitial?.text = displayName.firstOrNull()?.uppercase() ?: "?"
+            val role = message.senderRoleAbbrev?.takeIf { it.isNotBlank() }
+            txtSenderRole?.visibility = if (role != null) View.VISIBLE else View.GONE
+            txtSenderRole?.text = role
+        }
+
+        private fun bindMediaSenderInfo(message: ChatMessage) {
+            val displayName = message.senderName?.takeIf { it.isNotBlank() } ?: "User"
+            txtMediaSenderName?.text = displayName
+            txtMediaSenderInitial?.text = displayName.firstOrNull()?.uppercase() ?: "?"
+            val role = message.senderRoleAbbrev?.takeIf { it.isNotBlank() }
+            txtMediaSenderRole?.visibility = if (role != null) View.VISIBLE else View.GONE
+            txtMediaSenderRole?.text = role
+        }
+
+        private fun bindFileSenderInfo(message: ChatMessage) {
+            val displayName = message.senderName?.takeIf { it.isNotBlank() } ?: "User"
+            txtFileSenderName?.text = displayName
+            txtFileSenderInitial?.text = displayName.firstOrNull()?.uppercase() ?: "?"
+            val role = message.senderRoleAbbrev?.takeIf { it.isNotBlank() }
+            txtFileSenderRole?.visibility = if (role != null) View.VISIBLE else View.GONE
+            txtFileSenderRole?.text = role
         }
     }
 

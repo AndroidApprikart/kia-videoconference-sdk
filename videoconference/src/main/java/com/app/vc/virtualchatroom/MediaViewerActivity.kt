@@ -60,6 +60,7 @@ class MediaViewerActivity : AppCompatActivity() {
         val imgFullScreen: ImageView = findViewById(R.id.imgFullScreen)
         val layoutVideo: View = findViewById(R.id.layoutVideo)
         val videoView: VideoView = findViewById(R.id.videoView)
+        val btnVideoReplay: View = findViewById(R.id.btnVideoReplay)
         val layoutDocument: View = findViewById(R.id.layoutDocument)
         val txtDocumentName: TextView = findViewById(R.id.txtDocumentName)
         val btnOpenDocument: Button = findViewById(R.id.btnOpenDocument)
@@ -93,6 +94,7 @@ class MediaViewerActivity : AppCompatActivity() {
                 layoutVideo.visibility = View.VISIBLE
                 layoutDocument.visibility = View.GONE
                 txtTitle.text = currentFileName ?: "Video"
+                btnVideoReplay.visibility = View.GONE
                 loadVideoWithAuth(videoView, url)
             }
             "FILE" -> {
@@ -175,11 +177,32 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     private fun loadVideoWithAuth(videoView: VideoView, url: String) {
+        // Keep aspect ratio to avoid stretch and show a clear replay icon on completion.
+        videoView.setOnPreparedListener { mp ->
+            try {
+                val videoW = mp.videoWidth
+                val videoH = mp.videoHeight
+                if (videoW > 0 && videoH > 0) {
+                    videoView.post {
+                        val viewW = videoView.width.takeIf { it > 0 } ?: return@post
+                        val targetH = (viewW.toFloat() * videoH.toFloat() / videoW.toFloat()).toInt()
+                        val lp = videoView.layoutParams
+                        lp.height = targetH
+                        videoView.layoutParams = lp
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        videoView.setOnCompletionListener {
+            findViewById<View>(R.id.btnVideoReplay)?.visibility = View.VISIBLE
+        }
+
         if (url.startsWith("http")) {
             scope.launch {
                 val file = withContext(Dispatchers.IO) { downloadToCache(url) }
                 if (file != null && !isFinishing) {
                     runOnUiThread {
+                        findViewById<View>(R.id.btnVideoReplay)?.visibility = View.GONE
                         videoView.setVideoURI(Uri.fromFile(file))
                         val mediaController = MediaController(this@MediaViewerActivity)
                         mediaController.setAnchorView(videoView)
@@ -189,6 +212,7 @@ class MediaViewerActivity : AppCompatActivity() {
                 }
             }
         } else {
+            findViewById<View>(R.id.btnVideoReplay)?.visibility = View.GONE
             videoView.setVideoURI(Uri.fromFile(File(url)))
             val mediaController = MediaController(this)
             mediaController.setAnchorView(videoView)
