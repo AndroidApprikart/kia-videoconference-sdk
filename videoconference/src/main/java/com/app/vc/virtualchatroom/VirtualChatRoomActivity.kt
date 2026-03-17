@@ -2494,14 +2494,39 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         startActivity(intent)
     }
 
+    private val requestWriteStoragePermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                pendingSaveMessage?.let { doSaveMedia(it) }
+            } else {
+                Toast.makeText(this, "Storage permission required to save files", Toast.LENGTH_LONG).show()
+            }
+            pendingSaveMessage = null
+        }
+
+    private var pendingSaveMessage: ChatMessage? = null
+
     private fun downloadAndSaveMedia(message: ChatMessage) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            val perm = Manifest.permission.WRITE_EXTERNAL_STORAGE
+            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                pendingSaveMessage = message
+                requestWriteStoragePermission.launch(perm)
+                return
+            }
+        }
+        doSaveMedia(message)
+    }
+
+    private fun doSaveMedia(message: ChatMessage) {
         val rawUrl = message.attachmentUri ?: run {
             Toast.makeText(this, "No file to save", Toast.LENGTH_SHORT).show()
             return
         }
-        val fileName = message.fileName?.takeIf { it.isNotBlank() }
-            ?: rawUrl.substringAfterLast('/').takeIf { it.isNotBlank() }
+        val rawName = message.fileName?.takeIf { it.isNotBlank() }
+            ?: rawUrl.substringAfterLast('/').substringBefore('?').takeIf { it.isNotBlank() }
             ?: "download_${System.currentTimeMillis()}"
+        val fileName = rawName.substringBefore('?').replace(Regex("[\\\\/:*?\"<>|]"), "_")
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 if (!rawUrl.startsWith("http")) {
@@ -2509,18 +2534,18 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     if (localFile.exists()) {
                         saveLocalFileToPublicStorage(localFile, fileName, message)
                     } else {
-                        throw IOException("Local file missing")
+                        throw IOException("Local file not found: $rawUrl")
                     }
                 } else {
                     downloadRemoteFileToPublicStorage(rawUrl, fileName, message)
                 }
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@VirtualChatRoomActivity, "Saved: $fileName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@VirtualChatRoomActivity, "Saved to gallery: $fileName", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("VirtualChatRoom", "Save failed: ${e.message}")
+                Log.e("VirtualChatRoom", "Save failed for $fileName: ${e.javaClass.simpleName} - ${e.message}")
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@VirtualChatRoomActivity, "Save failed", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@VirtualChatRoomActivity, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }

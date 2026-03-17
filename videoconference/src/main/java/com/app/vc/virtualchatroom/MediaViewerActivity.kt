@@ -177,21 +177,37 @@ class MediaViewerActivity : AppCompatActivity() {
     }
 
     private fun loadVideoWithAuth(videoView: VideoView, url: String) {
-        // Keep aspect ratio to avoid stretch and show a clear replay icon on completion.
+        // Fit video inside the available space on tablets/phones without stretching.
         videoView.setOnPreparedListener { mp ->
             try {
                 val videoW = mp.videoWidth
                 val videoH = mp.videoHeight
                 if (videoW > 0 && videoH > 0) {
-                    videoView.post {
-                        val viewW = videoView.width.takeIf { it > 0 } ?: return@post
-                        val targetH = (viewW.toFloat() * videoH.toFloat() / videoW.toFloat()).toInt()
+                    val container = findViewById<View>(R.id.layoutVideo)
+                    container.post {
+                        val maxW = container.width.takeIf { it > 0 } ?: return@post
+                        val maxH = container.height.takeIf { it > 0 } ?: return@post
+                        val videoRatio = videoW.toFloat() / videoH.toFloat()
+                        val containerRatio = maxW.toFloat() / maxH.toFloat()
+
+                        val targetW: Int
+                        val targetH: Int
+                        if (videoRatio > containerRatio) {
+                            targetW = maxW
+                            targetH = (maxW / videoRatio).toInt()
+                        } else {
+                            targetH = maxH
+                            targetW = (maxH * videoRatio).toInt()
+                        }
+
                         val lp = videoView.layoutParams
+                        lp.width = targetW
                         lp.height = targetH
                         videoView.layoutParams = lp
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
         videoView.setOnCompletionListener {
             findViewById<View>(R.id.btnVideoReplay)?.visibility = View.VISIBLE
