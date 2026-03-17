@@ -3,10 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="start"
+    android:gravity="end"
     android:orientation="vertical"
     android:padding="8dp"
-    >
+>
 
     <LinearLayout
         android:id="@+id/layoutText"
@@ -16,40 +16,10 @@
         android:orientation="vertical"
         android:padding="12dp">
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/txtSenderInitial"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:background="@drawable/bg_rounded_circle"
-                android:gravity="center"
-                android:text="U"
-                android:textColor="@color/white"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/txtSenderName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="User"
-                android:textColor="@color/black"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
         <TextView
             android:id="@+id/txtMessage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Welcome, your appointment is booked."
             android:textColor="@color/color_kia_black"
             android:textSize="13sp" />
 
@@ -69,7 +39,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        android:background="@drawable/vc_bg_chat_bubble_incoming"
+        android:background="@drawable/vc_bg_chat_bubble_outgoing"
+
         app:cardCornerRadius="12dp"
         app:cardElevation="0dp"
         app:strokeWidth="0dp">
@@ -153,49 +124,135 @@
                 android:maxLines="4"
                 android:textColor="@color/color_kia_black"
                 android:textSize="12sp" />
+
+            <LinearLayout
+                android:id="@+id/layoutFileError"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_white_rounded"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="4dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Upload failed"
+                    android:textColor="@color/red"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/btnFileRetry"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="Retry"
+                    android:textColor="@color/black"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
     <LinearLayout
         android:id="@+id/layoutImageContainer"
-        android:layout_width="180dp"
+        android:layout_width="200dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/vc_bg_chat_bubble_outgoing"
-        android:padding="@dimen/_8sdp"
+android:padding="@dimen/_8sdp"
         android:visibility="gone">
 
-        <FrameLayout
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="160dp"
-            android:layout_height="160dp">
+            android:layout_height="160dp"
+            app:cardElevation="0dp">
 
-            <ImageView
-                android:id="@+id/imgAttachment"
+            <RelativeLayout
                 android:layout_width="160dp"
-                android:layout_height="160dp"
-                android:scaleType="centerCrop"
-                android:layout_gravity="center"
-                android:contentDescription="@null" />
-            <ImageView
-                android:id="@+id/btnImageOverflow"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_gravity="top|end"
-                android:layout_margin="4dp"
-                android:padding="2dp"
-                android:src="@drawable/ic_more_options"
-                android:contentDescription="More options"
-                android:background="?attr/selectableItemBackgroundBorderless" />
-            <ImageView
-                android:id="@+id/imgPlayVideo"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="center"
-                android:visibility="gone"
-                android:src="@drawable/play_circle"
-                android:contentDescription="@null"
-                android:background="#40000000" />
-        </FrameLayout>
+                android:layout_height="160dp">
+
+                <ImageView
+                    android:id="@+id/imgAttachment"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
+                    android:scaleType="centerCrop"
+                    android:layout_centerHorizontal="true"
+                    android:contentDescription="@null" />
+
+                <ImageView
+                    android:id="@+id/btnImageOverflow"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_alignParentTop="true"
+                    android:layout_margin="4dp"
+                    android:padding="2dp"
+                    android:src="@drawable/ic_more_options"
+                    android:contentDescription="More options"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+
+                <ImageView
+                    android:id="@+id/imgPlayVideo"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_centerInParent="true"
+                    android:src="@drawable/play_circle"
+                    android:visibility="gone"
+                    app:tint="@color/white" />
+
+                <!-- Error Overlay -->
+                <LinearLayout
+                    android:id="@+id/layoutError"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignTop="@id/imgAttachment"
+                    android:layout_alignBottom="@id/imgAttachment"
+                    android:background="#80000000"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/ic_error"
+                        android:padding="4dp"
+                        android:text="Error"
+                        android:textColor="@color/white"
+                        android:textSize="10sp" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_white_rounded"
+                        android:padding="4dp"
+                        android:gravity="center">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Upload failed"
+                            android:textColor="@color/red"
+                            android:textSize="10sp"/>
+                        <TextView
+                            android:id="@+id/btnRetry"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:text="Retry"
+                            android:textColor="@color/black"
+                            android:textStyle="bold"
+                            android:textSize="10sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <TextView
             android:id="@+id/txtImageCaption"
             android:layout_width="160dp"
@@ -207,12 +264,13 @@
             android:textSize="12sp" />
     </LinearLayout>
 
+    <!-- ... rest of layout (voice etc) ... -->
     <LinearLayout
         android:id="@+id/layoutVoice"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        android:background="@drawable/vc_bg_chat_bubble_incoming"
+        android:background="@drawable/vc_bg_chat_bubble_outgoing"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="12dp">
@@ -220,7 +278,7 @@
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@android:drawable/ic_btn_speak_now"
+            android:src="@drawable/mic__2_"
             android:contentDescription="@null" />
         <TextView
             android:id="@+id/txtVoiceDuration"
@@ -240,18 +298,30 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_marginStart="8dp"
-            android:src="@android:drawable/ic_media_play"
+            android:src="@drawable/play_circle"
             android:contentDescription="@null" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/txtTime"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
         android:layout_marginTop="4dp"
-        android:text="10:30am"
-        android:textColor="@color/self_time_color"
-        android:textSize="11sp" />
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/txtTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/self_time_color"
+            android:textSize="11sp" />
+
+        <ImageView
+            android:id="@+id/imgStatus"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_marginStart="4dp"
+            android:contentDescription="@null" />
+    </LinearLayout>
 
 </LinearLayout>
-

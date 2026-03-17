@@ -69,6 +69,7 @@
             android:exported="false" />
         <activity
             android:name=".virtualchatroom.VirtualChatRoomActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="false" />
         <activity
             android:name=".virtualchatroom.MediaViewerActivity"

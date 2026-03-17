@@ -598,8 +598,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             statusLabel = room?.lifecycleStatusLabel
         }
 
-        binding.txtStatusChip?.text = room?.lifecycleStatusLabel?.takeIf { it.isNotBlank() }
-            ?: roomStatus ?: room?.status ?: ""
+        // Status chip: initial value from room.status (service status only); updated by service.status WebSocket only (not lifecycle)
+        binding.txtStatusChip?.let { tv ->
+            Log.d(TAG, "onCreate:txtStatusChip:: $room")
+            val initialStatus = room?.status ?: roomStatus ?: ""
+            tv.text = initialStatus.replace('_', ' ')
+            tv.visibility = if (initialStatus.isNotBlank()) View.VISIBLE else View.GONE
+        }
 
         currentRole = when (roleFromIntent) {
             UserRole.SERVICE_ADVISOR.name -> UserRole.SERVICE_ADVISOR
@@ -899,13 +904,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     /** Builds the text shown in the pinned lifecycle banner (API and WebSocket). */
     private fun buildPinnedLifecycleText(
-        statusLabel: String?,
-        previousStatusLabel: String? = null,
-        notes: String? = null
+        statusLabel: String?
     ): String {
-        val status = statusLabel?.takeIf { it.isNotBlank() } ?: return notes ?: ""
-        val suffix = listOfNotNull(previousStatusLabel?.takeIf { it.isNotBlank() }, notes?.takeIf { it.isNotBlank() }).firstOrNull()
-        return  "Service stage updated to: $status"
+        val status = statusLabel?.takeIf { it.isNotBlank() }
+        return  "$status"
     }
 
     private fun fetchServiceLifecycle() {
@@ -920,20 +922,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     statusLabel = body.statusLabel?.takeIf { it.isNotBlank() }
                     Log.d("VirtualChatRoom", "Service lifecycle response: $body")
                     withContext(Dispatchers.Main) {
-                        // Pin lifecycle status at chat top (same as WebSocket service.lifecycle)
+                        // Pinned: lifecycle only. Show on both phone and tablet when we have lifecycle data.
                         val pinnedText = buildPinnedLifecycleText(
-                            statusLabel = statusLabel,
-                            previousStatusLabel = body.previousStatusLabel?.takeIf { it.isNotBlank() },
-                            notes = jobNotes
+                            statusLabel = statusLabel
                         )
-                        binding.txtPinnedLifecycle?.let { tv ->
-                            tv.visibility = if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
-                            tv.text = pinnedText
-                        }
-                        binding.txtStatusChip?.let { tv ->
-                            tv.visibility = View.VISIBLE
-                            tv.text = statusLabel ?: jobNotes ?: ""
-                        }
+                        binding.layoutPinnedStatus?.visibility =
+                            if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
+                        binding.txtPinnedLifecycle?.text = pinnedText
+
+                        // Do NOT update txtStatusChip here — chip shows only service status (room.status initially, then service.status WebSocket)
                         (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
                             frag.setJobNotes(jobNotes)
                             frag.setStatusLabel(statusLabel)
@@ -1783,7 +1780,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         }
                     }
 
-                    // Real-time service lifecycle update from server
+                    // Real-time service lifecycle — update only pinned (lifecycle status); do NOT update txtStatusChip (chip = service status only)
                     "service.lifecycle" -> {
                         val newStatusLabel = jsonObject.get("status_label")?.asString?.takeIf { it.isNotBlank() }
                         val newNotes = jsonObject.get("notes")?.asString?.takeIf { it.isNotBlank() }
@@ -1793,22 +1790,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         jobNotes = newNotes ?: jobNotes
                         statusLabel = newStatusLabel ?: statusLabel
 
-                        val pinnedText = content ?: buildPinnedLifecycleText(statusLabel, previousStatusLabel, jobNotes)
-                        binding.txtPinnedLifecycle?.let { tv ->
-                            tv.visibility = if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
-                            tv.text = pinnedText
-                        }
+                        val pinnedText =  buildPinnedLifecycleText(statusLabel)
+                        Log.d(TAG,"service.lifecycle pinned text: $pinnedText")
+                        // Pinned: lifecycle only; show on both phone and tablet when we have lifecycle data
+                        binding.layoutPinnedStatus?.visibility =
+                            if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
+                        binding.txtPinnedLifecycle?.text = pinnedText
 
-                        binding.txtStatusChip?.let { tv ->
-                            tv.visibility = View.VISIBLE
-                            tv.text = statusLabel ?: jobNotes ?: tv.text
-                        }
-                        binding.txtJobNotes?.let { tv ->
-                            if (!jobNotes.isNullOrBlank()) {
-                                tv.visibility = View.VISIBLE
-                                tv.text = jobNotes
-                            }
-                        }
 
                         (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
                             frag.setJobNotes(jobNotes)
@@ -1816,30 +1804,31 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         }
                     }
 
-                    // Simple status change event (e.g. label only)
+                    // Service status — update only txtStatusChip (service status) and RO details; do NOT update pinned (pinned = lifecycle only)
                     "service.status" -> {
-                        val newStatusLabel = jsonObject.get("status_label")?.asString
-                            ?.takeIf { it.isNotBlank() }
-                        val newNotes = jsonObject.get("notes")?.asString
-                            ?.takeIf { it.isNotBlank() }
+                        val newStatusLabel = jsonObject.get("status_label")?.asString?.takeIf { it.isNotBlank() }
+                        val newStatus = jsonObject.get("status")?.asString?.takeIf { it.isNotBlank() }
+                        val newNotes = jsonObject.get("notes")?.asString?.takeIf { it.isNotBlank() }
 
                         jobNotes = newNotes ?: jobNotes
                         statusLabel = newStatusLabel ?: statusLabel
 
-                        val pinnedText = buildPinnedLifecycleText(statusLabel, notes = jobNotes)
-                        binding.txtPinnedLifecycle?.let { tv ->
-                            tv.visibility = if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
-                            tv.text = pinnedText
-                        }
+                        // Chip: service status only — prefer status_label, else raw status (e.g. CLOSED), formatted
                         binding.txtStatusChip?.let { tv ->
-                            tv.visibility = View.VISIBLE
-                            tv.text = statusLabel ?: jobNotes ?: tv.text
+                            Log.d(TAG,"service.status::statusLabel: $statusLabel")
+
+                            Log.d(TAG,"service.status::status: $jobNotes")
+                            val chipText = newStatusLabel ?: newStatus?.replace('_', ' ') ?: statusLabel ?: tv.text
+                            tv.text = chipText
+                            tv.visibility = if (chipText.isNotBlank()) View.VISIBLE else View.GONE
                         }
-                        binding.txtJobNotes?.let { tv ->
-                            if (!jobNotes.isNullOrBlank()) {
-                                tv.visibility = View.VISIBLE
-                                tv.text = jobNotes
-                            }
+                        binding.txtLeftStatus?.let { tv ->
+                            Log.d(TAG,"txtLeftStatus service.status::statusLabel: $statusLabel")
+
+                            Log.d(TAG,"txtLeftStatus service.status::status: $jobNotes")
+                            val chipText = newStatusLabel ?: newStatus?.replace('_', ' ') ?: statusLabel ?: tv.text
+                            tv.text = chipText
+                            tv.visibility = if (chipText.isNotBlank()) View.VISIBLE else View.GONE
                         }
 
                         (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->

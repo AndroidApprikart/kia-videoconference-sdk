@@ -85,16 +85,16 @@
                     android:textColor="@color/white"
                     android:textSize="8sp" />
 
-                <TextView
-                    android:id="@+id/txtJobNotes"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/_5sdp"
-                    android:textColor="@color/white"
-                    android:textSize="12sp"
-                    android:maxLines="2"
-                    android:ellipsize="end"
-                    android:visibility="gone" />
+<!--                <TextView-->
+<!--                    android:id="@+id/txtJobNotes"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_marginTop="@dimen/_5sdp"-->
+<!--                    android:textColor="@color/white"-->
+<!--                    android:textSize="12sp"-->
+<!--                    android:maxLines="2"-->
+<!--                    android:ellipsize="end"-->
+<!--                    android:visibility="gone" />-->
 
             </LinearLayout>
 
@@ -124,18 +124,49 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/txtPinnedLifecycle"
+                <LinearLayout
+                    android:id="@+id/layoutPinnedStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/vc_bg_status_chip"
-                    android:gravity="center"
-                    android:paddingVertical="8dp"
-                    android:paddingHorizontal="12dp"
-                    android:textColor="@color/white"
-                    android:textSize="12sp"
-                    android:visibility="gone" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/vc_bg_pinned"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="10dp"
+                    android:visibility="gone">
 
+                    <ImageView
+                        android:id="@+id/imgPin"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:src="@drawable/ic_pin"
+                        android:layout_marginEnd="10dp"/>
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/txtStatusLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Service Status"
+                            android:textSize="11sp"
+                            android:textColor="@color/black"
+                            android:alpha="0.8"/>
+
+                        <TextView
+                            android:id="@+id/txtPinnedLifecycle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Appointment Confirmed"
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:textColor="@color/black"/>
+                    </LinearLayout>
+
+                </LinearLayout>
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recyclerMessages"
                     android:layout_width="match_parent"
