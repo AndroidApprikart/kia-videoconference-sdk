@@ -173,7 +173,6 @@
         android:layout_width="220dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_gravity="center"
         android:visibility="gone">
 
         <TextView
@@ -181,14 +180,13 @@
             android:layout_width="220dp"
             android:layout_height="wrap_content"
             android:layout_marginBottom="6dp"
-            android:visibility="gone"
+            android:visibility="visible"
             android:textColor="@color/color_kia_black"
             android:textSize="13sp" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="220dp"
             android:layout_height="220dp"
-            android:layout_gravity="center"
             app:cardCornerRadius="14dp">
 
             <RelativeLayout
@@ -200,7 +198,6 @@
                     android:layout_width="220dp"
                     android:layout_height="220dp"
                     android:scaleType="centerCrop" />
-
 
                 <ImageView
                 android:id="@+id/btnImageOverflow"

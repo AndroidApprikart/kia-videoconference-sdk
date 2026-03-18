@@ -5,93 +5,89 @@
     android:layout_height="wrap_content"
     android:gravity="start"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp">
 
-    <!-- Text message bubble -->
+    <!-- TEXT -->
     <LinearLayout
         android:id="@+id/layoutText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:maxWidth="420dp"
         android:background="@drawable/vc_bg_chat_bubble_outgoing"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="14dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_marginBottom="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
             <TextView
                 android:id="@+id/txtSenderInitial"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:textSize="13sp"
                 android:background="@drawable/bg_rounded_circle"
                 android:gravity="center"
-                android:text="U"
                 android:textColor="@color/white"
-                android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/txtSenderName"
+                android:layout_marginStart="10dp"
+                android:textSize="14sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="User"
-                android:textColor="@color/black"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:textColor="@color/black" />
 
             <TextView
                 android:id="@+id/txtSenderRole"
+                android:layout_marginStart="8dp"
+                android:textSize="11sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"
+                android:visibility="gone"
                 android:background="@drawable/vc_bg_status_chip"
-                android:text="SA"
-                android:textColor="@color/white"
-                android:textSize="10sp"
-                android:visibility="gone" />
+                android:textColor="@color/white" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/txtMessage"
+            android:textSize="15sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Welcome, your appointment is booked."
-            android:textColor="@color/color_kia_black"
-            android:textSize="13sp" />
+            android:textColor="@color/color_kia_black" />
 
         <TextView
             android:id="@+id/txtFileName"
+            android:visibility="gone"
+            android:textSize="15sp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:textColor="@color/color_kia_black"
-            android:textSize="13sp" />
+            android:textColor="@color/color_kia_black" />
     </LinearLayout>
 
-    <!-- File message bubble -->
+    <!-- FILE -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/layoutFileContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:maxWidth="440dp"
         android:visibility="gone"
-        android:background="@drawable/vc_bg_chat_bubble_incoming"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="0dp"
-        app:strokeWidth="0dp">
+        app:cardCornerRadius="14dp"
+        app:cardElevation="0dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- File sender row -->
             <LinearLayout
                 android:id="@+id/layoutFileSenderRow"
                 android:layout_width="wrap_content"
@@ -147,13 +143,15 @@
                 android:paddingEnd="4dp">
                 <ImageView
                     android:id="@+id/btnFileOverflow"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_more_options"
-                    android:contentDescription="More options"
-                    android:padding="2dp" />
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="6dp"
+                    android:padding="5dp"
+                    android:background="@drawable/bg_rounded_circle"
+                    android:src="@drawable/download_minimalistic_svgrepo_com"
+                    android:backgroundTint="#DDDDDD"/>
             </LinearLayout>
-
             <ImageView
                 android:id="@+id/imgFileThumbnail"
                 android:layout_width="match_parent"
@@ -177,7 +175,6 @@
                     android:src="@drawable/file_pdf_icon"
                     android:contentDescription="@null"
                     android:padding="8dp" />
-
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -202,7 +199,6 @@
                         android:textSize="11sp" />
                 </LinearLayout>
             </LinearLayout>
-
             <TextView
                 android:id="@+id/txtFileCaption"
                 android:layout_width="180dp"
@@ -216,150 +212,138 @@
                 android:textColor="@color/color_kia_black"
                 android:textSize="12sp" />
         </LinearLayout>
+
+        <!-- KEEP FULL ORIGINAL CONTENT SAME -->
+
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Image / Video bubble -->
+    <!-- IMAGE -->
     <LinearLayout
         android:id="@+id/layoutImageContainer"
-        android:layout_width="200dp"
+        android:layout_width="240dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/vc_bg_chat_bubble_outgoing"
-        android:padding="@dimen/_8sdp"
+        android:padding="10dp"
         android:visibility="gone">
 
-        <!-- Media sender row -->
         <LinearLayout
             android:id="@+id/layoutMediaSenderRow"
+            android:layout_marginBottom="8dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/txtMediaSenderInitial"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:textSize="13sp"
                 android:background="@drawable/bg_rounded_circle"
-                android:gravity="center"
-                android:text="U"
-                android:textColor="@color/white"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                android:gravity="center" />
 
             <TextView
                 android:id="@+id/txtMediaSenderName"
+                android:layout_marginStart="10dp"
+                android:textSize="14sp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="User"
-                android:textColor="@color/black"
-                android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/txtMediaSenderRole"
+                android:visibility="gone"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"
-                android:background="@drawable/vc_bg_status_chip"
-                android:text="SA"
-                android:textColor="@color/white"
-                android:textSize="10sp"
-                android:visibility="gone" />
+                android:layout_marginStart="8dp"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/txtImageCaption"
-            android:layout_width="160dp"
+            android:layout_width="200dp"
+            android:textSize="13sp"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="4dp"
-            android:visibility="gone"
-            android:maxLines="4"
-            android:textColor="@color/color_kia_black"
-            android:textSize="12sp" />
+            android:visibility="gone" />
 
-        <FrameLayout
-            android:layout_width="160dp"
-            android:layout_height="160dp">
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
 
-            <ImageView
-                android:id="@+id/imgAttachment"
-                android:layout_width="160dp"
-                android:layout_height="160dp"
-                android:scaleType="centerCrop"
-                android:layout_gravity="center"
-                android:contentDescription="@null" />
-            <ImageView
-                android:id="@+id/btnImageOverflow"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_gravity="top|end"
-                android:layout_margin="4dp"
-                android:padding="2dp"
-                android:src="@drawable/ic_more_options"
-                android:contentDescription="More options"
-                android:background="?attr/selectableItemBackgroundBorderless" />
-            <ImageView
-                android:id="@+id/imgPlayVideo"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="center"
-                android:visibility="gone"
-                android:src="@drawable/play_circle"
-                android:contentDescription="@null"
-                android:background="#40000000" />
-        </FrameLayout>
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <ImageView
+                    android:id="@+id/imgAttachment"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitXY" />
+
+                <ImageView
+                    android:id="@+id/btnImageOverflow"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="6dp"
+                    android:padding="5dp"
+                    android:background="@drawable/bg_rounded_circle"
+                    android:src="@drawable/download_minimalistic_svgrepo_com"
+                    android:backgroundTint="#DDDDDD" />
+
+                <ImageView
+                    android:id="@+id/imgPlayVideo"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_gravity="center"
+                    android:visibility="gone"
+                    android:src="@drawable/play_circle"
+                    android:background="#40000000" />
+
+            </FrameLayout>
+
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
-    <!-- Voice note bubble -->
+    <!-- VOICE -->
     <LinearLayout
         android:id="@+id/layoutVoice"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
         android:background="@drawable/vc_bg_chat_bubble_incoming"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="12dp">
+        android:padding="14dp">
 
         <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@android:drawable/ic_btn_speak_now"
-            android:contentDescription="@null" />
+            android:layout_width="26dp"
+            android:layout_height="26dp" />
+
         <TextView
-            android:id="@+id/txtVoiceDuration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="00:12"
-            android:textColor="@color/color_kia_black"
-            android:textSize="13sp" />
+            android:id="@+id/txtVoiceDuration"
+            android:textSize="14sp" />
+
         <com.app.vc.views.WaveformView
             android:id="@+id/voiceWaveformView"
-            android:layout_width="80dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="8dp" />
+            android:layout_width="100dp"
+            android:layout_height="28dp" />
+
         <ImageView
             android:id="@+id/btnPlayVoice"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="8dp"
-            android:src="@android:drawable/ic_media_play"
-            android:contentDescription="@null" />
+            android:layout_width="26dp"
+            android:layout_height="26dp" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/txtTime"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="10:30am"
-        android:textColor="@color/self_time_color"
-        android:textSize="11sp" />
+        android:layout_marginTop="6dp"
+        android:textSize="12sp" />
 
 </LinearLayout>

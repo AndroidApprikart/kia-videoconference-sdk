@@ -1,10 +1,12 @@
 package com.app.vc.virtualchatroom
 
+import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -14,6 +16,7 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.VideoView
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.app.vc.R
@@ -29,6 +32,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.net.URLConnection
 
 /**
  * Full-screen media viewer for chat attachments (image, video, PDF/document).
@@ -43,6 +49,7 @@ class MediaViewerActivity : AppCompatActivity() {
     private var currentFileName: String? = null
     private var currentType: String = "TEXT"
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.vc_activity_media_viewer)
@@ -117,37 +124,43 @@ class MediaViewerActivity : AppCompatActivity() {
         }
     }
 
+
+
+
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveToDevice() {
         val url = currentUrl
         val fileName = currentFileName?.takeIf { it.isNotBlank() }
-            ?: url.substringAfterLast('/').takeIf { it.isNotBlank() }
+            ?: url.substringAfterLast('/').substringBefore('?')
             ?: "download_${System.currentTimeMillis()}"
+
         scope.launch(Dispatchers.IO) {
             try {
                 val token = PreferenceManager.getAccessToken()
+
                 val request = Request.Builder()
                     .url(url)
-                    .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+                    .apply {
+                        if (!token.isNullOrBlank()) {
+                            addHeader("Authorization", "Bearer $token")
+                        }
+                    }
                     .build()
+
                 val response = okHttp.newCall(request).execute()
                 if (!response.isSuccessful) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MediaViewerActivity, "Download failed", Toast.LENGTH_SHORT).show()
-                    }
-                    return@launch
+                    throw IOException("Download failed: ${response.code}")
                 }
-                val body = response.body ?: return@launch
-                val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
-                } else {
-                    @Suppress("DEPRECATION")
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                }
-                val file = File(dir, fileName)
-                file.outputStream().use { body.byteStream().copyTo(it) }
+
+                val inputStream = response.body?.byteStream()
+                    ?: throw IOException("Empty body")
+
+                saveToPublicStorage(inputStream, fileName)
+
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MediaViewerActivity, "Saved: ${file.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MediaViewerActivity, "Saved to device", Toast.LENGTH_SHORT).show()
                 }
+
             } catch (e: Exception) {
                 Log.e("MediaViewer", "Save failed: ${e.message}")
                 withContext(Dispatchers.Main) {
@@ -156,6 +169,86 @@ class MediaViewerActivity : AppCompatActivity() {
             }
         }
     }
+
+
+
+
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun saveToPublicStorage(inputStream: InputStream, fileName: String) {
+
+        val mimeType = URLConnection.guessContentTypeFromName(fileName) ?: "application/octet-stream"
+
+        val collection = when (currentType) {
+            "IMAGE" -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            "VIDEO" -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            else -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        }
+
+        val relativePath = when (currentType) {
+            "IMAGE" -> "${Environment.DIRECTORY_PICTURES}/KiaKandid"
+            "VIDEO" -> "${Environment.DIRECTORY_MOVIES}/KiaKandid"
+            else -> "${Environment.DIRECTORY_DOWNLOADS}/KiaKandid"
+        }
+
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+
+        val uri = contentResolver.insert(collection, values)
+            ?: throw IOException("Failed to create file")
+
+        contentResolver.openOutputStream(uri)?.use { output ->
+            inputStream.copyTo(output)
+        } ?: throw IOException("Failed to open output stream")
+
+        values.clear()
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        contentResolver.update(uri, values, null, null)
+    }
+
+//    private fun saveToDevice() {
+//        val url = currentUrl
+//        val fileName = currentFileName?.takeIf { it.isNotBlank() }
+//            ?: url.substringAfterLast('/').takeIf { it.isNotBlank() }
+//            ?: "download_${System.currentTimeMillis()}"
+//        scope.launch(Dispatchers.IO) {
+//            try {
+//                val token = PreferenceManager.getAccessToken()
+//                val request = Request.Builder()
+//                    .url(url)
+//                    .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+//                    .build()
+//                val response = okHttp.newCall(request).execute()
+//                if (!response.isSuccessful) {
+//                    withContext(Dispatchers.Main) {
+//                        Toast.makeText(this@MediaViewerActivity, "Download failed", Toast.LENGTH_SHORT).show()
+//                    }
+//                    return@launch
+//                }
+//                val body = response.body ?: return@launch
+//                val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                    getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
+//                } else {
+//                    @Suppress("DEPRECATION")
+//                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+//                }
+//                val file = File(dir, fileName)
+//                file.outputStream().use { body.byteStream().copyTo(it) }
+//                withContext(Dispatchers.Main) {
+//                    Toast.makeText(this@MediaViewerActivity, "Saved: ${file.name}", Toast.LENGTH_SHORT).show()
+//                }
+//            } catch (e: Exception) {
+//                Log.e("MediaViewer", "Save failed: ${e.message}")
+//                withContext(Dispatchers.Main) {
+//                    Toast.makeText(this@MediaViewerActivity, "Save failed", Toast.LENGTH_SHORT).show()
+//                }
+//            }
+//        }
+//    }
 
     private fun loadImageWithAuth(imageView: ImageView, url: String) {
         if (url.startsWith("http")) {
