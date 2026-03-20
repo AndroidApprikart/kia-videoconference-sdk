@@ -26,6 +26,7 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextUtils
@@ -40,6 +41,7 @@ import android.view.Window
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -58,7 +60,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.widget.ViewPager2
 import com.app.vc.MainViewModel
 import com.app.vc.MediaFragment
 import com.app.vc.ParticipantsListFragment
@@ -90,6 +91,7 @@ import com.app.vc.views.WaveformView
 import com.kia.vc.message.Labour
 import com.kia.vc.message.Part
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType
@@ -136,9 +138,22 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private val sharedViewModel: MainViewModel by viewModels()
     private var networkErrorVisible = false
     private var connectivityBannerHandler: ConnectivityBannerHandler? = null
+    private var isNetworkAvailable = true
+    private var pendingRecoveryBanner = false
+    private var shouldShowRecoveryBannerOnReconnect = false
+    private var isRecoveryBannerShowing = false
+    private var socketRecoveryBannerPending = false
+    private var suppressSocketToastUntilMs = 0L
+    private var isRetryingPendingMessages = false
+    private val networkBannerHandler = Handler(Looper.getMainLooper())
     private val memberFirstNameByUsername = mutableMapOf<String, String>()
     private val memberUserIdToDisplayName = mutableMapOf<Int, String>()
     private val memberUserIdToRoleAbbrev = mutableMapOf<Int, String>()
+    private val hideRecoveryBannerRunnable = Runnable {
+        if (isNetworkAvailable) {
+            hideNetworkErrorBanner(force = true)
+        }
+    }
 
     companion object {
         const val EXTRA_ROLE = "extra_role"
@@ -271,6 +286,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private var quickReplies = mutableListOf<String>()
+    private val previewSelectedFiles = mutableListOf<Pair<File, ChatMessageType>>()
 
     private val requestPermission =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
@@ -294,7 +310,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success && cameraPhotoPath != null) {
                 val file = File(cameraPhotoPath!!)
-                showPreviewBottomSheet(listOf(file to ChatMessageType.IMAGE))
+                appendFilesToPreview(listOf(file to ChatMessageType.IMAGE))
             } else cameraPhotoPath = null
         }
 
@@ -331,7 +347,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             }
 
             if (selectedFiles.isNotEmpty()) {
-                showPreviewBottomSheet(selectedFiles)
+                appendFilesToPreview(selectedFiles)
             }
         }
 
@@ -577,12 +593,19 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             context = this,
             rootViewProvider = { findViewById(android.R.id.content) },
             onConnectionChanged = { connected ->
+                val wasConnected = isNetworkAvailable
+                isNetworkAvailable = connected
                 if (connected) {
-                    hideNetworkErrorBanner()
-                    if (!WebSocketManager.getInstance().isConnected()) {
-                        WebSocketManager.getInstance().reconnectNow()
+                    pendingRecoveryBanner = !wasConnected || shouldShowRecoveryBannerOnReconnect
+                    suppressSocketToastUntilMs = SystemClock.elapsedRealtime() + 5000L
+                    if (!pendingRecoveryBanner) {
+                        hideNetworkErrorBanner()
                     }
+                    WebSocketManager.getInstance().reconnectNow()
                 } else {
+                    pendingRecoveryBanner = false
+                    shouldShowRecoveryBannerOnReconnect = true
+                    suppressSocketToastUntilMs = SystemClock.elapsedRealtime() + 5000L
                     showNetworkErrorBanner()
                 }
             }
@@ -906,17 +929,40 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun setupNetworkErrorBanner() {
         binding.root.findViewById<View>(R.id.includeNetworkErrorBanner)
             ?.findViewById<View>(R.id.btnDismissNetworkError)
-            ?.setOnClickListener { hideNetworkErrorBanner() }
+            ?.setOnClickListener { hideNetworkErrorBanner(force = true) }
     }
 
     private fun showNetworkErrorBanner() {
-        binding.root.findViewById<View>(R.id.includeNetworkErrorBanner)?.visibility = View.VISIBLE
+        networkBannerHandler.removeCallbacks(hideRecoveryBannerRunnable)
+        val banner = binding.root.findViewById<View>(R.id.includeNetworkErrorBanner) ?: return
+        banner.setBackgroundColor(ContextCompat.getColor(this, R.color.red))
+        banner.findViewById<TextView>(R.id.txtNetworkError)?.text =
+            "Network error Please check your Internet connection."
+        banner.visibility = View.VISIBLE
         networkErrorVisible = true
+        isRecoveryBannerShowing = false
+        shouldShowRecoveryBannerOnReconnect = true
     }
 
-    private fun hideNetworkErrorBanner() {
+    private fun hideNetworkErrorBanner(force: Boolean = false) {
+        if (!force && isRecoveryBannerShowing && isNetworkAvailable) return
+        networkBannerHandler.removeCallbacks(hideRecoveryBannerRunnable)
         binding.root.findViewById<View>(R.id.includeNetworkErrorBanner)?.visibility = View.GONE
         networkErrorVisible = false
+        isRecoveryBannerShowing = false
+    }
+
+    private fun showNetworkRecoveryBanner() {
+        networkBannerHandler.removeCallbacks(hideRecoveryBannerRunnable)
+        val banner = binding.root.findViewById<View>(R.id.includeNetworkErrorBanner) ?: return
+        banner.setBackgroundColor(ContextCompat.getColor(this, R.color.green))
+        banner.findViewById<TextView>(R.id.txtNetworkError)?.text =
+            "Network connection is available."
+        banner.visibility = View.VISIBLE
+        networkErrorVisible = true
+        isRecoveryBannerShowing = true
+        shouldShowRecoveryBannerOnReconnect = false
+        networkBannerHandler.postDelayed(hideRecoveryBannerRunnable, 2500L)
     }
 
     private fun setMessagesLoading(isLoading: Boolean) {
@@ -1643,7 +1689,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         runOnUiThread {
             Log.d("VirtualChatRoom", "WebSocket Connected Successfully")
             PresenceStore.setUserOnline(PreferenceManager.getUserId())
-            if (networkErrorVisible) hideNetworkErrorBanner()
+            if (socketRecoveryBannerPending || pendingRecoveryBanner || shouldShowRecoveryBannerOnReconnect) {
+                showNetworkRecoveryBanner()
+                socketRecoveryBannerPending = false
+                pendingRecoveryBanner = false
+            } else if (networkErrorVisible && isNetworkAvailable) {
+                hideNetworkErrorBanner()
+            }
+            retryPendingOutgoingMessages()
         }
     }
 
@@ -1995,126 +2048,63 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     override fun onDisconnected(reason: String) {
         runOnUiThread {
             Log.d(TAG, "WebSocket Disconnected: $reason")
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                connectToWebSocket()
-            }, 3000)
+            if (isNetworkAvailable) {
+                socketRecoveryBannerPending = true
+                showNetworkErrorBanner()
+                WebSocketManager.getInstance().reconnectNow()
+                if (SystemClock.elapsedRealtime() >= suppressSocketToastUntilMs) {
+                    showWebSocketDisconnectedToast("Chat connection lost")
+                }
+            }
         }
     }
 
     override fun onError(error: String) {
         runOnUiThread {
             Log.e("VirtualChatRoom", "WebSocket Error: $error")
+            socketRecoveryBannerPending = true
             showNetworkErrorBanner()
-            showWebSocketDisconnectedToast(
-                if (error.contains("not connected", ignoreCase = true)) {
-                    "WebSocket disconnected. Please retry."
-                } else {
-                    "Chat connection lost"
-                }
-            )
+            if (isNetworkAvailable && SystemClock.elapsedRealtime() >= suppressSocketToastUntilMs) {
+                showWebSocketDisconnectedToast(
+                    if (error.contains("not connected", ignoreCase = true)) {
+                        "WebSocket disconnected. Reconnecting..."
+                    } else {
+                        "Chat connection lost"
+                    }
+                )
+            }
         }
     }
 
     private fun showPreviewBottomSheet(selectedFiles: List<Pair<File, ChatMessageType>>) {
-        showPreviewInPlace(selectedFiles)
+        previewSelectedFiles.clear()
+        previewSelectedFiles.addAll(selectedFiles)
+        showPreviewInPlace()
     }
 
-    private fun showPreviewInPlace(selectedFiles: List<Pair<File, ChatMessageType>>) {
-        binding.recyclerMessages.visibility = View.GONE
+    private fun showPreviewInPlace() {
         binding.layoutPreviewContainer.visibility = View.VISIBLE
         binding.cardViewBottomChat?.visibility = View.GONE
         binding.layoutTypingIndicator?.visibility = View.GONE
 
         val previewRoot = binding.layoutPreviewContainer.getChildAt(0)
-        val viewPager: ViewPager2 = previewRoot.findViewById(R.id.viewPagerPreview)
         val edtCaption: EditText = previewRoot.findViewById(R.id.edtPreviewCaption)
         val btnSend: View = previewRoot.findViewById(R.id.btnPreviewSend)
         val btnCancel: View = previewRoot.findViewById(R.id.btnPreviewCancel)
         val txtTitle: TextView = previewRoot.findViewById(R.id.txtPreviewTitle)
-
-        txtTitle.text = if (selectedFiles.size == 1) "Preview" else "Preview (${selectedFiles.size} files)"
-        edtCaption.setText("")
-
-        viewPager.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-                val itemView = layoutInflater.inflate(R.layout.vc_preview_page_media, parent, false)
-                return object : RecyclerView.ViewHolder(itemView) {}
-            }
-
-            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-                val (file, type) = selectedFiles[position]
-                val imgMedia = holder.itemView.findViewById<ImageView>(R.id.imgPreviewMedia)
-                val imgPlay = holder.itemView.findViewById<ImageView>(R.id.imgPreviewPlay)
-                val pdfRow = holder.itemView.findViewById<View>(R.id.layoutPreviewPdfRow)
-                val txtPdfName = holder.itemView.findViewById<TextView>(R.id.txtPreviewPdfName)
-                val videoView = holder.itemView.findViewById<VideoView>(R.id.videoPreview)
-
-                imgPlay.visibility = View.GONE
-                pdfRow.visibility = View.GONE
-                videoView.visibility = View.GONE
-                imgMedia.visibility = View.VISIBLE
-
-                when (type) {
-                    ChatMessageType.IMAGE -> imgMedia.setImageURI(Uri.fromFile(file))
-                    ChatMessageType.VIDEO -> {
-                        imgPlay.visibility = View.VISIBLE
-                        lifecycleScope.launch {
-                            val bitmap = withContext(Dispatchers.IO) {
-                                try {
-                                    val r = MediaMetadataRetriever()
-                                    r.setDataSource(file.absolutePath)
-                                    val frame = r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                                    r.release()
-                                    frame
-                                } catch (e: Exception) { null }
-                            }
-                            bitmap?.let { runOnUiThread { imgMedia.setImageBitmap(it) } }
-                                ?: runOnUiThread { imgMedia.setImageResource(android.R.drawable.ic_media_play) }
-                        }
-                        imgPlay.setOnClickListener {
-                            imgMedia.visibility = View.GONE
-                            imgPlay.visibility = View.GONE
-                            videoView.visibility = View.VISIBLE
-                            videoView.setVideoPath(file.absolutePath)
-                            videoView.setOnCompletionListener {
-                                videoView.visibility = View.GONE
-                                imgMedia.visibility = View.VISIBLE
-                                imgPlay.visibility = View.VISIBLE
-                            }
-                            videoView.start()
-                        }
-                    }
-                    ChatMessageType.FILE -> {
-                        pdfRow.visibility = View.VISIBLE
-                        txtPdfName.text = file.name
-                        if (file.extension.equals("pdf", ignoreCase = true)) {
-                            lifecycleScope.launch {
-                                val bitmap = withContext(Dispatchers.IO) { renderPdfFirstPage(file) }
-                                bitmap?.let { runOnUiThread { imgMedia.setImageBitmap(it) } }
-                                    ?: runOnUiThread { imgMedia.setImageResource(R.drawable.file_pdf_icon) }
-                            }
-                        } else {
-                            imgMedia.setImageResource(R.drawable.file_pdf_icon)
-                        }
-                    }
-                    else -> imgMedia.setImageResource(R.drawable.file_pdf_icon)
-                }
-            }
-
-            override fun getItemCount() = selectedFiles.size
+        txtTitle.text = if (previewSelectedFiles.size <= 1) "Attach" else "Attach (${previewSelectedFiles.size})"
+        if (edtCaption.text.isNullOrEmpty()) {
+            edtCaption.setText("")
         }
+        renderPreviewSelection(previewRoot)
 
         btnCancel.setOnClickListener {
-            binding.layoutPreviewContainer.visibility = View.GONE
-            binding.recyclerMessages.visibility = View.VISIBLE
-            binding.cardViewBottomChat?.visibility = View.VISIBLE
+            closePreviewPanel()
         }
         btnSend.setOnClickListener {
             val caption = edtCaption.text.toString()
-            binding.layoutPreviewContainer.visibility = View.GONE
-            binding.recyclerMessages.visibility = View.VISIBLE
-            binding.cardViewBottomChat?.visibility = View.VISIBLE
+            val selectedFiles = previewSelectedFiles.toList()
+            closePreviewPanel()
             val groupId = "grp_${System.currentTimeMillis()}"
             selectedFiles.forEachIndexed { index, (file, type) ->
                 val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
@@ -2147,6 +2137,115 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             }
         }
     }
+
+    private fun renderPreviewSelection(previewRoot: View) {
+        val itemsContainer = previewRoot.findViewById<LinearLayout>(R.id.layoutPreviewItems)
+        val txtTitle = previewRoot.findViewById<TextView>(R.id.txtPreviewTitle)
+        itemsContainer.removeAllViews()
+        txtTitle.text = if (previewSelectedFiles.size <= 1) "Attach" else "Attach (${previewSelectedFiles.size})"
+
+        previewSelectedFiles.forEachIndexed { index, (file, type) ->
+            val itemView = layoutInflater.inflate(R.layout.vc_item_preview_attachment, itemsContainer, false)
+            val imgThumb = itemView.findViewById<ImageView>(R.id.imgPreviewThumb)
+            val imgVideo = itemView.findViewById<ImageView>(R.id.imgPreviewVideo)
+            val btnRemove = itemView.findViewById<ImageView>(R.id.btnRemovePreview)
+            bindPreviewThumbnail(file, type, imgThumb, imgVideo)
+            btnRemove.setOnClickListener {
+                if (index in previewSelectedFiles.indices) {
+                    previewSelectedFiles.removeAt(index)
+                    if (previewSelectedFiles.isEmpty()) {
+                        closePreviewPanel()
+                    } else {
+                        renderPreviewSelection(previewRoot)
+                    }
+                }
+            }
+            itemsContainer.addView(itemView)
+        }
+
+        itemsContainer.addView(createAddMorePreviewView())
+    }
+
+    private fun bindPreviewThumbnail(
+        file: File,
+        type: ChatMessageType,
+        imgThumb: ImageView,
+        imgVideo: ImageView
+    ) {
+        imgVideo.visibility = View.GONE
+        when (type) {
+            ChatMessageType.IMAGE -> imgThumb.setImageURI(Uri.fromFile(file))
+            ChatMessageType.VIDEO -> {
+                imgVideo.visibility = View.VISIBLE
+                lifecycleScope.launch {
+                    val bitmap = withContext(Dispatchers.IO) {
+                        try {
+                            val retriever = MediaMetadataRetriever()
+                            retriever.setDataSource(file.absolutePath)
+                            val frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                            retriever.release()
+                            frame
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    runOnUiThread {
+                        if (bitmap != null) {
+                            imgThumb.setImageBitmap(bitmap)
+                        } else {
+                            imgThumb.setImageResource(android.R.drawable.ic_media_play)
+                        }
+                    }
+                }
+            }
+            ChatMessageType.FILE -> {
+                imgThumb.setImageResource(R.drawable.file_pdf_icon)
+            }
+            else -> imgThumb.setImageResource(R.drawable.file_pdf_icon)
+        }
+    }
+
+    private fun createAddMorePreviewView(): View {
+        val container = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(72), dp(72)).apply {
+                marginEnd = dp(8)
+            }
+            background = ContextCompat.getDrawable(this@VirtualChatRoomActivity, R.drawable.bg_comment_box)
+            foreground = ContextCompat.getDrawable(this@VirtualChatRoomActivity, android.R.drawable.list_selector_background)
+            setOnClickListener { launchAttachmentPicker() }
+        }
+        val plus = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER)
+            setImageResource(android.R.drawable.ic_input_add)
+            contentDescription = "Add more files"
+        }
+        container.addView(plus)
+        return container
+    }
+
+    private fun closePreviewPanel() {
+        val previewRoot = binding.layoutPreviewContainer.getChildAt(0)
+        previewRoot?.findViewById<EditText>(R.id.edtPreviewCaption)?.setText("")
+        previewSelectedFiles.clear()
+        binding.layoutPreviewContainer.visibility = View.GONE
+        binding.cardViewBottomChat?.visibility = View.VISIBLE
+    }
+
+    private fun appendFilesToPreview(newFiles: List<Pair<File, ChatMessageType>>) {
+        if (newFiles.isEmpty()) return
+        previewSelectedFiles.addAll(newFiles)
+        if (binding.layoutPreviewContainer.visibility == View.VISIBLE) {
+            renderPreviewSelection(binding.layoutPreviewContainer.getChildAt(0))
+        } else {
+            showPreviewBottomSheet(previewSelectedFiles.toList())
+        }
+    }
+
+    private fun launchAttachmentPicker() {
+        fileLauncher.launch(arrayOf("image/*", "video/*", "application/pdf", "*/*"))
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun renderPdfFirstPage(file: File): Bitmap? {
@@ -2383,6 +2482,53 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         return WebSocketManager.getInstance().sendMessage(json.toString())
     }
 
+    private fun retryOutgoingMessage(message: ChatMessage) {
+        val type = message.type
+        val caption = message.caption ?: ""
+        val messageId = message.messageId ?: return
+        val attachmentUri = message.attachmentUri
+
+        messageAdapter?.updateMessageStatus(messageId, MessageStatus.SENDING)
+
+        if (type == ChatMessageType.TEXT) {
+            val sent = sendWebSocketMessage(message.text)
+            messageAdapter?.updateMessageStatus(
+                messageId,
+                if (sent) MessageStatus.SENDING else MessageStatus.ERROR
+            )
+            if (sent) hideNetworkErrorBanner() else showNetworkErrorBanner()
+            return
+        }
+
+        if (attachmentUri.isNullOrBlank()) return
+        if (attachmentUri.startsWith("http") && messageId.toIntOrNull() != null) {
+            val sent = sendMediaMessageOverWebSocket(
+                messageId = messageId,
+                type = type,
+                fileUrl = attachmentUri,
+                caption = caption,
+                thumbnailUrl = message.thumbnailUrl
+            )
+            messageAdapter?.updateMessageStatus(
+                messageId,
+                if (sent) MessageStatus.SENT else MessageStatus.ERROR
+            )
+            if (sent) hideNetworkErrorBanner() else showNetworkErrorBanner()
+        } else {
+            val file = File(attachmentUri)
+            lifecycleScope.launch {
+                val fileToUpload = if (type == ChatMessageType.IMAGE) {
+                    try {
+                        compressImage(file)
+                    } catch (e: Exception) {
+                        file
+                    }
+                } else file
+                performUpload(fileToUpload, caption, type, messageId)
+            }
+        }
+    }
+
     private fun messageIdFromJson(json: JsonObject): String? {
         val el = json.get("message_id") ?: return null
         if (!el.isJsonPrimitive) return null
@@ -2433,40 +2579,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 //        binding.recyclerMessages.setHasStableIds(true)
         messageAdapter = VirtualChatMessageAdapter(
             messages,
-            onRetryClick = { message ->
-                val type = message.type
-                val caption = message.caption ?: ""
-                val messageId = message.messageId ?: return@VirtualChatMessageAdapter
-                val attachmentUri = message.attachmentUri ?: return@VirtualChatMessageAdapter
-                messageAdapter?.updateMessageStatus(messageId, MessageStatus.SENDING)
-
-                if (attachmentUri.startsWith("http") && messageId.toIntOrNull() != null) {
-                    val sent = sendMediaMessageOverWebSocket(
-                        messageId = messageId,
-                        type = type,
-                        fileUrl = attachmentUri,
-                        caption = caption,
-                        thumbnailUrl = message.thumbnailUrl
-                    )
-                    messageAdapter?.updateMessageStatus(
-                        messageId,
-                        if (sent) MessageStatus.SENT else MessageStatus.ERROR
-                    )
-                    if (sent) hideNetworkErrorBanner() else showNetworkErrorBanner()
-                } else {
-                    val file = File(attachmentUri)
-                    lifecycleScope.launch {
-                        val fileToUpload = if (type == ChatMessageType.IMAGE) {
-                            try {
-                                compressImage(file)
-                            } catch (e: Exception) {
-                                file
-                            }
-                        } else file
-                        performUpload(fileToUpload, caption, type, messageId)
-                    }
-                }
-            },
+            onRetryClick = { message -> retryOutgoingMessage(message) },
             onItemClick = { message -> handleAttachmentClick(message) },
             onSaveMedia = { message -> downloadAndSaveMedia(message) },
             estimationListener = this
@@ -2711,8 +2824,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             val text = binding.edtMessageTablet.text.toString().trim()
             if (text.isNotEmpty()) {
                 val localId = "local_txt_${System.currentTimeMillis()}"
-                sendWebSocketMessage(text, localId)
                 addMessage(text, true, localId)
+                val sent = sendWebSocketMessage(text, localId)
+                if (!sent) {
+                    messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR)
+                    showNetworkErrorBanner()
+                }
                 binding.edtMessageTablet.setText("")
                 scrollToLast()
                 sendTypingStatus(false)
@@ -2757,14 +2874,39 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         )
     }
 
-    private fun sendWebSocketMessage(text: String, messageId: String? = null) {
+    private fun sendWebSocketMessage(text: String, messageId: String? = null): Boolean {
         val json = JsonObject()
         json.addProperty("type", "chat.message")
         json.addProperty("content", text)
         // Only add message_id if it's a valid integer. 
         // If it starts with 'local_', it's a tracking ID, we might need to send it differently or not at all.
         // Assuming the server only wants integer for 'message_id' field.
-        WebSocketManager.getInstance().sendMessage(json.toString())
+        return WebSocketManager.getInstance().sendMessage(json.toString())
+    }
+
+    private fun retryPendingOutgoingMessages() {
+        if (isRetryingPendingMessages) return
+        val pendingMessages = messages.filter { message ->
+            message.isSender &&
+                message.type != ChatMessageType.DATE_HEADER &&
+                (
+                    message.status == MessageStatus.ERROR ||
+                        (message.type == ChatMessageType.TEXT && message.status == MessageStatus.SENDING)
+                    )
+        }
+        if (pendingMessages.isEmpty()) return
+
+        isRetryingPendingMessages = true
+        lifecycleScope.launch {
+            try {
+                pendingMessages.forEach { message ->
+                    retryOutgoingMessage(message)
+                    delay(200)
+                }
+            } finally {
+                isRetryingPendingMessages = false
+            }
+        }
     }
 
     private fun showWebSocketDisconnectedToast(message: String) {
@@ -2804,7 +2946,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         dialogView.findViewById<LinearLayout>(R.id.optionGallery)?.setOnClickListener {
             dialog.dismiss()
-            fileLauncher.launch(arrayOf("image/*", "video/*", "application/pdf", "*/*"))
+            launchAttachmentPicker()
         }
 
         dialogView.findViewById<LinearLayout>(R.id.optionCamera)?.setOnClickListener {

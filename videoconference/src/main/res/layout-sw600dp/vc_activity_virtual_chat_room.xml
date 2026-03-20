@@ -423,9 +423,10 @@
                 <FrameLayout
                     android:id="@+id/layoutPreviewContainer"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
                     android:visibility="gone"
-                    android:background="@color/white">
+                    android:background="@android:color/transparent">
                     <include
                         android:id="@+id/includePreviewContent"
                         layout="@layout/vc_layout_media_preview" />
