@@ -7,6 +7,7 @@ data class GroupResponse(
     @SerializedName("name") val name: String,
     @SerializedName("slug") val slug: String,
     @SerializedName("description") val description: String,
+    @SerializedName("unread_count") val unreadCount: Int = 0,
     @SerializedName("vehicle_number") val vehicleNumber: String? = null,
     @SerializedName("ro_number") val roNumber: String? = null,
     @SerializedName("current_service_status") val currentServiceStatus: GroupCurrentServiceStatus? = null,

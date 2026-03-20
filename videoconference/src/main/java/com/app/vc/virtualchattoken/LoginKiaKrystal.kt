@@ -9,6 +9,8 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.app.vc.databinding.ActivityLoginKiaKrystalBinding
 import com.app.vc.utils.PreferenceManager
+import com.app.vc.websocketconnection.NotificationWebSocketManager
+import com.app.vc.websocketconnection.SocketSessionCoordinator
 import com.app.vc.virtualroomlist.VirtualRoomListActivity
 
 class LoginKiaKrystal : AppCompatActivity() {
@@ -52,6 +54,13 @@ class LoginKiaKrystal : AppCompatActivity() {
                 Log.d(TAG, "setupObservers: $message")
             }
         }
+
+        viewModel.sessionExpired.observe(this) { expired ->
+            if (expired == true) {
+                SocketSessionCoordinator.getInstance().clearSession()
+                Toast.makeText(this, "Session expired", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupListeners() {
@@ -65,6 +74,7 @@ class LoginKiaKrystal : AppCompatActivity() {
     }
 
     private fun navigateToRoomList() {
+        NotificationWebSocketManager.getInstance().connectWithToken(PreferenceManager.getAccessToken())
         // FIXED: Now navigating to the List screen instead of the Chat room directly
         startActivity(Intent(this, VirtualRoomListActivity::class.java))
         finish()

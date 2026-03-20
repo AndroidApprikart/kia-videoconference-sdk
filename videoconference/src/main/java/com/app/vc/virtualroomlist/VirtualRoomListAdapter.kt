@@ -39,7 +39,8 @@ class VirtualRoomListAdapter(
         private val txtTitle: TextView? = itemView.findViewById(R.id.txtTitle)
         private val txtSubtitle: TextView? = itemView.findViewById(R.id.txtSubtitle)
         private val txtStatus: TextView = itemView.findViewById(R.id.txtStatus)
-        private val txtUnreadBadge: TextView? = itemView.findViewById(R.id.txtUnreadBadge)
+        private val txtUnreadBadge: TextView? =
+            itemView.findViewById(R.id.txtUnreadBadge) ?: itemView.findViewById(R.id.number)
 
         private val txtCustomerName: TextView? = itemView.findViewById(R.id.txtCustomerName)
         private val txtRoNumber: TextView? = itemView.findViewById(R.id.txtRoNumber)
@@ -57,7 +58,7 @@ class VirtualRoomListAdapter(
             
             txtUnreadBadge?.apply {
                 visibility = if (room.unreadCount > 0) View.VISIBLE else View.GONE
-                text = room.unreadCount.toString()
+                text = room.unreadCount.toString().padStart(2, '0')
             }
 
             // Tablet view: display RO Number and Customer Name; show "-" when RO number is absent

@@ -3,6 +3,7 @@ package com.app.vc.websocketconnection
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.app.vc.utils.PreferenceManager
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -22,6 +23,7 @@ class WebSocketManager {
     private var listener: WebSocketListener? = null
     private var callback: WebSocketCallback? = null
     private var currentUrl: String? = null
+    private var currentGroupSlug: String? = null
 
     private var isConnected = false
     private var isConnecting = false
@@ -81,6 +83,7 @@ class WebSocketManager {
         }
 
         currentUrl = url
+        currentGroupSlug = extractGroupSlug(url)
         closeCurrentSocket("Reconnecting")
         isConnecting = true
 
@@ -136,7 +139,11 @@ class WebSocketManager {
                 isConnecting = false
 
                 this@WebSocketManager.callback?.onDisconnected(reason)
-                scheduleReconnect()
+                if (isAuthFailure(code = code, reason = reason)) {
+                    SocketSessionCoordinator.getInstance().handleSocketAuthFailure("chat_socket")
+                } else {
+                    scheduleReconnect()
+                }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -150,7 +157,11 @@ class WebSocketManager {
                 isConnecting = false
 
                 this@WebSocketManager.callback?.onError(t.message ?: "Unknown error")
-                scheduleReconnect()
+                if (isAuthFailure(error = t.message, response = response)) {
+                    SocketSessionCoordinator.getInstance().handleSocketAuthFailure("chat_socket")
+                } else {
+                    scheduleReconnect()
+                }
             }
         }
 
@@ -183,6 +194,7 @@ class WebSocketManager {
         cancelReconnect()
         callback = null
         currentUrl = null
+        currentGroupSlug = null
         closeCurrentSocket("User disconnected")
     }
 
@@ -192,6 +204,15 @@ class WebSocketManager {
 
     fun isConnected(): Boolean {
         return isConnected
+    }
+
+    fun reconnectWithLatestToken() {
+        val token = PreferenceManager.getAccessToken()
+        val groupSlug = currentGroupSlug
+        val currentCallback = callback
+        if (token.isNullOrBlank() || groupSlug.isNullOrBlank() || currentCallback == null) return
+        val url = "wss://testingchat.apprikart.com/ws/chat/$groupSlug/?token=$token"
+        connect(url, currentCallback)
     }
 
     private fun scheduleReconnect() {
@@ -212,5 +233,26 @@ class WebSocketManager {
         listener = null
         isConnected = false
         isConnecting = false
+    }
+
+    private fun extractGroupSlug(url: String): String? {
+        return Regex("/ws/chat/([^/]+)/").find(url)?.groupValues?.getOrNull(1)
+            ?.takeIf { it != "notifications" }
+    }
+
+    private fun isAuthFailure(
+        code: Int? = null,
+        reason: String? = null,
+        error: String? = null,
+        response: Response? = null
+    ): Boolean {
+        if (code == 4001 || response?.code == 401 || response?.code == 403) return true
+        val combined = listOfNotNull(reason, error).joinToString(" ").lowercase()
+        return combined.contains("4001") ||
+            combined.contains("401") ||
+            combined.contains("unauthorized") ||
+            combined.contains("forbidden") ||
+            combined.contains("token") ||
+            combined.contains("auth")
     }
 }

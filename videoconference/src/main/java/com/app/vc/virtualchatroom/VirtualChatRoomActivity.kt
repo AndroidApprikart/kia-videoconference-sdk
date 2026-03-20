@@ -80,8 +80,10 @@ import com.app.vc.utils.ConnectivityBannerHandler
 import com.app.vc.utils.ProgressRequestBody
 import com.app.vc.utils.PreferenceManager
 import com.app.vc.utils.VCConstants
+import com.app.vc.virtualroomlist.GroupUnreadStore
 import com.app.vc.virtualroomlist.UserRole
 import com.app.vc.virtualroomlist.VirtualRoomUiModel
+import com.app.vc.websocketconnection.NotificationWebSocketManager
 import com.app.vc.websocketconnection.WebSocketManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.gson.Gson
@@ -143,6 +145,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var shouldShowRecoveryBannerOnReconnect = false
     private var isRecoveryBannerShowing = false
     private var socketRecoveryBannerPending = false
+    private var shouldRefetchMessagesOnReconnect = false
     private var suppressSocketToastUntilMs = 0L
     private var isRetryingPendingMessages = false
     private val networkBannerHandler = Handler(Looper.getMainLooper())
@@ -621,6 +624,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             room = Gson().fromJson(roomJson, VirtualRoomUiModel::class.java)
             jobNotes = room?.serviceNotes
             statusLabel = room?.lifecycleStatusLabel
+            room?.roNumber?.let { groupSlug ->
+                GroupUnreadStore.markRead(groupSlug)
+                NotificationWebSocketManager.getInstance().setActiveGroupSlug(groupSlug)
+            }
         }
 
         // Status chip: initial value from room.status (service status only); updated by service.status WebSocket only (not lifecycle)
@@ -752,7 +759,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
 
     override fun onDestroy() {
-        WebSocketManager.getInstance().clearCallback()
+        WebSocketManager.getInstance().disconnect()
+        NotificationWebSocketManager.getInstance().setActiveGroupSlug(null)
         typingHandler.removeCallbacks(stopTypingRunnable)
         voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
         amplitudeHandler.removeCallbacks(amplitudeRunnable)
@@ -780,7 +788,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             try {
                 val response = apiService.getQuickReplies(role)
                 if (response.isSuccessful && response.body() != null) {
-                    val apiReplies = response.body()!!.sortedBy { it.displayOrder }.map { it.text }
+                    val quickReplyResponse = response.body()!!
+                    Log.d(TAG, "Quick replies API response: ${Gson().toJson(quickReplyResponse)}")
+                    val apiReplies = quickReplyResponse.sortedBy { it.displayOrder }.map { it.text }
                     if (apiReplies.isNotEmpty()) {
                         quickReplies.clear()
                         quickReplies.addAll(apiReplies)
@@ -803,6 +813,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.getGroupMembers("Bearer $token", slug)
                 if (response.isSuccessful && response.body() != null) {
                     val members = response.body()!!
+                    Log.d(TAG, "Group members API response for $slug: ${Gson().toJson(members)}")
                     val userIdToDisplay: Map<Int, String> = members.associate { member: GroupMemberResponse ->
                         member.userId to (member.displayName.takeIf { it.isNotBlank() }.orEmpty())
                     }
@@ -853,6 +864,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 if (response.isSuccessful && response.body() != null) {
                     val currentUserId = PreferenceManager.getUserId()
                     val apiMessages = response.body()!!
+                    Log.d(TAG, "Messages API response for $slug: ${Gson().toJson(apiMessages)}")
                     
                     val chatMessages = apiMessages.map { apiMsg ->
                         val isSender = apiMsg.sender?.id?.toString() == currentUserId
@@ -990,6 +1002,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.getServiceLifecycleCurrent("Bearer $token", slug)
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
+                    Log.d(TAG, "Service lifecycle API response for $slug: ${Gson().toJson(body)}")
                     jobNotes = body.notes?.takeIf { it.isNotBlank() }
                     statusLabel = body.statusLabel?.takeIf { it.isNotBlank() }
                     Log.d("VirtualChatRoom", "Service lifecycle response: $body")
@@ -1022,6 +1035,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.getTemplates("Bearer $token")
                 if (response.isSuccessful && response.body() != null) {
                     val templates = response.body()!!
+                    Log.d(TAG, "Templates API response: ${Gson().toJson(templates)}")
                     withContext(Dispatchers.Main) {
                         Log.d("VirtualChatRoom", "Templates API response: count=${templates.size}")
                         templates.forEachIndexed { index, t ->
@@ -1696,6 +1710,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             } else if (networkErrorVisible && isNetworkAvailable) {
                 hideNetworkErrorBanner()
             }
+            if (shouldRefetchMessagesOnReconnect) {
+                shouldRefetchMessagesOnReconnect = false
+                fetchMessages()
+            }
             retryPendingOutgoingMessages()
         }
     }
@@ -2048,6 +2066,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     override fun onDisconnected(reason: String) {
         runOnUiThread {
             Log.d(TAG, "WebSocket Disconnected: $reason")
+            shouldRefetchMessagesOnReconnect = true
             if (isNetworkAvailable) {
                 socketRecoveryBannerPending = true
                 showNetworkErrorBanner()
@@ -2062,6 +2081,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     override fun onError(error: String) {
         runOnUiThread {
             Log.e("VirtualChatRoom", "WebSocket Error: $error")
+            shouldRefetchMessagesOnReconnect = true
             socketRecoveryBannerPending = true
             showNetworkErrorBanner()
             if (isNetworkAvailable && SystemClock.elapsedRealtime() >= suppressSocketToastUntilMs) {
@@ -2356,6 +2376,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.uploadFile("Bearer $token", slug, body, captionPart)
                 if (response.isSuccessful && response.body() != null) {
                     val fileResponse = response.body()!!
+                    Log.d(TAG, "Upload API response for $slug: ${Gson().toJson(fileResponse)}")
                     
                     val fullFileUrl = if (fileResponse.attachment.fileUrl.startsWith("http")) {
                         fileResponse.attachment.fileUrl

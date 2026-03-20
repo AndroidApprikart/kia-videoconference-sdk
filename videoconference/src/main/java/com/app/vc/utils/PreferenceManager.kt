@@ -104,6 +104,16 @@ class PreferenceManager {
             return mSharedPrefs?.getString(NAME, "")
         }
 
+        fun clearAuthSession() {
+            mSharedPrefs?.edit()
+                ?.remove(ACCESS_TOKEN)
+                ?.remove(REFRESH_TOKEN)
+                ?.remove(USER_ID)
+                ?.remove(NAME)
+                ?.remove(USERTYPE)
+                ?.apply()
+        }
+
 
     }
 }

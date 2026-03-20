@@ -17,6 +17,8 @@ import com.app.vc.network.TokenRefreshRequest
 import com.app.vc.utils.ApiDetails
 import com.app.vc.utils.ConnectivityBannerHandler
 import com.app.vc.utils.PreferenceManager
+import com.app.vc.websocketconnection.NotificationWebSocketManager
+import com.app.vc.websocketconnection.SocketSessionCoordinator
 import com.app.vc.virtualchatroom.VirtualChatRoomActivity
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -32,6 +34,16 @@ class VirtualRoomListActivity : AppCompatActivity() {
     private lateinit var adapter: VirtualRoomListAdapter
     private var currentRole: UserRole = UserRole.CUSTOMER
     private var connectivityBannerHandler: ConnectivityBannerHandler? = null
+    private var latestRooms: List<VirtualRoomUiModel> = emptyList()
+    private val unreadListener: (Map<String, Int>) -> Unit = { counts ->
+        if (latestRooms.isNotEmpty()) {
+            val updatedRooms = latestRooms.map { room ->
+                room.copy(unreadCount = counts[room.roNumber] ?: room.unreadCount)
+            }
+            latestRooms = updatedRooms
+            runOnUiThread { adapter.updateRooms(updatedRooms) }
+        }
+    }
 
     val TAG="VirtualRoomListActivity"
 
@@ -62,22 +74,39 @@ class VirtualRoomListActivity : AppCompatActivity() {
 //        setupRoleSelectionIfAvailable()
         setupRecycler()
         applyRoleTitle()
+        GroupUnreadStore.addListener(unreadListener)
         connectivityBannerHandler = ConnectivityBannerHandler(
             context = this,
             rootViewProvider = { findViewById<View>(android.R.id.content) }
         )
 
         fetchGroups()
+        NotificationWebSocketManager.getInstance().connectWithToken(PreferenceManager.getAccessToken())
     }
 
     override fun onStart() {
         super.onStart()
         connectivityBannerHandler?.register()
+        NotificationWebSocketManager.getInstance().setActiveGroupSlug(null)
+        NotificationWebSocketManager.getInstance().connectWithToken(PreferenceManager.getAccessToken())
+        if (latestRooms.isNotEmpty()) {
+            val counts = GroupUnreadStore.snapshot()
+            val updatedRooms = latestRooms.map { room ->
+                room.copy(unreadCount = counts[room.roNumber] ?: room.unreadCount)
+            }
+            latestRooms = updatedRooms
+            adapter.updateRooms(updatedRooms)
+        }
     }
 
     override fun onStop() {
         connectivityBannerHandler?.unregister()
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        GroupUnreadStore.removeListener(unreadListener)
+        super.onDestroy()
     }
 
     private fun setupRecycler() {
@@ -101,6 +130,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
             val result = fetchGroupsWithToken(token)
             when {
                 result is GroupsResult.Success -> {
+                    latestRooms = result.rooms
                     adapter.updateRooms(result.rooms)
                 }
                 result is GroupsResult.Unauthorized -> {
@@ -121,6 +151,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
                 response.isSuccessful && response.body() != null -> {
                     val groups = response.body()!!
                     Log.d(TAG, "getGroups list API response: ${Gson().toJson(groups)}")
+                    GroupUnreadStore.replaceAll(groups.associate { it.slug to it.unreadCount })
                     val uiModels = groups.map { group ->
                         val serviceStatus = group.currentServiceStatus
                         val (dayLabel, timeLabel) = formatCreatedAt(group.createdAt)
@@ -136,7 +167,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
                             status = serviceStatus?.status ?: "OPEN",
                             dayLabel = dayLabel,
                             timeLabel = timeLabel,
-                            unreadCount = 0,
+                            unreadCount = GroupUnreadStore.getUnreadCount(group.slug),
                             customerName = if (customerName.isNotBlank()) customerName else group.description,
                             contactNumber = "",
                             lifecycleStatusLabel = serviceStatus?.statusLabel,
@@ -174,6 +205,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
     private fun tryRefreshAndFetch() {
         val refreshToken = PreferenceManager.getRefreshToken()
         if (refreshToken.isNullOrEmpty()) {
+            SocketSessionCoordinator.getInstance().clearSession()
             Toast.makeText(this, "Session expired", Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -184,6 +216,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
                 val response = apiService.refreshToken(TokenRefreshRequest(refreshToken))
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
+                    Log.d(TAG, "Refresh token API response: ${Gson().toJson(body)}")
                     PreferenceManager.setAccessToken(body.access)
                     if (body.refresh.isNotBlank()) {
                         PreferenceManager.setRefreshToken(body.refresh)
@@ -196,11 +229,13 @@ class VirtualRoomListActivity : AppCompatActivity() {
                         Toast.makeText(this@VirtualRoomListActivity, "Failed to load rooms", Toast.LENGTH_SHORT).show()
                     }
                 } else {
+                    SocketSessionCoordinator.getInstance().clearSession()
                     Toast.makeText(this@VirtualRoomListActivity, "Session expired", Toast.LENGTH_SHORT).show()
                     finish()
                 }
             } catch (e: Exception) {
                 Log.e("VirtualRoomList", "Refresh failed: ${e.message}")
+                SocketSessionCoordinator.getInstance().clearSession()
                 Toast.makeText(this@VirtualRoomListActivity, "Session expired", Toast.LENGTH_SHORT).show()
                 finish()
             }
@@ -223,6 +258,12 @@ class VirtualRoomListActivity : AppCompatActivity() {
     }
 
     private fun openChatRoom(room: VirtualRoomUiModel) {
+        GroupUnreadStore.markRead(room.roNumber)
+        latestRooms = latestRooms.map { existing ->
+            if (existing.roNumber == room.roNumber) existing.copy(unreadCount = 0) else existing
+        }
+        adapter.updateRooms(latestRooms)
+        NotificationWebSocketManager.getInstance().setActiveGroupSlug(room.roNumber)
         val gson = Gson()
         val intent = Intent(this, VirtualChatRoomActivity::class.java)
         intent.putExtra(VirtualChatRoomActivity.EXTRA_ROLE, currentRole.name)

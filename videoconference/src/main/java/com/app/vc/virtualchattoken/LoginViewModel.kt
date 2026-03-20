@@ -59,6 +59,7 @@ class LoginViewModel : ViewModel() {
                 val response = loginApiService.login(username, unique_id, role = role, dealer_code = dealer_code)
                 if (response.isSuccessful && response.body() != null) {
                     val loginData = response.body()!!
+                    Log.d("LoginViewModel", "Login API response: $loginData")
 
                     Log.d("LoginViewModel", "Access Token Received: ${loginData.access}")
                     Log.d("LoginViewModel", "Refresh Token Received: ${loginData.refresh}")
@@ -96,6 +97,7 @@ class LoginViewModel : ViewModel() {
     private suspend fun verifyToken(token: String) {
         try {
             val response = loginApiService.verifyToken(TokenVerifyRequest(token))
+            Log.d("LoginViewModel", "Verify token API response code: ${response.code()} message=${response.message()}")
             if (response.isSuccessful) {
                 _isVerified.value = true
                 _isLoading.value = false
@@ -119,6 +121,7 @@ class LoginViewModel : ViewModel() {
             val response = loginApiService.refreshToken(TokenRefreshRequest(refreshToken))
             if (response.isSuccessful && response.body() != null) {
                 val newData = response.body()!!
+                Log.d("LoginViewModel", "Refresh token API response: $newData")
                 Log.d("LoginViewModel", "New Access Token from Refresh: ${newData.access}")
                 PreferenceManager.setAccessToken(newData.access)
                 if (!newData.refresh.isNullOrEmpty()) {
