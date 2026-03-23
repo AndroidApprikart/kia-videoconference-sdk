@@ -153,6 +153,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var hasMoreOlderMessages = true
     private var oldestLoadedMessageId: Int? = null
     private var suppressAutoScroll = false
+    private val sentReadReceiptMessageIds = linkedSetOf<Int>()
+    private val pendingReadReceiptMessageIds = linkedSetOf<Int>()
     private val networkBannerHandler = Handler(Looper.getMainLooper())
     private val gson = Gson()
     private val memberFirstNameByUsername = mutableMapOf<String, String>()
@@ -884,6 +886,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     val chatMessages = apiMessages.map { apiMsg -> apiMessageToChatMessage(apiMsg, currentUserId) }
 
                     withContext(Dispatchers.Main) {
+                        if (!isPagination) {
+                            sentReadReceiptMessageIds.clear()
+                            pendingReadReceiptMessageIds.clear()
+                            apiMessages.filter { apiMsg ->
+                                val isOwnMessage = apiMsg.sender?.id?.toString() == currentUserId
+                                !isOwnMessage && apiMsg.isRead
+                            }.forEach { sentReadReceiptMessageIds.add(it.id) }
+                        }
                         oldestLoadedMessageId = (currentRawMessages() + chatMessages)
                             .mapNotNull { it.messageId?.toIntOrNull() }
                             .minOrNull()
@@ -897,12 +907,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             ChatMediaStore.replaceMessages(slug, chatMessages)
                             messageAdapter?.notifyDataSetChanged()
                             scrollToLast()
+                            scheduleVisibleReadReceipt(120L)
                         }
                         setMessagesLoading(false)
                         showOlderMessagesLoading(false)
                         isLoadingOlderMessages = false
                         hideNetworkErrorBanner()
-                        chatMessages.lastOrNull { !it.isSender }?.messageId?.let { sendReadReceipt(it) }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
@@ -948,7 +958,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val thumbUrl = attachment?.thumbnailUrl?.let { url ->
             if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
         }
-        val isRead = apiMsg.receipts?.isNotEmpty() == true
+        val isRead = apiMsg.isRead || (apiMsg.receipts?.isNotEmpty() == true)
 
         return ChatMessage(
             messageId = apiMsg.id.toString(),
@@ -1809,6 +1819,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 shouldRefetchMessagesOnReconnect = false
                 fetchMessages()
             }
+            pendingReadReceiptMessageIds.toList().sorted().forEach { sendReadReceipt(it.toString()) }
+            scheduleVisibleReadReceipt(150L)
             retryPendingOutgoingMessages()
         }
     }
@@ -1963,7 +1975,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             }
                         }
                         scrollToLast()
-                        sendReadReceipt(messageIdFromJson(jsonObject) ?: "")
+                        scheduleVisibleReadReceipt(120L)
                     }
 
                     "chat.media" -> {
@@ -2022,7 +2034,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
 
                         scrollToLast()
-                        sendReadReceipt(messageIdFromJson(jsonObject) ?: "")
+                        scheduleVisibleReadReceipt(120L)
                     }
 
 
@@ -2564,10 +2576,54 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun sendReadReceipt(messageId: String) {
         if (messageId.isEmpty()) return
         val idInt = messageId.toIntOrNull() ?: return
+        if (sentReadReceiptMessageIds.contains(idInt)) return
         val jsonObject = JsonObject()
         jsonObject.addProperty("type", "chat.read")
         jsonObject.addProperty("message_id", idInt)
-        WebSocketManager.getInstance().sendMessage(jsonObject.toString())
+        if (WebSocketManager.getInstance().sendMessage(jsonObject.toString())) {
+            sentReadReceiptMessageIds.add(idInt)
+            pendingReadReceiptMessageIds.remove(idInt)
+            markMessageAsReadLocally(idInt)
+        } else {
+            pendingReadReceiptMessageIds.add(idInt)
+        }
+    }
+
+    private fun scheduleVisibleReadReceipt(delayMs: Long = 0L) {
+        binding.recyclerMessages.removeCallbacks(visibleReadReceiptRunnable)
+        binding.recyclerMessages.postDelayed(visibleReadReceiptRunnable, delayMs)
+    }
+
+    private val visibleReadReceiptRunnable = Runnable {
+        sendReadReceiptsForVisibleIncomingMessages()
+    }
+
+    private fun sendReadReceiptsForVisibleIncomingMessages() {
+        val layoutManager = binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return
+        val firstVisible = layoutManager.findFirstVisibleItemPosition()
+        val lastVisible = layoutManager.findLastVisibleItemPosition()
+        if (firstVisible == RecyclerView.NO_POSITION || lastVisible == RecyclerView.NO_POSITION) return
+
+        val visibleUnreadMessageIds = linkedSetOf<Int>()
+        for (index in firstVisible..lastVisible) {
+            val message = messages.getOrNull(index) ?: continue
+            if (message.type == ChatMessageType.DATE_HEADER || message.isSender) continue
+            val idInt = message.messageId?.toIntOrNull() ?: continue
+            if (message.status == MessageStatus.READ) continue
+            if (sentReadReceiptMessageIds.contains(idInt)) continue
+            visibleUnreadMessageIds.add(idInt)
+        }
+        visibleUnreadMessageIds.forEach { visibleId ->
+            sendReadReceipt(visibleId.toString())
+        }
+    }
+
+    private fun markMessageAsReadLocally(messageId: Int) {
+        val index = messages.indexOfFirst { it.messageId == messageId.toString() }
+        if (index == -1) return
+        val message = messages[index]
+        if (message.isSender || message.type == ChatMessageType.DATE_HEADER || message.status == MessageStatus.READ) return
+        message.status = MessageStatus.READ
     }
 
     private fun sendMediaMessageOverWebSocket(
@@ -2703,11 +2759,17 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.recyclerMessages.adapter = messageAdapter
         messageAdapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                if (!suppressAutoScroll) scrollToLast()
+                if (!suppressAutoScroll) {
+                    scrollToLast()
+                    scheduleVisibleReadReceipt(120L)
+                }
             }
 
             override fun onChanged() {
-                if (!suppressAutoScroll) scrollToLast()
+                if (!suppressAutoScroll) {
+                    scrollToLast()
+                    scheduleVisibleReadReceipt(120L)
+                }
             }
         })
         binding.recyclerMessages.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -2718,6 +2780,16 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
                 if (layoutManager.findFirstVisibleItemPosition() <= 2) {
                     fetchOlderMessages()
+                }
+                if (dy > 0) {
+                    scheduleVisibleReadReceipt(80L)
+                }
+            }
+
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    scheduleVisibleReadReceipt(50L)
                 }
             }
         })

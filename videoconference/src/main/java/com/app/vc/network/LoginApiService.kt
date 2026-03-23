@@ -98,6 +98,7 @@ data class ApiMessageResponse(
     @SerializedName("content") val content: String,
     @SerializedName("message_type") val messageType: String,
     @SerializedName("sender") val sender: ApiSenderResponse?,
+    @SerializedName("is_read") val isRead: Boolean = false,
     @SerializedName("attachments") val attachments: List<ApiAttachmentResponse>?,
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("receipts") val receipts: List<ApiReceiptResponse>?
