@@ -43,16 +43,22 @@ class VirtualRoomListAdapter(
             itemView.findViewById(R.id.txtUnreadBadge) ?: itemView.findViewById(R.id.number)
 
         private val txtCustomerName: TextView? = itemView.findViewById(R.id.txtCustomerName)
+        private val txtReferenceLabel: TextView? = itemView.findViewById(R.id.txtReferenceLabel)
         private val txtRoNumber: TextView? = itemView.findViewById(R.id.txtRoNumber)
-        private val txtContactNumber: TextView? = itemView.findViewById(R.id.txtContactNumber)
+//        private val txtContactNumber: TextView? = itemView.findViewById(R.id.txtContactNumber)
         private val btnViewRoom: Button? = itemView.findViewById(R.id.btnViewRoom)
 
         fun bind(room: VirtualRoomUiModel, onRoomClick: (VirtualRoomUiModel) -> Unit) {
-            val context = itemView.context
+            val referenceValue = (room.roNumberDisplay ?: room.appointmentIdDisplay).orEmpty()
+            val referenceLabel = if (!room.roNumberDisplay.isNullOrBlank()) "RO" else "Appointment"
 
-            // Phone view: group name only, no appointment/RO number
-            txtTitle?.text = room.subject
-            txtSubtitle?.text = "${room.dayLabel} \u2022 ${room.timeLabel}"
+            // Phone view: show customer name prominently and the reference below it.
+            txtTitle?.text = room.customerName.ifBlank { room.subject }
+            txtSubtitle?.text = listOf(
+                "$referenceLabel $referenceValue".takeIf { referenceValue.isNotBlank() },
+                "${room.dayLabel} ${if (room.dayLabel.isNotBlank() && room.timeLabel.isNotBlank()) "\u2022" else ""} ${room.timeLabel}".trim()
+                    .takeIf { it.isNotBlank() }
+            ).joinToString(" \u2022 ")
 
             txtStatus.text = room.lifecycleStatusLabel?.takeIf { it.isNotBlank() } ?: room.status.replace('_', ' ')
             
@@ -61,10 +67,11 @@ class VirtualRoomListAdapter(
                 text = room.unreadCount.toString().padStart(2, '0')
             }
 
-            // Tablet view: display RO Number and Customer Name; show "-" when RO number is absent
+            // Tablet view: show RO when present, otherwise appointment id
             txtCustomerName?.text = room.customerName
-            txtRoNumber?.text = (room.roNumberDisplay ?: room.roNumber)?.takeIf { it.isNotBlank() } ?: "-"
-            txtContactNumber?.text = room.contactNumber
+            val hasRoNumber = !room.roNumberDisplay.isNullOrBlank()
+            txtReferenceLabel?.text = if (hasRoNumber) "RO No" else "Appointment No"
+            txtRoNumber?.text = (room.roNumberDisplay ?: room.appointmentIdDisplay)?.takeIf { it.isNotBlank() } ?: "-"
 
             itemView.setOnClickListener { onRoomClick(room) }
             btnViewRoom?.setOnClickListener { onRoomClick(room) }

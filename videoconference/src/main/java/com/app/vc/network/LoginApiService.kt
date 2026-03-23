@@ -41,7 +41,11 @@ interface LoginApiService {
 
     @GET("api/groups/")
     suspend fun getGroups(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("page") page: Int? = null,
+        @Query("page_size") pageSize: Int? = null,
+        @Query("appointment_date") appointmentDate: String? = null,
+        @Query("service_status") serviceStatus: String? = null
     ): Response<JsonElement>
 
     @Multipart

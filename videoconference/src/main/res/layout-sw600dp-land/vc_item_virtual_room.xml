@@ -63,6 +63,7 @@
         android:layout_weight="2">
 
         <TextView
+            android:id="@+id/txtReferenceLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -83,35 +84,6 @@
         android:textColor="@color/color_kia_black"
         android:textSize="16sp" />
 
-    </LinearLayout>
-
-
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_weight="2">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Contact Number"
-            android:fontFamily="@font/kia_signature_fix_regular"
-            android:textColor="@color/grey_txt_color"
-            android:textSize="16sp" />
-
-    <TextView
-        android:id="@+id/txtContactNumber"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_gravity="center"
-        android:text="9876543210"
-        android:textFontWeight="400"
-        android:fontFamily="@font/kia_signature_fix_regular"
-        android:textColor="@color/color_kia_black"
-        android:textSize="16sp" />
     </LinearLayout>
 
 

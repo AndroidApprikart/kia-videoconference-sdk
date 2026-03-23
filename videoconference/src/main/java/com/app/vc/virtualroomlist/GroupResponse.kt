@@ -7,9 +7,13 @@ data class GroupResponse(
     @SerializedName("name") val name: String,
     @SerializedName("slug") val slug: String,
     @SerializedName("description") val description: String,
-    @SerializedName("unread_count") val unreadCount: Int = 0,
+    @SerializedName("unread_count") val unreadCount: Int? = 0,
     @SerializedName("vehicle_number") val vehicleNumber: String? = null,
     @SerializedName("ro_number") val roNumber: String? = null,
+    @SerializedName(value = "appointment_id", alternate = ["appointment_no", "appointment_number"])
+    val appointmentId: String? = null,
+    @SerializedName("appointment_date") val appointmentDate: String? = null,
+    @SerializedName("service_type") val serviceType: String? = null,
     @SerializedName("current_service_status") val currentServiceStatus: GroupCurrentServiceStatus? = null,
     @SerializedName("member_count") val memberCount: Int,
     @SerializedName("members") val members: List<GroupMember>,
@@ -30,7 +34,11 @@ data class GroupCurrentServiceStatus(
 
 data class GroupMember(
     @SerializedName("id") val id: Int,
+    @SerializedName("user_id") val userId: Int? = null,
     @SerializedName("user") val user: GroupUser? = null,
+    @SerializedName("chat_role") val chatRole: String? = null,
+    @SerializedName("participant_role") val participantRole: String? = null,
+    @SerializedName("display_name") val displayName: String? = null,
     @SerializedName("role") val role: String? = null,
     @SerializedName("joined_at") val joinedAt: String
 )

@@ -36,6 +36,7 @@ data class VirtualRoomUiModel(
     val contactNumber: String,
     val lifecycleStatusLabel: String? = null,
     val roNumberDisplay: String? = null,
+    val appointmentIdDisplay: String? = null,
     val serviceNotes: String? = null
 )
 
