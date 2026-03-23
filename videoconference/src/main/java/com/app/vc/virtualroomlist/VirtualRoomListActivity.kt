@@ -22,6 +22,7 @@ import com.app.vc.websocketconnection.SocketSessionCoordinator
 import com.app.vc.virtualchatroom.VirtualChatRoomActivity
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonElement
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -35,6 +36,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
     private var currentRole: UserRole = UserRole.CUSTOMER
     private var connectivityBannerHandler: ConnectivityBannerHandler? = null
     private var latestRooms: List<VirtualRoomUiModel> = emptyList()
+    private val gson = Gson()
     private val unreadListener: (Map<String, Int>) -> Unit = { counts ->
         if (latestRooms.isNotEmpty()) {
             val updatedRooms = latestRooms.map { room ->
@@ -149,8 +151,8 @@ class VirtualRoomListActivity : AppCompatActivity() {
             val response = apiService.getGroups("Bearer $token")
             when {
                 response.isSuccessful && response.body() != null -> {
-                    val groups = response.body()!!
-                    Log.d(TAG, "getGroups list API response: ${Gson().toJson(groups)}")
+                    val groups = parseGroupsResponse(response.body())
+                    Log.d(TAG, "getGroups list API response: ${gson.toJson(groups)}")
                     GroupUnreadStore.replaceAll(groups.associate { it.slug to it.unreadCount })
                     val uiModels = groups.map { group ->
                         val serviceStatus = group.currentServiceStatus
@@ -246,6 +248,29 @@ class VirtualRoomListActivity : AppCompatActivity() {
         data class Success(val rooms: List<VirtualRoomUiModel>) : GroupsResult()
         object Unauthorized : GroupsResult()
         data class Error(val message: String) : GroupsResult()
+    }
+
+    private fun parseGroupsResponse(body: JsonElement?): List<GroupResponse> {
+        if (body == null || body.isJsonNull) return emptyList()
+        return try {
+            when {
+                body.isJsonArray -> body.asJsonArray.mapNotNull { gson.fromJson(it, GroupResponse::class.java) }
+                body.isJsonObject -> {
+                    val obj = body.asJsonObject
+                    val array = when {
+                        obj.get("results")?.isJsonArray == true -> obj.getAsJsonArray("results")
+                        obj.get("data")?.isJsonArray == true -> obj.getAsJsonArray("data")
+                        obj.get("groups")?.isJsonArray == true -> obj.getAsJsonArray("groups")
+                        else -> null
+                    }
+                    array?.mapNotNull { gson.fromJson(it, GroupResponse::class.java) } ?: emptyList()
+                }
+                else -> emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse groups response: ${e.message}")
+            emptyList()
+        }
     }
 
     private fun applyRoleTitle() {

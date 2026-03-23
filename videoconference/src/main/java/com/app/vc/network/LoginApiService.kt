@@ -3,8 +3,8 @@ package com.app.vc.network
 import com.app.vc.models.GroupMemberResponse
 import com.app.vc.virtualchatroom.FileUploadResponse
 import com.app.vc.virtualchattoken.LoginResponse
-import com.app.vc.virtualroomlist.GroupResponse
 import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonElement
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -42,7 +42,7 @@ interface LoginApiService {
     @GET("api/groups/")
     suspend fun getGroups(
         @Header("Authorization") token: String
-    ): Response<List<GroupResponse>>
+    ): Response<JsonElement>
 
     @Multipart
     @POST("api/groups/{slug}/upload/")
@@ -61,8 +61,9 @@ interface LoginApiService {
     @GET("api/groups/{slug}/messages/")
     suspend fun getMessages(
         @Header("Authorization") token: String,
-        @Path("slug") slug: String
-    ): Response<List<ApiMessageResponse>>
+        @Path("slug") slug: String,
+        @Query("before") before: Int? = null
+    ): Response<JsonElement>
 
     @GET("api/groups/{slug}/members/")
     suspend fun getGroupMembers(

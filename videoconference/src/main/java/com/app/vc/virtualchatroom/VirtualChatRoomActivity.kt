@@ -88,6 +88,7 @@ import com.app.vc.websocketconnection.WebSocketManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.app.vc.views.WaveformView
 import com.kia.vc.message.Labour
@@ -148,7 +149,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var shouldRefetchMessagesOnReconnect = false
     private var suppressSocketToastUntilMs = 0L
     private var isRetryingPendingMessages = false
+    private var isLoadingOlderMessages = false
+    private var hasMoreOlderMessages = true
+    private var oldestLoadedMessageId: Int? = null
+    private var suppressAutoScroll = false
     private val networkBannerHandler = Handler(Looper.getMainLooper())
+    private val gson = Gson()
     private val memberFirstNameByUsername = mutableMapOf<String, String>()
     private val memberUserIdToDisplayName = mutableMapOf<Int, String>()
     private val memberUserIdToRoleAbbrev = mutableMapOf<Int, String>()
@@ -849,82 +855,60 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         return memberUserIdToRoleAbbrev[userId]?.takeIf { it.isNotBlank() }
     }
 
-    private fun fetchMessages() {
+    private fun fetchMessages(beforeMessageId: Int? = null, isPagination: Boolean = false) {
+        if (!isPagination) {
+            hasMoreOlderMessages = true
+            oldestLoadedMessageId = null
+            showOlderMessagesLoading(false)
+        }
         val slug = room?.roNumber ?: run {
-            setMessagesLoading(false)
+            if (!isPagination) setMessagesLoading(false) else showOlderMessagesLoading(false)
             return
         }
         val token = PreferenceManager.getAccessToken() ?: run {
-            setMessagesLoading(false)
+            if (!isPagination) setMessagesLoading(false) else showOlderMessagesLoading(false)
             return
+        }
+        if (isPagination) {
+            if (isLoadingOlderMessages || !hasMoreOlderMessages) return
+            isLoadingOlderMessages = true
+            showOlderMessagesLoading(true)
         }
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val response = apiService.getMessages("Bearer $token", slug)
+                val response = apiService.getMessages("Bearer $token", slug, beforeMessageId)
                 if (response.isSuccessful && response.body() != null) {
                     val currentUserId = PreferenceManager.getUserId()
-                    val apiMessages = response.body()!!
-                    Log.d(TAG, "Messages API response for $slug: ${Gson().toJson(apiMessages)}")
-                    
-                    val chatMessages = apiMessages.map { apiMsg ->
-                        val isSender = apiMsg.sender?.id?.toString() == currentUserId
-                        val attachment = apiMsg.attachments?.firstOrNull()
-                        val type = when {
-                            attachment != null -> when {
-                                attachment.mimeType.startsWith("image") -> ChatMessageType.IMAGE
-                                attachment.mimeType.startsWith("video") -> ChatMessageType.VIDEO
-                                attachment.mimeType.startsWith("audio") -> ChatMessageType.VOICE_NOTE
-                                else -> ChatMessageType.FILE
-                            }
-                            else -> when (apiMsg.messageType) {
-                                "image" -> ChatMessageType.IMAGE
-                                "video" -> ChatMessageType.VIDEO
-                                "document" -> ChatMessageType.FILE
-                                else -> ChatMessageType.TEXT
-                            }
-                        }
-                        
-                        val attachmentUri = attachment?.fileUrl?.let { url ->
-                            if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
-                        }
-                        val thumbUrl = attachment?.thumbnailUrl?.let { url ->
-                            if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
-                        }
-                        val isRead = (apiMsg.receipts?.isNotEmpty() == true)
-                        
-                        ChatMessage(
-                            messageId = apiMsg.id.toString(),
-                            text = if (type == ChatMessageType.TEXT) apiMsg.content else "",
-                            isSender = isSender,
-                            senderName = if (isSender) null else resolveDisplayName(apiMsg.sender?.id, apiMsg.sender?.username),
-                            senderUsername = apiMsg.sender?.username,
-                            senderId = apiMsg.sender?.id?.toString(),
-                            senderRoleAbbrev = if (isSender) roleAbbrev(PreferenceManager.getuserType()) else resolveRoleAbbrevByUserId(apiMsg.sender?.id),
-                            timeLabel = formatApiDate(apiMsg.createdAt),
-                            createdAtMillis = parseApiCreatedAtMillis(apiMsg.createdAt),
-                            status = if (isRead) MessageStatus.READ else MessageStatus.SENT,
-                            type = type,
-                            attachmentUri = attachmentUri,
-                            fileName = attachment?.fileName,
-                            caption = if (type != ChatMessageType.TEXT) apiMsg.content else null,
-                            thumbnailUrl = thumbUrl
-                        )
-                    }
-                    
+                    val apiMessages = parseApiMessagesResponse(response.body())
+                    Log.d(TAG, "Messages API response for $slug before=$beforeMessageId: ${gson.toJson(apiMessages)}")
+                    val chatMessages = apiMessages.map { apiMsg -> apiMessageToChatMessage(apiMsg, currentUserId) }
+
                     withContext(Dispatchers.Main) {
-                        val withHeaders = buildMessagesWithDateHeaders(chatMessages)
-                        messages.clear()
-                        messages.addAll(withHeaders)
-                        ChatMediaStore.replaceMessages(slug, chatMessages)
-                        messageAdapter?.notifyDataSetChanged()
-                        scrollToLast()
+                        oldestLoadedMessageId = (currentRawMessages() + chatMessages)
+                            .mapNotNull { it.messageId?.toIntOrNull() }
+                            .minOrNull()
+                        hasMoreOlderMessages = chatMessages.isNotEmpty()
+                        if (isPagination) {
+                            prependOlderMessages(chatMessages)
+                        } else {
+                            val withHeaders = buildMessagesWithDateHeaders(chatMessages)
+                            messages.clear()
+                            messages.addAll(withHeaders)
+                            ChatMediaStore.replaceMessages(slug, chatMessages)
+                            messageAdapter?.notifyDataSetChanged()
+                            scrollToLast()
+                        }
                         setMessagesLoading(false)
+                        showOlderMessagesLoading(false)
+                        isLoadingOlderMessages = false
                         hideNetworkErrorBanner()
                         chatMessages.lastOrNull { !it.isSender }?.messageId?.let { sendReadReceipt(it) }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
                         setMessagesLoading(false)
+                        showOlderMessagesLoading(false)
+                        isLoadingOlderMessages = false
                         showNetworkErrorBanner()
                     }
                 }
@@ -932,9 +916,115 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 Log.e("VirtualChatRoom", "Error fetching messages: ${e.message}")
                 withContext(Dispatchers.Main) {
                     setMessagesLoading(false)
+                    showOlderMessagesLoading(false)
+                    isLoadingOlderMessages = false
                     showNetworkErrorBanner()
                 }
             }
+        }
+    }
+
+    private fun apiMessageToChatMessage(apiMsg: com.app.vc.network.ApiMessageResponse, currentUserId: String?): ChatMessage {
+        val isSender = apiMsg.sender?.id?.toString() == currentUserId
+        val attachment = apiMsg.attachments?.firstOrNull()
+        val type = when {
+            attachment != null -> when {
+                attachment.mimeType.startsWith("image") -> ChatMessageType.IMAGE
+                attachment.mimeType.startsWith("video") -> ChatMessageType.VIDEO
+                attachment.mimeType.startsWith("audio") -> ChatMessageType.VOICE_NOTE
+                else -> ChatMessageType.FILE
+            }
+            else -> when (apiMsg.messageType) {
+                "image" -> ChatMessageType.IMAGE
+                "video" -> ChatMessageType.VIDEO
+                "document" -> ChatMessageType.FILE
+                else -> ChatMessageType.TEXT
+            }
+        }
+
+        val attachmentUri = attachment?.fileUrl?.let { url ->
+            if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
+        }
+        val thumbUrl = attachment?.thumbnailUrl?.let { url ->
+            if (url.startsWith("http")) url else ApiDetails.APRIK_Kia_BASE_URL + url
+        }
+        val isRead = apiMsg.receipts?.isNotEmpty() == true
+
+        return ChatMessage(
+            messageId = apiMsg.id.toString(),
+            text = if (type == ChatMessageType.TEXT) apiMsg.content else "",
+            isSender = isSender,
+            senderName = if (isSender) null else resolveDisplayName(apiMsg.sender?.id, apiMsg.sender?.username),
+            senderUsername = apiMsg.sender?.username,
+            senderId = apiMsg.sender?.id?.toString(),
+            senderRoleAbbrev = if (isSender) roleAbbrev(PreferenceManager.getuserType()) else resolveRoleAbbrevByUserId(apiMsg.sender?.id),
+            timeLabel = formatApiDate(apiMsg.createdAt),
+            createdAtMillis = parseApiCreatedAtMillis(apiMsg.createdAt),
+            status = if (isRead) MessageStatus.READ else MessageStatus.SENT,
+            type = type,
+            attachmentUri = attachmentUri,
+            fileName = attachment?.fileName,
+            caption = if (type != ChatMessageType.TEXT) apiMsg.content else null,
+            thumbnailUrl = thumbUrl
+        )
+    }
+
+    private fun parseApiMessagesResponse(body: JsonElement?): List<com.app.vc.network.ApiMessageResponse> {
+        if (body == null || body.isJsonNull) return emptyList()
+        return try {
+            when {
+                body.isJsonArray -> body.asJsonArray.mapNotNull {
+                    gson.fromJson(it, com.app.vc.network.ApiMessageResponse::class.java)
+                }
+                body.isJsonObject -> {
+                    val obj = body.asJsonObject
+                    val array = when {
+                        obj.get("results")?.isJsonArray == true -> obj.getAsJsonArray("results")
+                        obj.get("data")?.isJsonArray == true -> obj.getAsJsonArray("data")
+                        obj.get("messages")?.isJsonArray == true -> obj.getAsJsonArray("messages")
+                        else -> null
+                    }
+                    array?.mapNotNull {
+                        gson.fromJson(it, com.app.vc.network.ApiMessageResponse::class.java)
+                    } ?: emptyList()
+                }
+                else -> emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse messages response: ${e.message}")
+            emptyList()
+        }
+    }
+
+    private fun currentRawMessages(): List<ChatMessage> =
+        messages.filter { it.type != ChatMessageType.DATE_HEADER }
+
+    private fun prependOlderMessages(olderMessages: List<ChatMessage>) {
+        if (olderMessages.isEmpty()) return
+        val recycler = binding.recyclerMessages
+        val layoutManager = recycler.layoutManager as? LinearLayoutManager ?: return
+        val firstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+        val anchorId = messages.getOrNull(firstVisiblePosition)?.messageId
+        val anchorTop = recycler.getChildAt(0)?.top ?: 0
+        val existingIds = currentRawMessages().mapNotNull { it.messageId }.toHashSet()
+        val uniqueOlderMessages = olderMessages.filter { messageId ->
+            messageId.messageId.isNullOrBlank() || !existingIds.contains(messageId.messageId)
+        }
+        if (uniqueOlderMessages.isEmpty()) {
+            hasMoreOlderMessages = false
+            return
+        }
+        val combinedMessages = uniqueOlderMessages + currentRawMessages()
+        val withHeaders = buildMessagesWithDateHeaders(combinedMessages)
+        suppressAutoScroll = true
+        messageAdapter?.replaceAll(withHeaders)
+        ChatMediaStore.replaceMessages(room?.roNumber ?: return, combinedMessages)
+        recycler.post {
+            val anchorIndex = if (anchorId.isNullOrBlank()) -1 else messages.indexOfFirst { it.messageId == anchorId }
+            if (anchorIndex >= 0) {
+                layoutManager.scrollToPositionWithOffset(anchorIndex, anchorTop)
+            }
+            suppressAutoScroll = false
         }
     }
 
@@ -981,6 +1071,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.root.findViewById<ProgressBar>(R.id.progressLoadingMessages)?.visibility =
             if (isLoading) View.VISIBLE else View.GONE
         binding.recyclerMessages.visibility = if (isLoading) View.INVISIBLE else View.VISIBLE
+    }
+
+    private fun showOlderMessagesLoading(isLoading: Boolean) {
+        binding.root.findViewById<ProgressBar>(R.id.progressLoadingOlderMessages)?.visibility =
+            if (isLoading) View.VISIBLE else View.GONE
     }
 
     private var jobNotes: String? = null
@@ -2608,13 +2703,33 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.recyclerMessages.adapter = messageAdapter
         messageAdapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                scrollToLast()
+                if (!suppressAutoScroll) scrollToLast()
             }
 
             override fun onChanged() {
-                scrollToLast()
+                if (!suppressAutoScroll) scrollToLast()
             }
         })
+        binding.recyclerMessages.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                if (dy >= 0) return
+                if (isLoadingOlderMessages || !hasMoreOlderMessages) return
+                val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+                if (layoutManager.findFirstVisibleItemPosition() <= 2) {
+                    fetchOlderMessages()
+                }
+            }
+        })
+    }
+
+    private fun fetchOlderMessages() {
+        val beforeId = oldestLoadedMessageId ?: return
+        if (beforeId <= 0) {
+            hasMoreOlderMessages = false
+            return
+        }
+        fetchMessages(beforeMessageId = beforeId, isPagination = true)
     }
 
     private fun handleAttachmentClick(message: ChatMessage) {
