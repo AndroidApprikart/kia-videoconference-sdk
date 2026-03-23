@@ -87,6 +87,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
             UserRole.MANAGER.name -> UserRole.MANAGER
             else -> UserRole.CUSTOMER
         }
+        setTodayDateAsDefault()
 
         val btnBack=findViewById<ImageView>(R.id.btnBack)
         val backTv=findViewById<TextView>(R.id.txtBackToHome)
@@ -196,6 +197,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
 
                         VirtualRoomUiModel(
                             roNumber = group.slug,
+                            slug = group.slug,
                             subject = group.name, // Phone view uses this as "groupname"
                             status = serviceStatus?.status ?: "OPEN",
                             dayLabel = dayLabel,
@@ -422,6 +424,20 @@ class VirtualRoomListActivity : AppCompatActivity() {
         }
     }
 
+    private fun setTodayDateAsDefault() {
+        val calendar = java.util.Calendar.getInstance()
+
+        // ✅ Store API format (yyyy-MM-dd)
+        val apiFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
+
+        // ✅ Display format (ddMMMyyyy)
+        val displayFormat = java.text.SimpleDateFormat("ddMMMyyyy", Locale.ENGLISH)
+        val displayDate = displayFormat.format(calendar.time)
+
+        findViewById<TextView?>(R.id.txtFilterDate)?.text = displayDate
+    }
+
     private fun showAppointmentDatePicker() {
         val input = EditText(this).apply {
             hint = "YYYY-MM-DD"
@@ -433,38 +449,105 @@ class VirtualRoomListActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Appointment Date")
             .setView(input)
+//            .setPositiveButton("Apply") { _, _ ->
+//                val value = input.text?.toString()?.trim().orEmpty()
+//                if (value.isEmpty()) {
+//                    selectedAppointmentDate = null
+//                    findViewById<TextView?>(R.id.txtFilterDate)?.text = "YYYY-MM-DD"
+//                } else if (isValidFilterDate(value)) {
+//                    selectedAppointmentDate = value
+//                    findViewById<TextView?>(R.id.txtFilterDate)?.text = value
+//                } else {
+//                    Toast.makeText(this, "Use YYYY-MM-DD", Toast.LENGTH_SHORT).show()
+//                    return@setPositiveButton
+//                }
+//                fetchGroups(page = 1)
+//            }
+            .setNeutralButton("Pick") { _, _ ->
+                showNativeDatePicker()
+            }
+
             .setPositiveButton("Apply") { _, _ ->
                 val value = input.text?.toString()?.trim().orEmpty()
+
                 if (value.isEmpty()) {
                     selectedAppointmentDate = null
-                    findViewById<TextView?>(R.id.txtFilterDate)?.text = "YYYY-MM-DD"
+//                    findViewById<TextView?>(R.id.txtFilterDate)?.text = "YYYY-MM-DD"
+                    setTodayDateAsDefault()
+
                 } else if (isValidFilterDate(value)) {
+
                     selectedAppointmentDate = value
-                    findViewById<TextView?>(R.id.txtFilterDate)?.text = value
+
+                    // ✅ Convert YYYY-MM-DD → ddMMMyyyy
+                    val formattedDate = try {
+                        val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                        val outputFormat = java.text.SimpleDateFormat("ddMMMyyyy", Locale.ENGLISH)
+                        val date = inputFormat.parse(value)
+                        outputFormat.format(date!!)
+                    } catch (e: Exception) {
+                        value // fallback
+                    }
+
+                    findViewById<TextView?>(R.id.txtFilterDate)?.text = formattedDate
+
                 } else {
                     Toast.makeText(this, "Use YYYY-MM-DD", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
+
                 fetchGroups(page = 1)
             }
-            .setNeutralButton("Pick") { _, _ ->
-                showNativeDatePicker()
-            }
+
             .setNegativeButton("Clear") { _, _ ->
                 selectedAppointmentDate = null
-                findViewById<TextView?>(R.id.txtFilterDate)?.text = "YYYY-MM-DD"
+               setTodayDateAsDefault()
                 fetchGroups(page = 1)
             }
             .show()
     }
 
+//    private fun showNativeDatePicker() {
+//        val calendar = java.util.Calendar.getInstance()
+//        DatePickerDialog(
+//            this,
+//            { _, year, month, dayOfMonth ->
+//                selectedAppointmentDate = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
+//                findViewById<TextView?>(R.id.txtFilterDate)?.text = selectedAppointmentDate
+//                fetchGroups(page = 1)
+//            },
+//            calendar.get(java.util.Calendar.YEAR),
+//            calendar.get(java.util.Calendar.MONTH),
+//            calendar.get(java.util.Calendar.DAY_OF_MONTH)
+//        ).show()
+//    }
+
     private fun showNativeDatePicker() {
         val calendar = java.util.Calendar.getInstance()
+
         DatePickerDialog(
             this,
             { _, year, month, dayOfMonth ->
-                selectedAppointmentDate = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
-                findViewById<TextView?>(R.id.txtFilterDate)?.text = selectedAppointmentDate
+
+                // ✅ API format (keep this as is)
+                selectedAppointmentDate = String.format(
+                    Locale.US,
+                    "%04d-%02d-%02d",
+                    year,
+                    month + 1,
+                    dayOfMonth
+                )
+
+                // ✅ Display format: 23Mar2026
+                val displayCalendar = java.util.Calendar.getInstance().apply {
+                    set(year, month, dayOfMonth)
+                }
+
+                val displayFormat = java.text.SimpleDateFormat("ddMMMyyyy", Locale.ENGLISH)
+                val formattedDate = displayFormat.format(displayCalendar.time)
+
+                findViewById<TextView?>(R.id.txtFilterDate)?.text = formattedDate
+
                 fetchGroups(page = 1)
             },
             calendar.get(java.util.Calendar.YEAR),

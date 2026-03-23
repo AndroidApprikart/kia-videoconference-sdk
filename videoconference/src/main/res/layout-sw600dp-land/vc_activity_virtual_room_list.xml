@@ -186,18 +186,37 @@
                     android:paddingHorizontal="@dimen/_5sdp"
                     android:background="@drawable/bg_comment_box">
 
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
                     <TextView
+                        android:id="@+id/txtFilterDatetv"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:paddingHorizontal="8dp"
+                        android:fontFamily="@font/kia_signature_fix_regular"
+                        android:background="@color/white"
+                        android:text="Select Date"
+                        android:textColorHint="#999999"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                        <TextView
                         android:id="@+id/txtFilterDate"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="@font/kia_signature_fix_regular"
                         android:background="@color/white"
-                        android:text="YYYY-MM-DD"
-                        android:padding="8dp"
+                        android:text="Select Date"
+                        android:paddingHorizontal="8dp"
                         android:textColorHint="#999999"
                         android:textColor="@color/color_kia_black"
                         android:textSize="16sp" />
+                    </LinearLayout>
 
                     <ImageView
                         android:id="@+id/filterDateIcon"
@@ -220,6 +239,25 @@
                     android:paddingHorizontal="@dimen/_5sdp"
                     android:background="@drawable/bg_comment_box">
 
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:paddingHorizontal="8dp"
+                            android:fontFamily="@font/kia_signature_fix_regular"
+                            android:background="@color/white"
+                            android:text="Room Status"
+                            android:textColorHint="#999999"
+                            android:textColor="#999999"
+                            android:textSize="11sp" />
+
                     <TextView
                         android:id="@+id/txtFilterStatus"
                         android:layout_width="wrap_content"
@@ -228,10 +266,12 @@
                         android:fontFamily="@font/kia_signature_fix_regular"
                         android:background="@color/white"
                         android:text="All Rooms"
-                        android:padding="8dp"
+                        android:paddingHorizontal="8dp"
                         android:textColorHint="#999999"
                         android:textColor="@color/color_kia_black"
                         android:textSize="16sp" />
+
+                    </LinearLayout>
 
                     <ImageView
                         android:id="@+id/filterStatusIcon"
@@ -254,7 +294,26 @@
                     android:paddingHorizontal="@dimen/_5sdp"
                     android:background="@drawable/bg_comment_box">
 
-                    <TextView
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:paddingHorizontal="8dp"
+                            android:fontFamily="@font/kia_signature_fix_regular"
+                            android:background="@color/white"
+                            android:text="Reference Type"
+                            android:textColorHint="#999999"
+                            android:textColor="#999999"
+                            android:textSize="11sp" />
+
+
+                        <TextView
                         android:id="@+id/txtFilterReference"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -262,10 +321,11 @@
                         android:fontFamily="@font/kia_signature_fix_regular"
                         android:background="@color/white"
                         android:text="All Types"
-                        android:padding="8dp"
+                        android:paddingHorizontal="8dp"
                         android:textColorHint="#999999"
                         android:textColor="@color/color_kia_black"
                         android:textSize="16sp" />
+                    </LinearLayout>
 
                     <ImageView
                         android:id="@+id/filterReferenceIcon"
