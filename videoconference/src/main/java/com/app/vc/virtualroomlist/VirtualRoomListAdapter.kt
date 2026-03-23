@@ -50,15 +50,19 @@ class VirtualRoomListAdapter(
 
         fun bind(room: VirtualRoomUiModel, onRoomClick: (VirtualRoomUiModel) -> Unit) {
             val referenceValue = (room.roNumberDisplay ?: room.appointmentIdDisplay).orEmpty()
-            val referenceLabel = if (!room.roNumberDisplay.isNullOrBlank()) "RO" else "Appointment"
+            val trailingTitle = if (!room.roNumberDisplay.isNullOrBlank()) {
+                "Repair Order"
+            } else {
+                "Service Appointment"
+            }
 
-            // Phone view: show customer name prominently and the reference below it.
-            txtTitle?.text = room.customerName.ifBlank { room.subject }
-            txtSubtitle?.text = listOf(
-                "$referenceLabel $referenceValue".takeIf { referenceValue.isNotBlank() },
-                "${room.dayLabel} ${if (room.dayLabel.isNotBlank() && room.timeLabel.isNotBlank()) "\u2022" else ""} ${room.timeLabel}".trim()
-                    .takeIf { it.isNotBlank() }
-            ).joinToString(" \u2022 ")
+            // Phone view: show RO number first, otherwise appointment id.
+            txtTitle?.text = when {
+                referenceValue.isNotBlank() && trailingTitle.isNotBlank() -> "$referenceValue | $trailingTitle"
+                referenceValue.isNotBlank() -> referenceValue
+                else -> trailingTitle
+            }
+            txtSubtitle?.text = "${room.dayLabel} ${if (room.dayLabel.isNotBlank() && room.timeLabel.isNotBlank()) "\u2022" else ""} ${room.timeLabel}".trim()
 
             txtStatus.text = room.lifecycleStatusLabel?.takeIf { it.isNotBlank() } ?: room.status.replace('_', ' ')
             

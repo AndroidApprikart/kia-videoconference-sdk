@@ -884,6 +884,33 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     val apiMessages = parseApiMessagesResponse(response.body())
                     Log.d(TAG, "Messages API response for $slug before=$beforeMessageId: ${gson.toJson(apiMessages)}")
                     val chatMessages = apiMessages.map { apiMsg -> apiMessageToChatMessage(apiMsg, currentUserId) }
+                    val markAllReadResponse = if (!isPagination) {
+                        try {
+                            val markReadApiResponse = apiService.markAllMessagesRead("Bearer $token", slug)
+                            if (markReadApiResponse.isSuccessful && markReadApiResponse.body() != null) {
+                                val body = markReadApiResponse.body()!!
+                                Log.d(
+                                    TAG,
+                                    "Mark-all-read API response for $slug: ${gson.toJson(body)}"
+                                )
+                                body
+                            } else {
+                                Log.w(
+                                    TAG,
+                                    "Mark-all-read API failed for $slug: ${markReadApiResponse.code()} ${markReadApiResponse.message()}"
+                                )
+                                null
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Mark-all-read API error for $slug: ${e.message}")
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                    if (!isPagination && markAllReadResponse != null) {
+                        chatMessages.filter { !it.isSender }.forEach { it.status = MessageStatus.READ }
+                    }
 
                     withContext(Dispatchers.Main) {
                         if (!isPagination) {
@@ -893,6 +920,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 val isOwnMessage = apiMsg.sender?.id?.toString() == currentUserId
                                 !isOwnMessage && apiMsg.isRead
                             }.forEach { sentReadReceiptMessageIds.add(it.id) }
+                            if (markAllReadResponse != null) {
+                                apiMessages.filter { apiMsg ->
+                                    val isOwnMessage = apiMsg.sender?.id?.toString() == currentUserId
+                                    !isOwnMessage
+                                }.forEach { sentReadReceiptMessageIds.add(it.id) }
+                            }
+                            markAllReadResponse?.let { responseBody ->
+                                GroupUnreadStore.updateUnreadCount(slug, responseBody.unreadCount)
+                            }
                         }
                         oldestLoadedMessageId = (currentRawMessages() + chatMessages)
                             .mapNotNull { it.messageId?.toIntOrNull() }

@@ -69,6 +69,12 @@ interface LoginApiService {
         @Query("before") before: Int? = null
     ): Response<JsonElement>
 
+    @POST("api/groups/{slug}/messages/mark-all-read/")
+    suspend fun markAllMessagesRead(
+        @Header("Authorization") token: String,
+        @Path("slug") slug: String
+    ): Response<MarkAllReadResponse>
+
     @GET("api/groups/{slug}/members/")
     suspend fun getGroupMembers(
         @Header("Authorization") token: String,
@@ -122,6 +128,11 @@ data class ApiAttachmentResponse(
 
 data class ApiReceiptResponse(
     @SerializedName("user") val user: ApiSenderResponse? = null
+)
+
+data class MarkAllReadResponse(
+    @SerializedName("unread_count") val unreadCount: Int = 0,
+    @SerializedName("marked_count") val markedCount: Int = 0
 )
 
 data class ServiceLifecycleCurrentResponse(
