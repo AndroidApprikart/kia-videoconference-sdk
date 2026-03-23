@@ -196,6 +196,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
 
                         VirtualRoomUiModel(
                             roNumber = group.slug,
+                            slug = group.slug,
                             subject = group.name, // Phone view uses this as "groupname"
                             status = serviceStatus?.status ?: "OPEN",
                             dayLabel = dayLabel,

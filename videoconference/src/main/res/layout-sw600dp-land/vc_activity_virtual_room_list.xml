@@ -193,7 +193,7 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/kia_signature_fix_regular"
                         android:background="@color/white"
-                        android:text="YYYY-MM-DD"
+                        android:text="Select Date"
                         android:padding="8dp"
                         android:textColorHint="#999999"
                         android:textColor="@color/color_kia_black"

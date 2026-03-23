@@ -857,6 +857,24 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         return memberUserIdToRoleAbbrev[userId]?.takeIf { it.isNotBlank() }
     }
 
+
+    private fun fetchMessageCounts() {
+        val slug = room?.slug ?: return
+        val token = PreferenceManager.getAccessToken() ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val response = apiService.getStatusOfMessagesRead("Bearer $token", slug)
+                if (response.isSuccessful && response.body() != null) {
+                    val members = response.body()!!
+                    Log.d(TAG, "fetchMessageCounts for $slug: successfull")
+                }
+            } catch (e: Exception) {
+                Log.e("VirtualChatRoom", "Error fetching fetchMessageCounts: ${e.message}")
+            }
+        }
+    }
+
+
     private fun fetchMessages(beforeMessageId: Int? = null, isPagination: Boolean = false) {
         if (!isPagination) {
             hasMoreOlderMessages = true
@@ -884,7 +902,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     val apiMessages = parseApiMessagesResponse(response.body())
                     Log.d(TAG, "Messages API response for $slug before=$beforeMessageId: ${gson.toJson(apiMessages)}")
                     val chatMessages = apiMessages.map { apiMsg -> apiMessageToChatMessage(apiMsg, currentUserId) }
-
+                    fetchMessageCounts()
                     withContext(Dispatchers.Main) {
                         if (!isPagination) {
                             sentReadReceiptMessageIds.clear()

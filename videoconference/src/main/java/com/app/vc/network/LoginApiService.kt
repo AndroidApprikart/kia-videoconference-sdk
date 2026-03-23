@@ -3,6 +3,7 @@ package com.app.vc.network
 import com.app.vc.models.GroupMemberResponse
 import com.app.vc.virtualchatroom.FileUploadResponse
 import com.app.vc.virtualchattoken.LoginResponse
+import com.app.vc.virtualroomlist.ResponseofReadMessages
 import com.google.gson.annotations.SerializedName
 import com.google.gson.JsonElement
 import okhttp3.MultipartBody
@@ -74,6 +75,13 @@ interface LoginApiService {
         @Header("Authorization") token: String,
         @Path("slug") slug: String
     ): Response<List<GroupMemberResponse>>
+
+    @POST("api/groups/{slug}/messages/mark-all-read/")
+    suspend fun getStatusOfMessagesRead(
+        @Header("Authorization") token: String,
+        @Path("slug") slug: String
+    ): Response<ResponseofReadMessages>
+
 
     @GET("api/groups/{slug}/service-lifecycle/current/")
     suspend fun getServiceLifecycleCurrent(

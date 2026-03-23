@@ -16,6 +16,7 @@ enum class RoomStatus {
 
 data class VirtualRoomDto(
     val roNumber: String,
+    val slug: String,
     val subject: String,
     val status: String,
     val dayLabel: String,
@@ -27,6 +28,7 @@ data class VirtualRoomDto(
 
 data class VirtualRoomUiModel(
     val roNumber: String,
+    val slug: String,
     val subject: String,
     val status: String,
     val dayLabel: String,
@@ -48,6 +50,7 @@ internal fun VirtualRoomDto.toUiModel(): VirtualRoomUiModel {
     }
     return VirtualRoomUiModel(
         roNumber = roNumber,
+        slug=slug,
         subject = subject,
         status = status,
         dayLabel = dayLabel,
