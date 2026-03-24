@@ -88,7 +88,6 @@ interface LoginApiService {
         @Path("slug") slug: String
     ): Response<ResponseofReadMessages>
 
-
     @GET("api/groups/{slug}/service-lifecycle/current/")
     suspend fun getServiceLifecycleCurrent(
         @Header("Authorization") token: String,

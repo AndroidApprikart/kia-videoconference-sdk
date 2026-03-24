@@ -656,7 +656,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         dataList.clear()
         dataList.addAll(sharedViewModel.messageListInMVM)
         if (binding.tabParticipants != null) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            if (isTablet()) {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } else {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
             val tabRoDetails = binding.tabRoDetails ?: return
             loadFragment(RODetailsFragment().apply {
                 arguments = Bundle().apply {
@@ -1036,6 +1040,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 }
                 else -> emptyList()
             }
+
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse messages response: ${e.message}")
             emptyList()
@@ -1056,10 +1061,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val uniqueOlderMessages = olderMessages.filter { messageId ->
             messageId.messageId.isNullOrBlank() || !existingIds.contains(messageId.messageId)
         }
+
         if (uniqueOlderMessages.isEmpty()) {
             hasMoreOlderMessages = false
             return
         }
+
         val combinedMessages = uniqueOlderMessages + currentRawMessages()
         val withHeaders = buildMessagesWithDateHeaders(combinedMessages)
         suppressAutoScroll = true
@@ -1152,9 +1159,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         val pinnedText = buildPinnedLifecycleText(
                             statusLabel = statusLabel
                         )
-                        binding.layoutPinnedStatus?.visibility =
+
+                        binding.layoutPinnedStatus.visibility =
                             if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
-                        binding.txtPinnedLifecycle?.text = pinnedText
+                        binding.txtPinnedLifecycle.text = pinnedText
 
                         // Do NOT update txtStatusChip here — chip shows only service status (room.status initially, then service.status WebSocket)
                         (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
@@ -1437,6 +1445,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
 
         dialog.show()
+    }
+
+    private fun isTablet(): Boolean {
+        val screenLayout = resources.configuration.screenLayout and
+                android.content.res.Configuration.SCREENLAYOUT_SIZE_MASK
+        return screenLayout >= android.content.res.Configuration.SCREENLAYOUT_SIZE_LARGE
     }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
@@ -1772,6 +1786,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         return messages.any { it.messageId == messageId }
     }
 
+
     private fun appendIncomingMessage(message: ChatMessage) {
         if (hasMessage(message.messageId)) return
         val ms = message.createdAtMillis ?: System.currentTimeMillis()
@@ -1894,7 +1909,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         val content = jsonObject.get("content")?.asString
                             ?: jsonObject.get("message")?.asString
                         val attachment = jsonObject.get("attachment")?.asJsonObject
-
 
                         if (attachment != null) {
 
@@ -2295,7 +2309,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     } else file
                     // Multi-select: send caption with first upload only (server still receives one caption).
                     val captionToSend = if (selectedFiles.size == 1) caption else if (index == 0) caption else ""
-                    performUpload(fileToUpload, captionToSend, type, localId)
+//                    performUpload(fileToUpload, captionToSend, type, localId)
+                    performUpload(file, captionToSend, type, localId)
                 }
             }
         }
@@ -2732,7 +2747,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         file
                     }
                 } else file
-                performUpload(fileToUpload, caption, type, messageId)
+//                performUpload(fileToUpload, caption, type, messageId)
+                performUpload(file,caption,type,messageId)
             }
         }
     }

@@ -3,6 +3,7 @@ package com.app.vc.virtualroomlist
 import android.content.Intent
 import android.app.DatePickerDialog
 import android.app.AlertDialog
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
@@ -81,6 +82,11 @@ class VirtualRoomListActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.vc_activity_virtual_room_list)
 
+        if (isTablet()) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
         val roleFromIntent = intent.getStringExtra(EXTRA_ROLE)
         currentRole = when (roleFromIntent) {
             UserRole.SERVICE_ADVISOR.name -> UserRole.SERVICE_ADVISOR
@@ -106,6 +112,12 @@ class VirtualRoomListActivity : AppCompatActivity() {
 
         fetchGroups(page = 1)
         NotificationWebSocketManager.getInstance().connectWithToken(PreferenceManager.getAccessToken())
+    }
+
+    private fun isTablet(): Boolean {
+        val screenLayout = resources.configuration.screenLayout and
+                android.content.res.Configuration.SCREENLAYOUT_SIZE_MASK
+        return screenLayout >= android.content.res.Configuration.SCREENLAYOUT_SIZE_LARGE
     }
 
     override fun onStart() {

@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.PopupMenu
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -24,6 +25,11 @@ import com.kia.vc.message.LabourListAdapter
 import com.kia.vc.message.Part
 import com.kia.vc.message.PartListAdapter
 import java.io.File
+import android.graphics.drawable.Drawable
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
 
 enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE, ESTIMATION, DATE_HEADER }
 enum class MessageStatus { SENDING, SENT, READ, ERROR }
@@ -258,6 +264,8 @@ class VirtualChatMessageAdapter(
         private val txtFileCaption: TextView? = itemView.findViewById(R.id.txtFileCaption)
         private val btnFileOverflow: ImageView? = itemView.findViewById(R.id.btnFileOverflow)
         private val btnImageOverflow: ImageView? = itemView.findViewById(R.id.btnImageOverflow)
+        private val mediaLoader: ProgressBar? =
+            itemView.findViewById(R.id.mediaLoader)
 
         fun bind(message: ChatMessage) {
             bindSenderInfo(message)
@@ -280,7 +288,7 @@ class VirtualChatMessageAdapter(
             imgPlayVideo?.visibility = View.GONE
             layoutError?.visibility = View.GONE
             layoutFileError?.visibility = View.GONE
-            
+
             imgStatus?.visibility = View.VISIBLE
             when (message.status) {
                 MessageStatus.SENDING -> imgStatus?.setImageResource(R.drawable.arrow_back) // Placeholder
@@ -359,30 +367,103 @@ class VirtualChatMessageAdapter(
             popup.show()
         }
 
+//        private fun loadImage(context: Context, imageView: ImageView?, uri: String) {
+//            if (imageView == null) return
+//            val loadUri = if (uri.startsWith("http")) Uri.parse(uri) else Uri.fromFile(File(uri))
+//            Glide.with(context)
+//                .load(loadUri)
+//                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+////                .placeholder(android.R.drawable.ic_menu_gallery)
+//                .error(android.R.drawable.ic_dialog_alert)
+//                .into(imageView)
+//        }
+
         private fun loadImage(context: Context, imageView: ImageView?, uri: String) {
-            if (imageView == null) return
-            val loadUri = if (uri.startsWith("http")) Uri.parse(uri) else Uri.fromFile(File(uri))
+
+            mediaLoader?.visibility = View.VISIBLE
+
+            val loadUri = if (uri.startsWith("http"))
+                Uri.parse(uri)
+            else
+                Uri.fromFile(File(uri))
+
             Glide.with(context)
                 .load(loadUri)
                 .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
-                .placeholder(android.R.drawable.ic_menu_gallery)
-                .error(android.R.drawable.ic_dialog_alert)
-                .into(imageView)
+                .listener(object : RequestListener<Drawable> {
+
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        mediaLoader?.visibility = View.GONE
+                        return false
+                    }
+
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        mediaLoader?.visibility = View.GONE
+                        return false
+                    }
+                })
+                .into(imageView!!)
         }
 
+//        private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
+//            try {
+//                val retriever = MediaMetadataRetriever()
+//                if (uri.startsWith("http")) {
+//                    retriever.setDataSource(uri, HashMap<String, String>())
+//                } else {
+//                    retriever.setDataSource(uri)
+//                }
+//                val bitmap = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+//                imageView?.setImageBitmap(bitmap)
+//                retriever.release()
+//            } catch (_: Exception) {
+//                imageView?.let { Glide.with(context).load(android.R.drawable.ic_media_play).into(it) }
+//            }
+//        }
+
         private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
+
+            mediaLoader?.visibility = View.VISIBLE   // Show loader
+
             try {
                 val retriever = MediaMetadataRetriever()
+
                 if (uri.startsWith("http")) {
                     retriever.setDataSource(uri, HashMap<String, String>())
                 } else {
                     retriever.setDataSource(uri)
                 }
-                val bitmap = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+
+                val bitmap = retriever.getFrameAtTime(
+                    1000000,
+                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                )
+
                 imageView?.setImageBitmap(bitmap)
+
                 retriever.release()
-            } catch (_: Exception) {
-                imageView?.let { Glide.with(context).load(android.R.drawable.ic_media_play).into(it) }
+
+            } catch (e: Exception) {
+
+                imageView?.let {
+                    Glide.with(context)
+                        .load(android.R.drawable.ic_media_play)
+                        .into(it)
+                }
+
+            } finally {
+                mediaLoader?.visibility = View.GONE   // Hide loader
             }
         }
 
@@ -433,6 +514,8 @@ class VirtualChatMessageAdapter(
         private val txtFileSenderRole: TextView? = itemView.findViewById(R.id.txtFileSenderRole)
         private val layoutMediaSenderRow: View? = itemView.findViewById(R.id.layoutMediaSenderRow)
         private val layoutFileSenderRow: View? = itemView.findViewById(R.id.layoutFileSenderRow)
+        private val mediaLoader: ProgressBar? =
+            itemView.findViewById(R.id.mediaLoader)
 
         fun bind(message: ChatMessage) {
             itemView.setOnClickListener { onClick(message) }
@@ -509,30 +592,104 @@ class VirtualChatMessageAdapter(
             popup.show()
         }
 
+//        private fun loadImage(context: Context, imageView: ImageView?, uri: String) {
+//            if (imageView == null) return
+//            val loadUri = if (uri.startsWith("http")) Uri.parse(uri) else Uri.fromFile(File(uri))
+//            Glide.with(context)
+//                .load(loadUri)
+//                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+////                .placeholder(android.R.drawable.ic_menu_gallery)
+//                .error(android.R.drawable.ic_dialog_alert)
+//                .into(imageView)
+//        }
+
+
         private fun loadImage(context: Context, imageView: ImageView?, uri: String) {
-            if (imageView == null) return
-            val loadUri = if (uri.startsWith("http")) Uri.parse(uri) else Uri.fromFile(File(uri))
+
+            mediaLoader?.visibility = View.VISIBLE
+
+            val loadUri = if (uri.startsWith("http"))
+                Uri.parse(uri)
+            else
+                Uri.fromFile(File(uri))
+
             Glide.with(context)
                 .load(loadUri)
                 .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
-                .placeholder(android.R.drawable.ic_menu_gallery)
-                .error(android.R.drawable.ic_dialog_alert)
-                .into(imageView)
+                .listener(object : RequestListener<Drawable> {
+
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        mediaLoader?.visibility = View.GONE
+                        return false
+                    }
+
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        mediaLoader?.visibility = View.GONE
+                        return false
+                    }
+                })
+                .into(imageView!!)
         }
 
+//        private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
+//            try {
+//                val retriever = MediaMetadataRetriever()
+//                if (uri.startsWith("http")) {
+//                    retriever.setDataSource(uri, HashMap<String, String>())
+//                } else {
+//                    retriever.setDataSource(uri)
+//                }
+//                val bitmap = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+//                imageView?.setImageBitmap(bitmap)
+//                retriever.release()
+//            } catch (_: Exception) {
+//                imageView?.let { Glide.with(context).load(android.R.drawable.ic_media_play).into(it) }
+//            }
+//        }
+
         private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
+
+            mediaLoader?.visibility = View.VISIBLE   // Show loader
+
             try {
                 val retriever = MediaMetadataRetriever()
+
                 if (uri.startsWith("http")) {
                     retriever.setDataSource(uri, HashMap<String, String>())
                 } else {
                     retriever.setDataSource(uri)
                 }
-                val bitmap = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+
+                val bitmap = retriever.getFrameAtTime(
+                    1000000,
+                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                )
+
                 imageView?.setImageBitmap(bitmap)
+
                 retriever.release()
-            } catch (_: Exception) {
-                imageView?.let { Glide.with(context).load(android.R.drawable.ic_media_play).into(it) }
+
+            } catch (e: Exception) {
+
+                imageView?.let {
+                    Glide.with(context)
+                        .load(android.R.drawable.ic_media_play)
+                        .into(it)
+                }
+
+            } finally {
+                mediaLoader?.visibility = View.GONE   // Hide loader
             }
         }
 

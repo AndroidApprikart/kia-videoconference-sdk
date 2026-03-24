@@ -12,7 +12,7 @@
         android:id="@+id/layoutText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/vc_bg_chat_bubble_outgoing"
+        android:background="@drawable/vc_bg_chat_bubble_incoming"
         android:orientation="vertical"
         android:padding="12dp">
 
@@ -212,6 +212,7 @@
                 android:paddingEnd="12dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="8dp"
+                android:gravity="start"
                 android:visibility="gone"
                 android:maxLines="4"
                 android:textColor="@color/color_kia_black"
@@ -224,7 +225,7 @@
         android:layout_width="180dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/vc_bg_chat_bubble_outgoing"
+        android:background="@drawable/vc_bg_chat_bubble_incoming"
         android:padding="@dimen/_8sdp"
         android:visibility="gone">
 
@@ -276,6 +277,7 @@
             android:layout_width="160dp"
             android:layout_height="wrap_content"
             android:layout_marginBottom="4dp"
+            android:gravity="start"
             android:visibility="gone"
             android:maxLines="4"
             android:textColor="@color/color_kia_black"
@@ -298,6 +300,11 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="fitXY" />
+                <ProgressBar
+                    android:id="@+id/mediaLoader"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"/>
 
                 <ImageView
                     android:id="@+id/btnImageOverflow"
@@ -371,4 +378,3 @@
         android:textSize="11sp" />
 
 </LinearLayout>
-
