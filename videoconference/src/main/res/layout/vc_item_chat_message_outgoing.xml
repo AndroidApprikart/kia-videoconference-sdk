@@ -176,6 +176,9 @@
         android:backgroundTint="@color/white"
         android:visibility="gone">
 
+
+
+
         <TextView
             android:id="@+id/txtImageCaption"
             android:layout_width="160dp"
