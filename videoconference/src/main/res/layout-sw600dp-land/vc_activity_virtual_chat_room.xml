@@ -336,7 +336,7 @@
             android:layout_height="match_parent"
             android:layout_weight="2"
             android:orientation="vertical"
-            android:background="@color/white">
+            android:background="@color/bg_message_screen">
 
             <LinearLayout
                 android:layout_width="match_parent"

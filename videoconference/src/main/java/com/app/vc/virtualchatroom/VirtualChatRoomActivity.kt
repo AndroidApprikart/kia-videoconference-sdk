@@ -680,6 +680,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.repairOrderLayout?.setOnClickListener {
             val intent = Intent(this, RepairOrderActivity::class.java)
             room?.let { r ->
+                intent.putExtra(RepairOrderActivity.EXTRA_APPOINTMENTID, r.appointmentIdDisplay)
                 intent.putExtra(RepairOrderActivity.EXTRA_GROUP_SLUG, r.roNumber)
                 intent.putExtra(RepairOrderActivity.EXTRA_RO_NUMBER, r.roNumberDisplay)
                 intent.putExtra(RepairOrderActivity.EXTRA_STATUS_LABEL, r.lifecycleStatusLabel)
@@ -2795,12 +2796,67 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
          binding.txtInitial?.text=initial
     }
 
+//    private fun setupMessageList() {
+//        binding.recyclerMessages.layoutManager =
+//            LinearLayoutManager(this).apply { stackFromEnd = true }
+//        binding.recyclerMessages.setHasFixedSize(false)
+//        binding.recyclerMessages.setItemViewCacheSize(20)
+////        binding.recyclerMessages.setHasStableIds(true)
+//        messageAdapter = VirtualChatMessageAdapter(
+//            messages,
+//            onRetryClick = { message -> retryOutgoingMessage(message) },
+//            onItemClick = { message -> handleAttachmentClick(message) },
+//            onSaveMedia = { message -> downloadAndSaveMedia(message) },
+//            estimationListener = this
+//        )
+//        binding.recyclerMessages.adapter = messageAdapter
+//        messageAdapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+//            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+//                if (!suppressAutoScroll) {
+//                    scrollToLast()
+//                    scheduleVisibleReadReceipt(120L)
+//                }
+//            }
+//
+//            override fun onChanged() {
+//                if (!suppressAutoScroll) {
+//                    scrollToLast()
+//                    scheduleVisibleReadReceipt(120L)
+//                }
+//            }
+//        })
+//        binding.recyclerMessages.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+//            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+//                super.onScrolled(recyclerView, dx, dy)
+//                if (dy >= 0) return
+//                if (isLoadingOlderMessages || !hasMoreOlderMessages) return
+//                val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+//                if (layoutManager.findFirstVisibleItemPosition() <= 2) {
+//                    fetchOlderMessages()
+//                }
+//                if (dy > 0) {
+//                    scheduleVisibleReadReceipt(80L)
+//                }
+//            }
+//
+//            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+//                super.onScrollStateChanged(recyclerView, newState)
+//                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+//                    scheduleVisibleReadReceipt(50L)
+//                }
+//            }
+//        })
+//    }
+
     private fun setupMessageList() {
+
         binding.recyclerMessages.layoutManager =
             LinearLayoutManager(this).apply { stackFromEnd = true }
+
         binding.recyclerMessages.setHasFixedSize(false)
         binding.recyclerMessages.setItemViewCacheSize(20)
-//        binding.recyclerMessages.setHasStableIds(true)
+        binding.recyclerMessages.itemAnimator = null
+
         messageAdapter = VirtualChatMessageAdapter(
             messages,
             onRetryClick = { message -> retryOutgoingMessage(message) },
@@ -2808,7 +2864,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             onSaveMedia = { message -> downloadAndSaveMedia(message) },
             estimationListener = this
         )
+
         binding.recyclerMessages.adapter = messageAdapter
+
+        // ✅ ADD STICKY DATE HEADER HERE
+        binding.recyclerMessages.addItemDecoration(
+            StickyDateHeaderDecoration(messageAdapter!!)
+        )
+
         messageAdapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 if (!suppressAutoScroll) {
@@ -2824,15 +2887,20 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 }
             }
         })
+
         binding.recyclerMessages.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
+
                 if (dy >= 0) return
                 if (isLoadingOlderMessages || !hasMoreOlderMessages) return
+
                 val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
+
                 if (layoutManager.findFirstVisibleItemPosition() <= 2) {
                     fetchOlderMessages()
                 }
+
                 if (dy > 0) {
                     scheduleVisibleReadReceipt(80L)
                 }
@@ -2840,6 +2908,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(recyclerView, newState)
+
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                     scheduleVisibleReadReceipt(50L)
                 }
@@ -3097,18 +3166,41 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
+//    private fun scrollToLast() {
+//        val recycler = binding.recyclerMessages
+//        val layoutManager = recycler.layoutManager as? LinearLayoutManager ?: return
+//
+//        recycler.post {
+//            recycler.postDelayed({
+//                val position = messageAdapter?.itemCount?.minus(1) ?: 0
+//                if (position >= 0) {
+//                    layoutManager.scrollToPositionWithOffset(position, 0)
+//                }
+//            }, 50)
+//        }
+//    }
+
     private fun scrollToLast() {
+
         val recycler = binding.recyclerMessages
         val layoutManager = recycler.layoutManager as? LinearLayoutManager ?: return
+        val position = messageAdapter?.itemCount?.minus(1) ?: return
 
         recycler.post {
-            recycler.postDelayed({
-                val position = messageAdapter?.itemCount?.minus(1) ?: 0
-                if (position >= 0) {
-                    layoutManager.scrollToPositionWithOffset(position, 0)
-                }
-            }, 50)
+
+            if (isUserNearBottom()) {
+                recycler.scrollToPosition(position)
+            }
+
         }
+    }
+
+
+    private fun isUserNearBottom(): Boolean {
+        val layoutManager = binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return true
+        val lastVisible = layoutManager.findLastVisibleItemPosition()
+        val total = messageAdapter?.itemCount ?: 0
+        return lastVisible >= total - 3
     }
 
     private fun addMessage(

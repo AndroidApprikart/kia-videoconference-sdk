@@ -179,16 +179,6 @@
 
 
 
-        <TextView
-            android:id="@+id/txtImageCaption"
-            android:layout_width="160dp"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="4dp"
-            android:gravity="start"
-            android:visibility="gone"
-            android:maxLines="4"
-            android:textColor="@color/color_kia_black"
-            android:textSize="12sp" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="160dp"
@@ -313,6 +303,17 @@
                 </LinearLayout>
             </RelativeLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/txtImageCaption"
+            android:layout_width="160dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:gravity="start"
+            android:visibility="gone"
+            android:maxLines="4"
+            android:textColor="@color/color_kia_black"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <!-- ... rest of layout (voice etc) ... -->
@@ -327,10 +328,14 @@
         android:padding="12dp">
 
         <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:background="@drawable/bg_small_cornerradius"
+            android:id="@+id/imgrecordTablet"
+            android:layout_width="@dimen/_25sdp"
+            android:layout_height="@dimen/_25sdp"
+            android:padding="@dimen/_3sdp"
+            android:layout_gravity="center"
             android:src="@drawable/mic__2_"
-            android:contentDescription="@null" />
+            />
         <TextView
             android:id="@+id/txtVoiceDuration"
             android:layout_width="wrap_content"

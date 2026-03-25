@@ -33,6 +33,20 @@ class DocumentMediaAdapter(
         holder.fileType.text = item.fileName?.substringAfterLast('.', "pdf")?.uppercase(Locale.getDefault()) ?: "PDF"
         holder.date.text = item.timeLabel
         holder.pages.visibility = View.GONE
+
+
+        val fileName = item.fileName ?: ""
+        val extension = fileName.substringAfterLast('.', "").lowercase()
+
+        val iconRes = when (extension) {
+            "pdf" -> R.drawable.file_pdf_icon
+            "doc", "docx" -> R.drawable.doc_icon
+            "xls", "xlsx" -> R.drawable.file_xls_color_red_icon_1__1_
+
+            else -> R.drawable.doc_icon
+        }
+
+        holder.imgFileIcon?.setImageResource(iconRes)
     }
 
     override fun getItemCount(): Int = items.size
@@ -43,5 +57,6 @@ class DocumentMediaAdapter(
         val pages: TextView = itemView.findViewById(R.id.pages)
         val fileType: TextView = itemView.findViewById(R.id.fileType)
         val date: TextView = itemView.findViewById(R.id.date)
+        val imgFileIcon: ImageView? = itemView.findViewById(R.id.docImg)
     }
 }

@@ -1,6 +1,7 @@
 package com.app.vc.virtualchatroom
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.view.LayoutInflater
@@ -26,6 +27,9 @@ import com.kia.vc.message.Part
 import com.kia.vc.message.PartListAdapter
 import java.io.File
 import android.graphics.drawable.Drawable
+import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.request.RequestListener
@@ -74,6 +78,17 @@ class VirtualChatMessageAdapter(
     private val estimationListener: EstimationInteractionListener? = null
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
+
+//    init {
+//        setHasStableIds(true)
+//    }
+    private var recyclerView: RecyclerView? = null
+
+    private var currentRecyclerView: RecyclerView? = null
+    private var mediaPlayer: MediaPlayer? = null
+    private var playingPosition: Int = -1
+    private var handler = Handler(Looper.getMainLooper())
+    private var updateRunnable: Runnable? = null
     companion object {
         private const val VIEW_TYPE_OUTGOING = 1
         private const val VIEW_TYPE_INCOMING = 2
@@ -85,6 +100,11 @@ class VirtualChatMessageAdapter(
             if (waveformData.isNullOrBlank()) return floatArrayOf()
             return waveformData.split(",").mapNotNull { it.trim().toFloatOrNull() }.toFloatArray()
         }
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        currentRecyclerView = recyclerView
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -106,11 +126,11 @@ class VirtualChatMessageAdapter(
             }
             VIEW_TYPE_OUTGOING -> {
                 val view = inflater.inflate(R.layout.vc_item_chat_message_outgoing, parent, false)
-                OutgoingViewHolder(view, onRetryClick, onItemClick, onSaveMedia)
+                OutgoingViewHolder(view, this, onRetryClick, onItemClick, onSaveMedia)
             }
             VIEW_TYPE_INCOMING -> {
                 val view = inflater.inflate(R.layout.vc_item_chat_message_incoming, parent, false)
-                IncomingViewHolder(view, onItemClick, onSaveMedia)
+                IncomingViewHolder(view, this, onItemClick, onSaveMedia)
             }
             VIEW_TYPE_ESTIMATION_OUTGOING -> {
                 val view = inflater.inflate(R.layout.layout_estimation_message_self, parent, false)
@@ -128,8 +148,8 @@ class VirtualChatMessageAdapter(
         val message = messages[position]
         when (holder) {
             is DateHeaderViewHolder -> holder.bind(message)
-            is OutgoingViewHolder -> holder.bind(message)
-            is IncomingViewHolder -> holder.bind(message)
+            is OutgoingViewHolder -> holder.bind(message, position)
+            is IncomingViewHolder -> holder.bind(message, position)
             is EstimationOutgoingViewHolder -> holder.bind(message, position)
             is EstimationIncomingViewHolder -> holder.bind(message, position)
         }
@@ -141,6 +161,80 @@ class VirtualChatMessageAdapter(
         val id = messages.getOrNull(position)?.messageId ?: position.toString()
         return id.hashCode().toLong()
     }
+
+
+
+    fun playAudio(message: ChatMessage, position: Int) {
+
+        if (playingPosition == position) {
+            stopAudio()
+            return
+        }
+
+        mediaPlayer?.release()
+
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(message.attachmentUri)
+            prepare()
+            start()
+        }
+
+        val oldPosition = playingPosition
+        playingPosition = position
+
+        if (oldPosition != -1) notifyItemChanged(oldPosition)
+        notifyItemChanged(position)
+
+        startTimer()
+
+        mediaPlayer?.setOnCompletionListener {
+            stopAudio()
+        }
+    }
+    fun stopAudio() {
+
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+
+        handler.removeCallbacksAndMessages(null)
+
+        val oldPosition = playingPosition
+        playingPosition = -1
+
+        if (oldPosition != -1) notifyItemChanged(oldPosition)
+    }
+
+    private fun startTimer() {
+
+        updateRunnable = object : Runnable {
+
+            override fun run() {
+
+                val pos = playingPosition
+                if (pos == -1) return
+
+                val holder = currentRecyclerView?.findViewHolderForAdapterPosition(pos)
+
+                if (holder != null && mediaPlayer != null) {
+
+                    val seconds = mediaPlayer!!.currentPosition / 1000
+
+                    when (holder) {
+                        is OutgoingViewHolder -> holder.updateVoiceTimer(seconds)
+                        is IncomingViewHolder -> holder.updateVoiceTimer(seconds)
+                    }
+                }
+
+                handler.postDelayed(this, 500)
+            }
+        }
+
+        handler.post(updateRunnable!!)
+    }
+
+
+
 
     fun addMessage(message: ChatMessage) {
         messages.add(message)
@@ -232,11 +326,15 @@ class VirtualChatMessageAdapter(
     }
 
     class OutgoingViewHolder(
-        itemView: View, 
+        itemView: View,
+        private val adapter: VirtualChatMessageAdapter,
         private val onRetry: (ChatMessage) -> Unit,
         private val onClick: (ChatMessage) -> Unit,
         private val onSaveMedia: (ChatMessage) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
+
+        private val btnPlayVoice: ImageView? = itemView.findViewById(R.id.btnPlayVoice)
+
         private val txtSenderName: TextView? = itemView.findViewById(R.id.txtSenderName)
         private val txtSenderInitial: TextView? = itemView.findViewById(R.id.txtSenderInitial)
         private val txtMessage: TextView? = itemView.findViewById(R.id.txtMessage)
@@ -264,14 +362,31 @@ class VirtualChatMessageAdapter(
         private val txtFileCaption: TextView? = itemView.findViewById(R.id.txtFileCaption)
         private val btnFileOverflow: ImageView? = itemView.findViewById(R.id.btnFileOverflow)
         private val btnImageOverflow: ImageView? = itemView.findViewById(R.id.btnImageOverflow)
+        private val imgFileIcon: ImageView? = itemView.findViewById(R.id.imgFileIcon)
         private val mediaLoader: ProgressBar? =
             itemView.findViewById(R.id.mediaLoader)
 
-        fun bind(message: ChatMessage) {
+
+        fun updateVoiceTimer(seconds: Int) {
+            txtVoiceDuration?.text = formatDuration(seconds)
+        }
+
+        fun bind(message: ChatMessage, position: Int) {
             bindSenderInfo(message)
+
+
+
+
             itemView.setOnClickListener {
-                if (message.status == MessageStatus.ERROR) onRetry(message) else onClick(message)
+                if (message.type == ChatMessageType.VOICE_NOTE) return@setOnClickListener
+
+                if (message.status == MessageStatus.ERROR) onRetry(message)
+                else onClick(message)
             }
+
+            btnPlayVoice?.isFocusable = false
+            btnPlayVoice?.isFocusableInTouchMode = false
+
             btnRetry?.setOnClickListener { onRetry(message) }
             btnFileRetry?.setOnClickListener { onRetry(message) }
 
@@ -291,7 +406,7 @@ class VirtualChatMessageAdapter(
 
             imgStatus?.visibility = View.VISIBLE
             when (message.status) {
-                MessageStatus.SENDING -> imgStatus?.setImageResource(R.drawable.arrow_back) // Placeholder
+                MessageStatus.SENDING -> imgStatus?.setImageResource(R.drawable.tick_svgrepo_com) // Placeholder
                 MessageStatus.SENT -> imgStatus?.setImageResource(R.drawable.tick_mark_delivered)
                 MessageStatus.READ -> imgStatus?.setImageResource(R.drawable.read_status)
                 MessageStatus.ERROR -> imgStatus?.visibility = View.GONE
@@ -346,10 +461,46 @@ class VirtualChatMessageAdapter(
                     val showProgress = message.status == MessageStatus.SENDING && (message.uploadProgressPercent ?: 0) in 0..99
                     layoutFileError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
                     // (File upload progress UI can be added later if needed)
+                    val fileName = message.fileName ?: ""
+                    val extension = fileName.substringAfterLast('.', "").lowercase()
+
+                    val iconRes = when (extension) {
+                        "pdf" -> R.drawable.file_pdf_icon
+                        "doc", "docx" -> R.drawable.doc_icon
+                        "xls", "xlsx" -> R.drawable.file_xls_color_red_icon_1__1_
+
+                        else -> R.drawable.doc_icon
+                    }
+
+                    imgFileIcon?.setImageResource(iconRes)
                 }
                 ChatMessageType.VOICE_NOTE -> {
+
                     layoutVoice?.visibility = View.VISIBLE
-                    txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
+                    layoutVoice?.isClickable = false
+                    layoutVoice?.isFocusable = false
+
+                    val isPlaying = adapter.playingPosition == position
+
+                    if (isPlaying) {
+                        btnPlayVoice?.setImageResource(R.drawable.pause)
+
+                        val current = (adapter.mediaPlayer?.currentPosition ?: 0) / 1000
+                        txtVoiceDuration?.text = formatDuration(current)
+
+                    } else {
+                        btnPlayVoice?.setImageResource(R.drawable.play_circle)
+                        txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
+                    }
+
+                    btnPlayVoice?.setOnClickListener {
+
+                        if (adapter.playingPosition == position) {
+                            adapter.stopAudio()
+                        } else {
+                            adapter.playAudio(message, position)
+                        }
+                    }
                 }
                 else -> {}
             }
@@ -434,37 +585,42 @@ class VirtualChatMessageAdapter(
 
         private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
 
-            mediaLoader?.visibility = View.VISIBLE   // Show loader
+            mediaLoader?.visibility = View.VISIBLE
 
-            try {
-                val retriever = MediaMetadataRetriever()
+            val loadUri = if (uri.startsWith("http"))
+                Uri.parse(uri)
+            else
+                Uri.fromFile(File(uri))
 
-                if (uri.startsWith("http")) {
-                    retriever.setDataSource(uri, HashMap<String, String>())
-                } else {
-                    retriever.setDataSource(uri)
-                }
+            Glide.with(context)
+                .asBitmap()
+                .load(loadUri)
+                .frame(1000000)
+                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+                .listener(object : RequestListener<Bitmap> {
 
-                val bitmap = retriever.getFrameAtTime(
-                    1000000,
-                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-                )
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Bitmap>,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        mediaLoader?.visibility = View.GONE
+                        return false
+                    }
 
-                imageView?.setImageBitmap(bitmap)
-
-                retriever.release()
-
-            } catch (e: Exception) {
-
-                imageView?.let {
-                    Glide.with(context)
-                        .load(android.R.drawable.ic_media_play)
-                        .into(it)
-                }
-
-            } finally {
-                mediaLoader?.visibility = View.GONE   // Hide loader
-            }
+                    override fun onResourceReady(
+                        resource: Bitmap,
+                        model: Any,
+                        target: Target<Bitmap>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        mediaLoader?.visibility = View.GONE
+                        return false
+                    }
+                })
+                .into(imageView!!)
         }
 
         private fun formatDuration(seconds: Int): String {
@@ -483,6 +639,7 @@ class VirtualChatMessageAdapter(
 
     class IncomingViewHolder(
         itemView: View,
+        private val adapter: VirtualChatMessageAdapter,
         private val onClick: (ChatMessage) -> Unit,
         private val onSaveMedia: (ChatMessage) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
@@ -514,11 +671,26 @@ class VirtualChatMessageAdapter(
         private val txtFileSenderRole: TextView? = itemView.findViewById(R.id.txtFileSenderRole)
         private val layoutMediaSenderRow: View? = itemView.findViewById(R.id.layoutMediaSenderRow)
         private val layoutFileSenderRow: View? = itemView.findViewById(R.id.layoutFileSenderRow)
+        private val btnPlayVoice: ImageView? = itemView.findViewById(R.id.btnPlayVoice)
+        private val imgFileIcon: ImageView? = itemView.findViewById(R.id.imgFileIcon)
         private val mediaLoader: ProgressBar? =
             itemView.findViewById(R.id.mediaLoader)
 
-        fun bind(message: ChatMessage) {
-            itemView.setOnClickListener { onClick(message) }
+
+        fun updateVoiceTimer(seconds: Int) {
+            txtVoiceDuration?.text = formatDuration(seconds)
+        }
+
+
+        fun bind(message: ChatMessage, position: Int) {
+            itemView.setOnClickListener {
+                if (message.type == ChatMessageType.VOICE_NOTE) return@setOnClickListener
+                else onClick(message)
+            }
+
+            btnPlayVoice?.isFocusable = false
+            btnPlayVoice?.isFocusableInTouchMode = false
+
             txtTime.text = message.timeLabel
             layoutText?.visibility = View.GONE
             layoutImageContainer?.visibility = View.GONE
@@ -536,13 +708,15 @@ class VirtualChatMessageAdapter(
                     txtMessage?.visibility = View.VISIBLE
                     txtMessage?.text = message.text
                 }
+
                 ChatMessageType.IMAGE, ChatMessageType.VIDEO -> {
                     layoutImageContainer?.visibility = View.VISIBLE
                     layoutMediaSenderRow?.visibility = View.VISIBLE
                     bindMediaSenderInfo(message)
                     btnImageOverflow?.visibility = View.VISIBLE
                     btnImageOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
-                    imgPlayVideo?.visibility = if (message.type == ChatMessageType.VIDEO) View.VISIBLE else View.GONE
+                    imgPlayVideo?.visibility =
+                        if (message.type == ChatMessageType.VIDEO) View.VISIBLE else View.GONE
                     val uri = message.attachmentUri
                     if (!uri.isNullOrEmpty()) {
                         if (message.type == ChatMessageType.VIDEO) {
@@ -555,6 +729,7 @@ class VirtualChatMessageAdapter(
                     txtImageCaption?.visibility = if (showCaption) View.VISIBLE else View.GONE
                     txtImageCaption?.text = message.caption
                 }
+
                 ChatMessageType.FILE -> {
                     layoutImageContainer?.visibility = View.GONE
                     layoutText?.visibility = View.GONE
@@ -564,18 +739,59 @@ class VirtualChatMessageAdapter(
                     btnFileOverflow?.visibility = View.VISIBLE
                     btnFileOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
                     txtFileTitle?.text = message.fileName ?: "Document"
-                    val isPdf = message.fileName?.endsWith(".pdf", ignoreCase = true) == true || message.mimeType?.contains("pdf") == true
+                    val isPdf = message.fileName?.endsWith(
+                        ".pdf",
+                        ignoreCase = true
+                    ) == true || message.mimeType?.contains("pdf") == true
                     txtFileSubtitle?.text = if (isPdf) "PDF" else "Document"
                     imgFileThumbnail?.visibility = View.GONE
                     imgFileThumbnail?.setImageDrawable(null)
                     val showFileCaption = !message.caption.isNullOrBlank()
                     txtFileCaption?.visibility = if (showFileCaption) View.VISIBLE else View.GONE
                     txtFileCaption?.text = message.caption
+
+                    val fileName = message.fileName ?: ""
+                    val extension = fileName.substringAfterLast('.', "").lowercase()
+
+                    val iconRes = when (extension) {
+                        "pdf" -> R.drawable.file_pdf_icon
+                        "doc", "docx" -> R.drawable.doc_icon
+                        "xls", "xlsx" -> R.drawable.file_xls_color_red_icon_1__1_
+
+                        else -> R.drawable.doc_icon
+                    }
+                    imgFileIcon?.setImageResource(iconRes)
+
                 }
                 ChatMessageType.VOICE_NOTE -> {
+
                     layoutVoice?.visibility = View.VISIBLE
-                    txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
+                    layoutVoice?.isClickable = false
+                    layoutVoice?.isFocusable = false
+
+                    val isPlaying = adapter.playingPosition == position
+
+                    if (isPlaying) {
+                        btnPlayVoice?.setImageResource(R.drawable.pause)
+
+                        val current = (adapter.mediaPlayer?.currentPosition ?: 0) / 1000
+                        txtVoiceDuration?.text = formatDuration(current)
+
+                    } else {
+                        btnPlayVoice?.setImageResource(R.drawable.play_circle)
+                        txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
+                    }
+
+                    btnPlayVoice?.setOnClickListener {
+
+                        if (adapter.playingPosition == position) {
+                            adapter.stopAudio()
+                        } else {
+                            adapter.playAudio(message, position)
+                        }
+                    }
                 }
+
                 else -> {}
             }
         }
@@ -660,39 +876,43 @@ class VirtualChatMessageAdapter(
 
         private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
 
-            mediaLoader?.visibility = View.VISIBLE   // Show loader
+            mediaLoader?.visibility = View.VISIBLE
 
-            try {
-                val retriever = MediaMetadataRetriever()
+            val loadUri = if (uri.startsWith("http"))
+                Uri.parse(uri)
+            else
+                Uri.fromFile(File(uri))
 
-                if (uri.startsWith("http")) {
-                    retriever.setDataSource(uri, HashMap<String, String>())
-                } else {
-                    retriever.setDataSource(uri)
-                }
+            Glide.with(context)
+                .asBitmap()
+                .load(loadUri)
+                .frame(1000000)
+                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+                .listener(object : RequestListener<Bitmap> {
 
-                val bitmap = retriever.getFrameAtTime(
-                    1000000,
-                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-                )
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Bitmap>,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        mediaLoader?.visibility = View.GONE
+                        return false
+                    }
 
-                imageView?.setImageBitmap(bitmap)
-
-                retriever.release()
-
-            } catch (e: Exception) {
-
-                imageView?.let {
-                    Glide.with(context)
-                        .load(android.R.drawable.ic_media_play)
-                        .into(it)
-                }
-
-            } finally {
-                mediaLoader?.visibility = View.GONE   // Hide loader
-            }
+                    override fun onResourceReady(
+                        resource: Bitmap,
+                        model: Any,
+                        target: Target<Bitmap>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        mediaLoader?.visibility = View.GONE
+                        return false
+                    }
+                })
+                .into(imageView!!)
         }
-
         private fun formatDuration(seconds: Int): String {
             val m = seconds / 60
             val s = seconds % 60
@@ -735,12 +955,18 @@ class VirtualChatMessageAdapter(
         private val tvStatus: TextView = itemView.findViewById(R.id.tv_estimate_status)
         private val tvTimeStamp: TextView = itemView.findViewById(R.id.tv_time_stamp_self)
 
+
+
+
         fun bind(message: ChatMessage, position: Int) {
             val context = itemView.context
             userNameTv.text = if (message.isSender) "You" else "Service Advisor"
             tvTimeStamp.text = message.timeLabel
 
             val details = message.estimationDetails ?: return
+
+
+
 
             if (listener != null) {
                 val partAdapter = PartListAdapter(context, details.part_list, position, listener, false, false)

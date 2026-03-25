@@ -272,16 +272,7 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/txtImageCaption"
-            android:layout_width="160dp"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="4dp"
-            android:gravity="start"
-            android:visibility="gone"
-            android:maxLines="4"
-            android:textColor="@color/color_kia_black"
-            android:textSize="12sp" />
+
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="160dp"
@@ -329,6 +320,17 @@
             </FrameLayout>
 
         </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/txtImageCaption"
+            android:layout_width="160dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:gravity="start"
+            android:visibility="gone"
+            android:maxLines="4"
+            android:textColor="@color/color_kia_black"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -342,29 +344,36 @@
         android:padding="12dp">
 
         <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@android:drawable/ic_btn_speak_now"
-            android:contentDescription="@null" />
+            android:background="@drawable/bg_small_cornerradius"
+            android:id="@+id/imgrecordTablet"
+            android:layout_width="@dimen/_25sdp"
+            android:layout_height="@dimen/_25sdp"
+            android:padding="@dimen/_3sdp"
+            android:layout_gravity="center"
+            android:src="@drawable/mic__2_"
+            />
         <TextView
             android:id="@+id/txtVoiceDuration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="00:12"
+            android:layout_gravity="center"
             android:textColor="@color/color_kia_black"
             android:textSize="13sp" />
         <com.app.vc.views.WaveformView
             android:id="@+id/voiceWaveformView"
             android:layout_width="80dp"
             android:layout_height="24dp"
+            android:layout_gravity="center"
             android:layout_marginStart="8dp" />
         <ImageView
             android:id="@+id/btnPlayVoice"
             android:layout_width="24dp"
             android:layout_height="24dp"
+            android:layout_gravity="center"
             android:layout_marginStart="8dp"
-            android:src="@android:drawable/ic_media_play"
+            android:src="@drawable/play_circle"
             android:contentDescription="@null" />
     </LinearLayout>
 

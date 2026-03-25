@@ -24,6 +24,7 @@ class RepairOrderActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_GROUP_SLUG = "extra_group_slug"
+        const val EXTRA_APPOINTMENTID = "extra_appointmentId"
         const val EXTRA_RO_NUMBER = "extra_ro_number"
         const val EXTRA_STATUS_LABEL = "extra_status_label"
         const val EXTRA_DESCRIPTION = "extra_description"
@@ -72,9 +73,20 @@ class RepairOrderActivity : AppCompatActivity() {
     }
 
     private fun bindRoomDetailsFromIntent() {
-        intent.getStringExtra(EXTRA_RO_NUMBER)?.takeIf { it.isNotBlank() }?.let {
-            binding.orderId.text = it
+
+        val roNumber = intent.getStringExtra(EXTRA_RO_NUMBER)
+        val appointmentNumber = intent.getStringExtra(EXTRA_APPOINTMENTID)
+
+//        intent.getStringExtra(EXTRA_RO_NUMBER)?.takeIf { it.isNotBlank() }?.let {
+//            binding.orderId.text = it
+//        }
+
+        binding.orderId.text = when {
+            !roNumber.isNullOrBlank() -> roNumber
+            !appointmentNumber.isNullOrBlank() -> appointmentNumber
+            else -> ""
         }
+
         intent.getStringExtra(EXTRA_STATUS_LABEL)?.takeIf { it.isNotBlank() }?.let {
             binding.status.text = it
         }

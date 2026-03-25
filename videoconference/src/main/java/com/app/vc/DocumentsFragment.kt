@@ -20,13 +20,12 @@ class DocumentsFragment : Fragment() {
     var TAG = "MediaFragment"
     private lateinit var adapter: DocumentMediaAdapter
     private var groupSlug: String? = null
+
     private val mediaListener: (com.app.vc.virtualchatroom.RoomMediaSnapshot) -> Unit = { snapshot ->
         adapter.updateItems(snapshot.documents)
         binding.recyclerDocuments.visibility = if (snapshot.documents.isEmpty()) View.GONE else View.VISIBLE
         binding.txtEmptyDocuments.visibility = if (snapshot.documents.isEmpty()) View.VISIBLE else View.GONE
     }
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
