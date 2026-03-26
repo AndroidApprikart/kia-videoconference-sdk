@@ -5,21 +5,38 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.databinding.FragmentParticipants2Binding
 import com.app.vc.models.GroupMemberResponse
-import com.app.vc.participants.ChangeAdvisorAdapter
+import com.app.vc.network.AddGroupMemberRequest
+import com.app.vc.network.EmployeeApiService
+import com.app.vc.network.EmployeeItem
+import com.app.vc.network.EmployeeListRequest
+import com.app.vc.network.LoginApiService
+import com.app.vc.network.RemoveGroupMemberRequest
+import com.app.vc.participants.EmployeeAdvisorAdapter
 import com.app.vc.participants.ManageParticipantsAdapter
 import com.app.vc.participants.ParticipantsAdapter
 import com.app.vc.participants.ParticipantsViewModel
 import com.app.vc.presence.PresenceStore
+import com.app.vc.utils.ApiDetails
 import com.app.vc.utils.PreferenceManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.gson.GsonBuilder
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.util.Locale
 
 
 class ParticipantsListFragment : Fragment() {
@@ -30,6 +47,8 @@ class ParticipantsListFragment : Fragment() {
 
     private lateinit var viewModel: ParticipantsViewModel
     private lateinit var participantsAdapter: ParticipantsAdapter
+    private val chatApiService: LoginApiService by lazy { buildChatApiService() }
+    private val employeeApiService: EmployeeApiService by lazy { buildEmployeeApiService() }
     private val presenceListener: (Set<String>) -> Unit = { ids ->
         participantsAdapter.setOnlineUserIds(ids)
     }
@@ -53,8 +72,6 @@ class ParticipantsListFragment : Fragment() {
         viewModel = ViewModelProvider(this)[ParticipantsViewModel::class.java]
 
         setupObservers()
-
-        // Fetch participants using token and group slug from arguments
         val token = PreferenceManager.getAccessToken() ?: ""
         val groupSlug = arguments?.getString(KEY_GROUP_SLUG)
         if (token.isNotEmpty()) {
@@ -104,13 +121,13 @@ class ParticipantsListFragment : Fragment() {
     }
 
     private fun showManageParticipantsSheet() {
-
         val dialog = BottomSheetDialog(requireContext())
         val view = layoutInflater
             .inflate(R.layout.vc_bottom_sheet_manage_participants, null)
 
         dialog.setContentView(view)
-        
+        view.findViewById<View>(R.id.crossIcon)?.setOnClickListener { dialog.dismiss() }
+
         val members = viewModel.members.value ?: emptyList()
 
         val recyclerView =
@@ -121,7 +138,8 @@ class ParticipantsListFragment : Fragment() {
 
         recyclerView.adapter =
             ManageParticipantsAdapter(members) { member ->
-                showChangeAdvisorSheet()
+                dialog.dismiss()
+                showChangeAdvisorSheet(member)
             }
 
         dialog.show()
@@ -140,37 +158,24 @@ class ParticipantsListFragment : Fragment() {
         }
     }
 
-    private fun setupRecycler(view: View, otherMembers: List<GroupMemberResponse>) {
-        val recyclerView = view.findViewById<RecyclerView>(R.id.listParticipants)
-        recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        recyclerView.adapter = ChangeAdvisorAdapter(otherMembers) { selectedAdvisor -> 
-            // Handle selection if needed
-        }
-    }
-
-
-    private fun showChangeAdvisorSheet() {
+    private fun showChangeAdvisorSheet(currentAdvisor: GroupMemberResponse) {
         val dialog = BottomSheetDialog(requireContext())
         val view = layoutInflater.inflate(R.layout.vc_bottom_sheet_change_service_advisor, null)
         dialog.setContentView(view)
+        view.findViewById<View>(R.id.crossIcon)?.setOnClickListener { dialog.dismiss() }
 
-        val members = viewModel.members.value ?: emptyList()
-        val adminMember = members.find { it.chatRole.equals("admin", ignoreCase = true) }
-        val otherMembers = members.filter { !it.chatRole.equals("admin", ignoreCase = true) }
+        val txtInitial = view.findViewById<TextView>(R.id.txtInitial)
+        val txtParticipantName = view.findViewById<TextView>(R.id.tctParticipantName)
+        val txtLeftStatus = view.findViewById<TextView>(R.id.txtLeftStatus)
+        val recyclerView = view.findViewById<RecyclerView>(R.id.listParticipants)
+        val progressBar = view.findViewById<ProgressBar>(R.id.progressEmployees)
+        val txtEmpty = view.findViewById<TextView>(R.id.txtEmptyEmployees)
 
-        // Update Admin info in the header of the bottom sheet
-        adminMember?.let { admin ->
-            val txtInitial = view.findViewById<TextView>(R.id.txtInitial)
-            val tctParticipantName = view.findViewById<TextView>(R.id.tctParticipantName)
-            val txtLeftStatus = view.findViewById<TextView>(R.id.txtLeftStatus)
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-            val displayName = admin.displayName
-            tctParticipantName.text = displayName
-            txtInitial.text = displayName.firstOrNull()?.uppercase() ?: "?"
-            txtLeftStatus.text = admin.participantRole ?: ""
-        }
-
-        setupRecycler(view, otherMembers)
+        txtParticipantName.text = currentAdvisor.displayName
+        txtInitial.text = currentAdvisor.displayName.firstOrNull()?.uppercase() ?: "?"
+        txtLeftStatus.text = "Current"
 
         dialog.show()
 
@@ -181,10 +186,218 @@ class ParticipantsListFragment : Fragment() {
             behavior.state = BottomSheetBehavior.STATE_EXPANDED
             behavior.skipCollapsed = true
         }
+
+        loadEmployeeList(
+            currentAdvisor = currentAdvisor,
+            dialog = dialog,
+            recyclerView = recyclerView,
+            progressBar = progressBar,
+            emptyView = txtEmpty
+        )
+    }
+
+    private fun loadEmployeeList(
+        currentAdvisor: GroupMemberResponse,
+        dialog: BottomSheetDialog,
+        recyclerView: RecyclerView,
+        progressBar: ProgressBar,
+        emptyView: TextView
+    ) {
+        val dealerCode = resolveDealerCode()
+        if (dealerCode.isBlank()) {
+            emptyView.visibility = View.VISIBLE
+            emptyView.text = "Dealer code not available."
+            recyclerView.visibility = View.GONE
+            progressBar.visibility = View.GONE
+            return
+        }
+
+        progressBar.visibility = View.VISIBLE
+        recyclerView.visibility = View.GONE
+        emptyView.visibility = View.GONE
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val response = employeeApiService.getEmployeeList(
+                    apiKey = EMPLOYEE_API_KEY,
+                    request = EmployeeListRequest(
+                        companyNumber = EMPLOYEE_COMPANY_NUMBER,
+                        corporateNumber = EMPLOYEE_CORPORATE_NUMBER,
+                        dealerNumber = dealerCode,
+                        areaWorkType = EMPLOYEE_AREA_WORK_TYPE
+                    )
+                )
+
+                val employees = if (response.isSuccessful) {
+                    response.body()?.data.orEmpty()
+                } else {
+                    emptyList()
+                }
+                    .filter { it.employeeNumber.isNotBlank() && it.employeeName.isNotBlank() }
+                    .distinctBy { it.employeeNumber }
+                    .filterNot { it.employeeName.equals(currentAdvisor.displayName, ignoreCase = true) }
+
+                progressBar.visibility = View.GONE
+                if (employees.isEmpty()) {
+                    recyclerView.visibility = View.GONE
+                    emptyView.visibility = View.VISIBLE
+                    emptyView.text = "No service advisors found."
+                    if (!response.isSuccessful) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Failed to load employees: ${response.code()}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    return@launch
+                }
+
+                recyclerView.visibility = View.VISIBLE
+                emptyView.visibility = View.GONE
+                recyclerView.adapter = EmployeeAdvisorAdapter(employees) { employee ->
+                    confirmAdvisorReplacement(currentAdvisor, employee, dialog)
+                }
+            } catch (e: Exception) {
+                progressBar.visibility = View.GONE
+                recyclerView.visibility = View.GONE
+                emptyView.visibility = View.VISIBLE
+                emptyView.text = "Unable to load employees."
+                Toast.makeText(
+                    requireContext(),
+                    e.message ?: "Unable to load employees",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun confirmAdvisorReplacement(
+        currentAdvisor: GroupMemberResponse,
+        newAdvisor: EmployeeItem,
+        dialog: BottomSheetDialog
+    ) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Change Service Advisor")
+            .setMessage("Replace ${currentAdvisor.displayName} with ${newAdvisor.employeeName}?")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Change") { _, _ ->
+                replaceServiceAdvisor(currentAdvisor, newAdvisor, dialog)
+            }
+            .show()
+    }
+
+    private fun replaceServiceAdvisor(
+        currentAdvisor: GroupMemberResponse,
+        newAdvisor: EmployeeItem,
+        dialog: BottomSheetDialog
+    ) {
+        val token = PreferenceManager.getAccessToken().orEmpty()
+        val groupSlug = arguments?.getString(KEY_GROUP_SLUG).orEmpty()
+        if (token.isBlank() || groupSlug.isBlank()) {
+            Toast.makeText(requireContext(), "Missing group details", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val addResponse = chatApiService.addGroupMember(
+                    token = "Bearer $token",
+                    request = AddGroupMemberRequest(
+                        uniqueId = newAdvisor.employeeNumber,
+                        name = newAdvisor.employeeName,
+                        role = "service_advisor",
+                        groupSlug = groupSlug
+                    )
+                )
+
+                if (!addResponse.isSuccessful) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Unable to add advisor: ${addResponse.code()}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@launch
+                }
+
+                val removeResponse = chatApiService.removeGroupMember(
+                    token = "Bearer $token",
+                    request = RemoveGroupMemberRequest(currentAdvisor.id)
+                )
+
+                if (!removeResponse.isSuccessful) {
+                    Toast.makeText(
+                        requireContext(),
+                        "New advisor added, but old advisor could not be removed.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+
+                dialog.dismiss()
+                viewModel.fetchParticipants(token, groupSlug)
+                Toast.makeText(requireContext(), "Service advisor updated", Toast.LENGTH_SHORT)
+                    .show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    e.message ?: "Unable to update service advisor",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun resolveDealerCode(): String {
+        val savedDealerCode = PreferenceManager.getDealerCode().orEmpty().trim()
+        if (savedDealerCode.isNotBlank()) {
+            return savedDealerCode
+        }
+        return arguments?.getString(KEY_GROUP_SLUG)
+            ?.split("-")
+            ?.getOrNull(1)
+            ?.uppercase(Locale.ROOT)
+            .orEmpty()
+    }
+
+    private fun buildChatApiService(): LoginApiService {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .build()
+        val gson = GsonBuilder().setLenient().create()
+        return Retrofit.Builder()
+            .baseUrl(ApiDetails.APRIK_Kia_BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+            .create(LoginApiService::class.java)
+    }
+
+    private fun buildEmployeeApiService(): EmployeeApiService {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .build()
+        val gson = GsonBuilder().setLenient().create()
+        return Retrofit.Builder()
+            .baseUrl(EMPLOYEE_BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+            .create(EmployeeApiService::class.java)
     }
 
     companion object {
         const val KEY_GROUP_SLUG = "group_slug"
+        private const val EMPLOYEE_BASE_URL = "https://kialinkd-qa.kiaindia.net/"
+        private const val EMPLOYEE_API_KEY = "APPRIKART-mQ7xKZnP9vR4sT6wY8zA3bC5dE1YG0hJqLp2"
+        private const val EMPLOYEE_COMPANY_NUMBER = "K"
+        private const val EMPLOYEE_CORPORATE_NUMBER = "AL01VA"
+        private const val EMPLOYEE_AREA_WORK_TYPE = "SA"
     }
 
     override fun onDestroyView() {

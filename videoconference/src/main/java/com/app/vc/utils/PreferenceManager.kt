@@ -26,6 +26,7 @@ class PreferenceManager {
         private const val REFRESH_TOKEN = "REFRESH_TOKEN"
         private const val USER_ID = "USER_ID"
         private const val NAME = "NAME"
+        private const val DEALER_CODE = "DEALER_CODE"
 
 
         fun isChatScreenOpen(): Boolean? {
@@ -104,12 +105,21 @@ class PreferenceManager {
             return mSharedPrefs?.getString(NAME, "")
         }
 
+        fun setDealerCode(dealerCode: String?) {
+            mSharedPrefs?.edit()?.putString(DEALER_CODE, dealerCode)?.apply()
+        }
+
+        fun getDealerCode(): String? {
+            return mSharedPrefs?.getString(DEALER_CODE, "")
+        }
+
         fun clearAuthSession() {
             mSharedPrefs?.edit()
                 ?.remove(ACCESS_TOKEN)
                 ?.remove(REFRESH_TOKEN)
                 ?.remove(USER_ID)
                 ?.remove(NAME)
+                ?.remove(DEALER_CODE)
                 ?.remove(USERTYPE)
                 ?.apply()
         }

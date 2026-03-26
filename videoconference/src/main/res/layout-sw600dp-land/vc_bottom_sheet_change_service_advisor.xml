@@ -105,6 +105,24 @@
             android:layout_marginTop="@dimen/_10sdp"
             android:fontFamily="@font/kia_signature_fix_bold"/>
 
+        <ProgressBar
+            android:id="@+id/progressEmployees"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/_12sdp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/txtEmptyEmployees"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/_12sdp"
+            android:gravity="center"
+            android:text="No service advisors found."
+            android:textColor="#6E6E6E"
+            android:textSize="14sp"
+            android:visibility="gone" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:layout_width="match_parent"

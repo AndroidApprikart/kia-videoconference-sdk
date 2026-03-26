@@ -66,6 +66,7 @@ class LoginViewModel : ViewModel() {
                     Log.d("LoginViewModel", "Role Received: ${loginData.role}")
 
                     PreferenceManager.setName(loginData.display_name)
+                    PreferenceManager.setDealerCode(loginData.dealer_code)
 
 
                     // Decode JWT and save user ID
