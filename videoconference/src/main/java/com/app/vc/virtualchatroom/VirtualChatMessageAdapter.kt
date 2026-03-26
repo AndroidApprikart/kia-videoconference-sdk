@@ -264,6 +264,7 @@ class VirtualChatMessageAdapter(
             }
             return
         }
+
         var index = if (messageId.isNotEmpty()) {
             messages.indexOfFirst { it.messageId == messageId }
         } else {
@@ -373,8 +374,6 @@ class VirtualChatMessageAdapter(
 
         fun bind(message: ChatMessage, position: Int) {
             bindSenderInfo(message)
-
-
 
 
             itemView.setOnClickListener {

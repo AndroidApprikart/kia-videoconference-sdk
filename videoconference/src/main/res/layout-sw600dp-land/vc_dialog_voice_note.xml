@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@color/white"
-    android:orientation="vertical"
-    >
+    android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -95,13 +95,12 @@
                 android:src="@drawable/pause"
                 />
 
-            <com.app.vc.views.WaveformView
+            <com.masoudss.lib.WaveformSeekBar
                 android:id="@+id/waveformView"
-                android:layout_width="@dimen/_40sdp"
-                android:layout_height="32dp"
-                android:layout_weight="1"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
                 android:layout_marginStart="16dp"
-                 />
+                android:layout_weight="1"/>
 
             <TextView
                 android:id="@+id/txtVoiceTimer"

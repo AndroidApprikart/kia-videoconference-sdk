@@ -118,16 +118,27 @@ import java.nio.ByteOrder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.masoudss.lib.WaveformSeekBar
 import kotlin.math.abs
 
 class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketCallback, EstimationInteractionListener {
 
-    val TAG="VirtualChatRoomActivity"
+    val TAG = "VirtualChatRoomActivity"
     private lateinit var binding: VcActivityVirtualChatRoomBinding
     private var audioRecord: AudioRecord? = null
     private var pcmFile: File? = null
     private val playbackHandler = Handler(Looper.getMainLooper())
+//    private val amplitudeHandler = Handler(Looper.getMainLooper())
+//    private val recordedAmplitudes = mutableListOf<Int>()
+//
+//    private var voiceNoteWaveformView: WaveformSeekBar? = null
 
+    private var isPausedRecording = false
+    private var currentSegmentIndex = 0
+    private var previousSegmentsDuration = 0
+    private val segmentDurations = mutableListOf<Int>()
+    private val voiceSegments = mutableListOf<String>()
+    private var currentSegmentPath: String? = null
     private var currentRole: UserRole = UserRole.CUSTOMER
     private var room: VirtualRoomUiModel? = null
     private var mediaPlayer: MediaPlayer? = null
@@ -137,6 +148,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var lastClickTime = System.currentTimeMillis()
     private val clickTimeInterval = 2000
     private var audioTrack: AudioTrack? = null
+    private val MAX_BARS = 60
     // Add this if you have a reference to your main ViewModel or use the Activity scope
     private val sharedViewModel: MainViewModel by viewModels()
     private var networkErrorVisible = false
@@ -172,6 +184,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         const val EXTRA_ROOM_JSON = "extra_room_json"
     }
+
     private var dataList = ArrayList<MessageModel>()
 
 
@@ -181,6 +194,72 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var mediaRecorder: MediaRecorder? = null
     private val voiceTimerHandler = Handler(Looper.getMainLooper())
     private var voiceNoteDialogTimerView: TextView? = null
+
+    private val playbackTimerHandler = Handler(Looper.getMainLooper())
+    private val recordedAmplitudes = mutableListOf<Int>()
+
+    private val amplitudeRunnable = object : Runnable {
+
+        override fun run() {
+
+            if (isRecording && mediaRecorder != null) {
+
+                try {
+
+                    val amplitude = mediaRecorder!!.maxAmplitude
+
+                    // Smooth amplitude
+                    var normalized = kotlin.math.sqrt(amplitude.toDouble()).toInt()
+
+                    // Baseline movement when silent
+                    if (normalized < 4) {
+                        normalized = (2..6).random()
+                    }
+
+                    recordedAmplitudes.add(normalized)
+
+                    // Keep sliding window
+                    if (recordedAmplitudes.size > MAX_BARS) {
+                        recordedAmplitudes.removeAt(0)
+                    }
+
+                    // Update waveform
+                    voiceNoteWaveformView?.setSampleFrom(recordedAmplitudes.toIntArray())
+
+                } catch (_: Exception) {}
+
+                amplitudeHandler.postDelayed(this, 190)
+            }
+        }
+    }
+    private val playbackTimerRunnable = object : Runnable {
+
+        override fun run() {
+
+            mediaPlayer?.let { player ->
+
+                val currentSegmentMs = player.currentPosition
+                val currentSegmentSec = currentSegmentMs / 1000
+
+                val totalPlayedSec = previousSegmentsDuration + currentSegmentSec
+
+                voiceNoteDialogTimerView?.text =
+                    "%02d:%02d".format(totalPlayedSec / 60, totalPlayedSec % 60)
+
+                // ⭐ TOTAL DURATION OF ALL SEGMENTS
+                val totalDurationSec = segmentDurations.sum()
+
+                if (totalDurationSec > 0) {
+                    val progress =
+                        (totalPlayedSec.toFloat() / totalDurationSec.toFloat()) * 100f
+                    voiceNoteWaveformView?.progress = progress
+                }
+
+                playbackTimerHandler.postDelayed(this, 50)
+            }
+        }
+    }
+
     private val voiceTimerRunnable = object : Runnable {
         override fun run() {
             voiceNoteDurationSeconds++
@@ -190,55 +269,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
-    private val playbackTimerHandler = Handler(Looper.getMainLooper())
-
-    private val playbackTimerRunnable = object : Runnable {
-        override fun run() {
-            mediaPlayer?.let {
-
-                val current = it.currentPosition / 1000
-
-                voiceNoteDialogTimerView?.text =
-                    "%02d:%02d".format(current / 60, current % 60)
-
-                val progress =
-                    (it.currentPosition.toFloat() / it.duration * 50).toInt()
-
-                voiceNoteWaveformView?.updateProgress(progress)
-
-                playbackTimerHandler.postDelayed(this, 200)
-            }
-        }
-    }
-
 
     private var voiceNoteDialog: AlertDialog? = null
-    private var voiceNoteWaveformView: WaveformView? = null
-    private val recordedAmplitudes = mutableListOf<Int>()
+    private var voiceNoteWaveformView: WaveformSeekBar? = null
+
     private val amplitudeHandler = Handler(Looper.getMainLooper())
 
 
-    private val amplitudeRunnable = object : Runnable {
-        override fun run() {
-            val amp = try {
-                mediaRecorder?.maxAmplitude ?: 0
-            } catch (_: Exception) {
-                0
-            }
-
-            val scaled = (amp / 400).coerceIn(3, 60)
-            val smooth = if (recordedAmplitudes.isEmpty()) {
-                scaled
-            } else {
-                (recordedAmplitudes.last() + scaled) / 2
-            }
-
-            recordedAmplitudes.add(smooth)
-            voiceNoteWaveformView?.addAmplitude(smooth)
-
-            if (isRecording) amplitudeHandler.postDelayed(this, 50)
-        }
-    }
     private var isRecording = false
     private var isTyping = false
     private val typingHandler = Handler(Looper.getMainLooper())
@@ -275,7 +312,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         if (refresh.isEmpty()) return null
         return try {
             val json = JsonObject().apply { addProperty("refresh", refresh) }
-            val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+            val body = json.toString()
+                .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
             val request = Request.Builder()
                 .url(ApiDetails.APRIK_Kia_BASE_URL + "api/token/refresh/")
                 .post(body)
@@ -287,7 +325,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val access = respJson.get("access")?.asString
                 if (!access.isNullOrBlank()) {
                     PreferenceManager.setAccessToken(access)
-                    respJson.get("refresh")?.asString?.let { if (it.isNotBlank()) PreferenceManager.setRefreshToken(it) }
+                    respJson.get("refresh")?.asString?.let {
+                        if (it.isNotBlank()) PreferenceManager.setRefreshToken(
+                            it
+                        )
+                    }
                     access
                 } else null
             } else null
@@ -343,7 +385,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 if (file != null) {
                     val sizeInMb = file.length() / (1024 * 1024)
                     if (sizeInMb > 30) {
-                        Toast.makeText(this, "File ${file.name} exceeds 30MB", Toast.LENGTH_LONG)
+                        Toast.makeText(
+                            this,
+                            "File ${file.name} exceeds 30MB",
+                            Toast.LENGTH_LONG
+                        )
                             .show()
                     } else {
                         val mimeType = contentResolver.getType(uri) ?: ""
@@ -378,7 +424,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun uriToFile(uri: Uri): File? {
         return try {
             val cursor = contentResolver.query(uri, null, null, null, null)
-            val nameIndex = cursor?.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            val nameIndex =
+                cursor?.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
             cursor?.moveToFirst()
 
             val fileName = if (nameIndex != null && nameIndex >= 0) {
@@ -553,7 +600,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun sendEstimationMessage(estimationDetails: ResponseModelEstimateData) {
-        val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+        val timeLabel =
+            SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
         val localIdLong = System.currentTimeMillis()
         val localId = "local_est_$localIdLong"
 
@@ -624,7 +672,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         val roleFromIntent = intent.getStringExtra(EXTRA_ROLE)
 
-        val roomStatus=intent.getStringExtra(STATUS)
+        val roomStatus = intent.getStringExtra(STATUS)
         Log.d(TAG, "onCreate: $roomStatus")
 
         val roomJson = intent.getStringExtra(EXTRA_ROOM_JSON)
@@ -651,8 +699,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             UserRole.MANAGER.name -> UserRole.MANAGER
             else -> UserRole.CUSTOMER
         }
-        Log.d("init"
-            , "init: sharedViewModel.messageListInMVM -> ${sharedViewModel.messageListInMVM}")
+        Log.d(
+            "init",
+            "init: sharedViewModel.messageListInMVM -> ${sharedViewModel.messageListInMVM}"
+        )
         dataList.clear()
         dataList.addAll(sharedViewModel.messageListInMVM)
         if (binding.tabParticipants != null) {
@@ -748,11 +798,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     // Update local message list and notify adapter
                     if (sharedViewModel.tempParentPosition != null && sharedViewModel.estimateDetailsAfterApproval != null) {
                         val pos = sharedViewModel.tempParentPosition!!
-                        messages[pos] = messages[pos].copy(estimationDetails = sharedViewModel.estimateDetailsAfterApproval)
+                        messages[pos] =
+                            messages[pos].copy(estimationDetails = sharedViewModel.estimateDetailsAfterApproval)
                         messageAdapter?.notifyItemChanged(pos)
-                        
+
                         // Also update dataList for shared logic
-                        dataList[pos].estimationDetails = sharedViewModel.estimateDetailsAfterApproval
+                        dataList[pos].estimationDetails =
+                            sharedViewModel.estimateDetailsAfterApproval
                     }
                     sharedViewModel.isProgressBarVisible.value = false
                 } else {
@@ -762,6 +814,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             }
         }
     }
+
     override fun onResume() {
         super.onResume()
 
@@ -802,8 +855,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.getQuickReplies(role)
                 if (response.isSuccessful && response.body() != null) {
                     val quickReplyResponse = response.body()!!
-                    Log.d(TAG, "Quick replies API response: ${Gson().toJson(quickReplyResponse)}")
-                    val apiReplies = quickReplyResponse.sortedBy { it.displayOrder }.map { it.text }
+                    Log.d(
+                        TAG,
+                        "Quick replies API response: ${Gson().toJson(quickReplyResponse)}"
+                    )
+                    val apiReplies =
+                        quickReplyResponse.sortedBy { it.displayOrder }.map { it.text }
                     if (apiReplies.isNotEmpty()) {
                         quickReplies.clear()
                         quickReplies.addAll(apiReplies)
@@ -826,13 +883,19 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.getGroupMembers("Bearer $token", slug)
                 if (response.isSuccessful && response.body() != null) {
                     val members = response.body()!!
-                    Log.d(TAG, "Group members API response for $slug: ${Gson().toJson(members)}")
-                    val userIdToDisplay: Map<Int, String> = members.associate { member: GroupMemberResponse ->
-                        member.userId to (member.displayName.takeIf { it.isNotBlank() }.orEmpty())
-                    }
-                    val userIdToRole: Map<Int, String> = members.associate { member: GroupMemberResponse ->
-                        member.userId to roleAbbrev(member.participantRole)
-                    }
+                    Log.d(
+                        TAG,
+                        "Group members API response for $slug: ${Gson().toJson(members)}"
+                    )
+                    val userIdToDisplay: Map<Int, String> =
+                        members.associate { member: GroupMemberResponse ->
+                            member.userId to (member.displayName.takeIf { it.isNotBlank() }
+                                .orEmpty())
+                        }
+                    val userIdToRole: Map<Int, String> =
+                        members.associate { member: GroupMemberResponse ->
+                            member.userId to roleAbbrev(member.participantRole)
+                        }
                     withContext(Dispatchers.Main) {
                         memberUserIdToDisplayName.clear()
                         memberUserIdToDisplayName.putAll(userIdToDisplay.filterValues { it.isNotBlank() })
@@ -887,11 +950,22 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 if (response.isSuccessful && response.body() != null) {
                     val currentUserId = PreferenceManager.getUserId()
                     val apiMessages = parseApiMessagesResponse(response.body())
-                    Log.d(TAG, "Messages API response for $slug before=$beforeMessageId: ${gson.toJson(apiMessages)}")
-                    val chatMessages = apiMessages.map { apiMsg -> apiMessageToChatMessage(apiMsg, currentUserId) }
+                    Log.d(
+                        TAG,
+                        "Messages API response for $slug before=$beforeMessageId: ${
+                            gson.toJson(apiMessages)
+                        }"
+                    )
+                    val chatMessages = apiMessages.map { apiMsg ->
+                        apiMessageToChatMessage(
+                            apiMsg,
+                            currentUserId
+                        )
+                    }
                     val markAllReadResponse = if (!isPagination) {
                         try {
-                            val markReadApiResponse = apiService.markAllMessagesRead("Bearer $token", slug)
+                            val markReadApiResponse =
+                                apiService.markAllMessagesRead("Bearer $token", slug)
                             if (markReadApiResponse.isSuccessful && markReadApiResponse.body() != null) {
                                 val body = markReadApiResponse.body()!!
                                 Log.d(
@@ -914,7 +988,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         null
                     }
                     if (!isPagination && markAllReadResponse != null) {
-                        chatMessages.filter { !it.isSender }.forEach { it.status = MessageStatus.READ }
+                        chatMessages.filter { !it.isSender }
+                            .forEach { it.status = MessageStatus.READ }
                     }
 
                     withContext(Dispatchers.Main) {
@@ -922,17 +997,22 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             sentReadReceiptMessageIds.clear()
                             pendingReadReceiptMessageIds.clear()
                             apiMessages.filter { apiMsg ->
-                                val isOwnMessage = apiMsg.sender?.id?.toString() == currentUserId
+                                val isOwnMessage =
+                                    apiMsg.sender?.id?.toString() == currentUserId
                                 !isOwnMessage && apiMsg.isRead
                             }.forEach { sentReadReceiptMessageIds.add(it.id) }
                             if (markAllReadResponse != null) {
                                 apiMessages.filter { apiMsg ->
-                                    val isOwnMessage = apiMsg.sender?.id?.toString() == currentUserId
+                                    val isOwnMessage =
+                                        apiMsg.sender?.id?.toString() == currentUserId
                                     !isOwnMessage
                                 }.forEach { sentReadReceiptMessageIds.add(it.id) }
                             }
                             markAllReadResponse?.let { responseBody ->
-                                GroupUnreadStore.updateUnreadCount(slug, responseBody.unreadCount)
+                                GroupUnreadStore.updateUnreadCount(
+                                    slug,
+                                    responseBody.unreadCount
+                                )
                             }
                         }
                         oldestLoadedMessageId = (currentRawMessages() + chatMessages)
@@ -975,7 +1055,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
-    private fun apiMessageToChatMessage(apiMsg: com.app.vc.network.ApiMessageResponse, currentUserId: String?): ChatMessage {
+    private fun apiMessageToChatMessage(
+        apiMsg: com.app.vc.network.ApiMessageResponse,
+        currentUserId: String?
+    ): ChatMessage {
         val isSender = apiMsg.sender?.id?.toString() == currentUserId
         val attachment = apiMsg.attachments?.firstOrNull()
         val type = when {
@@ -985,6 +1068,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 attachment.mimeType.startsWith("audio") -> ChatMessageType.VOICE_NOTE
                 else -> ChatMessageType.FILE
             }
+
             else -> when (apiMsg.messageType) {
                 "image" -> ChatMessageType.IMAGE
                 "video" -> ChatMessageType.VIDEO
@@ -1005,10 +1089,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             messageId = apiMsg.id.toString(),
             text = if (type == ChatMessageType.TEXT) apiMsg.content else "",
             isSender = isSender,
-            senderName = if (isSender) null else resolveDisplayName(apiMsg.sender?.id, apiMsg.sender?.username),
+            senderName = if (isSender) null else resolveDisplayName(
+                apiMsg.sender?.id,
+                apiMsg.sender?.username
+            ),
             senderUsername = apiMsg.sender?.username,
             senderId = apiMsg.sender?.id?.toString(),
-            senderRoleAbbrev = if (isSender) roleAbbrev(PreferenceManager.getuserType()) else resolveRoleAbbrevByUserId(apiMsg.sender?.id),
+            senderRoleAbbrev = if (isSender) roleAbbrev(PreferenceManager.getuserType()) else resolveRoleAbbrevByUserId(
+                apiMsg.sender?.id
+            ),
             timeLabel = formatApiDate(apiMsg.createdAt),
             createdAtMillis = parseApiCreatedAtMillis(apiMsg.createdAt),
             status = if (isRead) MessageStatus.READ else MessageStatus.SENT,
@@ -1027,6 +1116,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 body.isJsonArray -> body.asJsonArray.mapNotNull {
                     gson.fromJson(it, com.app.vc.network.ApiMessageResponse::class.java)
                 }
+
                 body.isJsonObject -> {
                     val obj = body.asJsonObject
                     val array = when {
@@ -1039,6 +1129,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         gson.fromJson(it, com.app.vc.network.ApiMessageResponse::class.java)
                     } ?: emptyList()
                 }
+
                 else -> emptyList()
             }
 
@@ -1074,7 +1165,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         messageAdapter?.replaceAll(withHeaders)
         ChatMediaStore.replaceMessages(room?.roNumber ?: return, combinedMessages)
         recycler.post {
-            val anchorIndex = if (anchorId.isNullOrBlank()) -1 else messages.indexOfFirst { it.messageId == anchorId }
+            val anchorIndex =
+                if (anchorId.isNullOrBlank()) -1 else messages.indexOfFirst { it.messageId == anchorId }
             if (anchorIndex >= 0) {
                 layoutManager.scrollToPositionWithOffset(anchorIndex, anchorTop)
             }
@@ -1140,7 +1232,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         statusLabel: String?
     ): String {
         val status = statusLabel?.takeIf { it.isNotBlank() }
-        return  "$status"
+        return "$status"
     }
 
     private fun fetchServiceLifecycle() {
@@ -1151,7 +1243,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.getServiceLifecycleCurrent("Bearer $token", slug)
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
-                    Log.d(TAG, "Service lifecycle API response for $slug: ${Gson().toJson(body)}")
+                    Log.d(
+                        TAG,
+                        "Service lifecycle API response for $slug: ${Gson().toJson(body)}"
+                    )
                     jobNotes = body.notes?.takeIf { it.isNotBlank() }
                     statusLabel = body.statusLabel?.takeIf { it.isNotBlank() }
                     Log.d("VirtualChatRoom", "Service lifecycle response: $body")
@@ -1187,13 +1282,22 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     val templates = response.body()!!
                     Log.d(TAG, "Templates API response: ${Gson().toJson(templates)}")
                     withContext(Dispatchers.Main) {
-                        Log.d("VirtualChatRoom", "Templates API response: count=${templates.size}")
+                        Log.d(
+                            "VirtualChatRoom",
+                            "Templates API response: count=${templates.size}"
+                        )
                         templates.forEachIndexed { index, t ->
-                            Log.d("VirtualChatRoom", "Template[$index]: id=${t.id}, key=${t.key}, title=${t.title}, body=${t.body}, is_active=${t.isActive}")
+                            Log.d(
+                                "VirtualChatRoom",
+                                "Template[$index]: id=${t.id}, key=${t.key}, title=${t.title}, body=${t.body}, is_active=${t.isActive}"
+                            )
                         }
                     }
                 } else {
-                    Log.e("VirtualChatRoom", "Templates API failed: ${response.code()} ${response.message()}")
+                    Log.e(
+                        "VirtualChatRoom",
+                        "Templates API failed: ${response.code()} ${response.message()}"
+                    )
                 }
             } catch (e: Exception) {
                 Log.e("VirtualChatRoom", "Error fetching templates: ${e.message}")
@@ -1236,7 +1340,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             val cal = java.util.Calendar.getInstance()
             cal.timeInMillis = ms
             val today = java.util.Calendar.getInstance()
-            val yday = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }
+            val yday = java.util.Calendar.getInstance()
+                .apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }
             val key = dayKey(ms)
             return when (key) {
                 dayKey(today.timeInMillis) -> "Today"
@@ -1272,7 +1377,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         if (estimationStatus) {
             sharedViewModel.updateEstimationStatusNew(
                 customerCode = sharedViewModel.customerCode!!,
-                estimationStatus = sharedViewModel.estimateDetailsAfterApproval?.estimationApprovalStatus ?: "N",
+                estimationStatus = sharedViewModel.estimateDetailsAfterApproval?.estimationApprovalStatus
+                    ?: "N",
                 employeeNumber = sharedViewModel.serviceAdvisorID.toString(),
                 labourListCodes = sharedViewModel.selectedLabourList!!,
                 partListCodes = sharedViewModel.selectedPartList!!,
@@ -1284,15 +1390,97 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun loadFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction().replace(R.id.FragmentContainer, fragment).commit()
+        supportFragmentManager.beginTransaction().replace(R.id.FragmentContainer, fragment)
+            .commit()
     }
 
     private fun setupVoiceNote() {
         binding.recordLayout?.setOnClickListener { showVoiceNoteDialog() }
     }
 
+
+    private fun resumeVoiceRecording() {
+
+        mediaRecorder?.resume()
+
+        isPausedRecording = false
+        isRecording = true
+
+        amplitudeHandler.post(amplitudeRunnable)
+        voiceTimerHandler.post(voiceTimerRunnable)
+    }
+
+
+    private fun mergeVoiceSegments(): File {
+
+        val outputFile = File(cacheDir, "voice_final_${System.currentTimeMillis()}.m4a")
+        val fos = FileOutputStream(outputFile)
+
+        voiceSegments.forEach { path ->
+            val fis = FileInputStream(File(path))
+            fis.copyTo(fos)
+            fis.close()
+        }
+
+        fos.close()
+
+        return outputFile
+    }
+
+    private fun playAllSegments(
+        btnPlay: ImageView,
+        btnDelete: ImageView,
+        btnRecord: ImageView
+    ) {
+
+        if (voiceSegments.isEmpty()) return
+
+        currentSegmentIndex = 0
+        playNextSegment(btnPlay, btnDelete, btnRecord)
+    }
+    private fun playNextSegment(
+        btnPlay: ImageView,
+        btnDelete: ImageView,
+        btnRecord: ImageView
+    ) {
+
+        if (currentSegmentIndex >= voiceSegments.size) {
+            stopPlayback()
+            btnPlay.setImageResource(R.drawable.play_circle)
+            btnDelete.isEnabled = true
+            btnRecord.isEnabled = true
+            return
+        }
+
+        val path = voiceSegments[currentSegmentIndex]
+
+        previousSegmentsDuration =
+            segmentDurations.take(currentSegmentIndex).sum()
+
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(path)
+            prepare()
+            start()
+        }
+
+        isPlaying = true
+
+        mediaPlayer?.setOnCompletionListener {
+            currentSegmentIndex++
+            playNextSegment(btnPlay, btnDelete, btnRecord)
+        }
+
+        playbackTimerHandler.post(playbackTimerRunnable)
+    }
+
     private fun showVoiceNoteDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.vc_dialog_voice_note, null)
+
+//            val view = LayoutInflater.from(this)
+//                .inflate(R.layout.vc_dialog_voice_note, null)
+
+
+
         voiceNoteWaveformView = view.findViewById(R.id.waveformView)
         voiceNoteDialogTimerView = view.findViewById<TextView>(R.id.txtVoiceTimer)
         val btnClose = view.findViewById<ImageView>(R.id.btnCloseVoice)
@@ -1309,8 +1497,55 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         val dialog = AlertDialog.Builder(this).setView(view).create()
 
-        btnClose.setOnClickListener { dialog.dismiss() }
-        btnCancel.setOnClickListener { dialog.dismiss() }
+//            val bottomSheet = BottomSheetDialog(this)
+//            bottomSheet.setContentView(view)
+
+        btnClose.setOnClickListener {
+            dialog.dismiss()
+//                bottomSheet.dismiss()
+
+        }
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+//                bottomSheet.dismiss()
+        }
+
+//        btnRecord.setOnClickListener {
+//
+//            if (isPlaying) {
+//                Toast.makeText(this, "Stop playback before recording", Toast.LENGTH_SHORT)
+//                    .show()
+//                return@setOnClickListener
+//            }
+//
+//
+//
+//            voiceNoteWaveformView?.visibility = View.VISIBLE
+//
+//            // ⭐ If old recording exists, delete it and start new recording
+//            voiceNotePath?.let {
+//                val file = File(it)
+//                if (file.exists()) file.delete()
+//            }
+//
+//            voiceNotePath = null
+//            voiceNoteDurationSeconds = 0
+//            voiceNoteDialogTimerView?.text = "00:00"
+//
+//
+//
+//            if (ContextCompat.checkSelfPermission(
+//                    this,
+//                    Manifest.permission.RECORD_AUDIO
+//                ) == PackageManager.PERMISSION_GRANTED
+//            ) {
+//
+//
+//                startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon)
+//            } else {
+//                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+//            }
+//        }
 
         btnRecord.setOnClickListener {
 
@@ -1319,71 +1554,106 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 return@setOnClickListener
             }
 
-            recordedAmplitudes.clear()
-            voiceNoteWaveformView?.clear()
             voiceNoteWaveformView?.visibility = View.VISIBLE
 
-            // ⭐ If old recording exists, delete it and start new recording
-            voiceNotePath?.let {
-                val file = File(it)
-                if (file.exists()) file.delete()
-            }
+            if (!isPausedRecording) {
 
-            voiceNotePath = null
-            voiceNoteDurationSeconds = 0
-            voiceNoteDialogTimerView?.text = "00:00"
+                // First recording
+                voiceNoteDurationSeconds = 0
+                voiceNoteDialogTimerView?.text = "00:00"
 
-
-
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.RECORD_AUDIO
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-
-                recordedAmplitudes.clear()
-                voiceNoteWaveformView?.clear()
                 startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon)
+
             } else {
-                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+
+                // Resume recording
+                startVoiceRecording()
+
+                btnRecord.visibility = View.GONE
+                pauseIcon.visibility = View.VISIBLE
+                btnDelete.visibility = View.GONE
+                btnPlay.visibility = View.GONE
+
+                isPausedRecording = false
             }
         }
 
         pauseIcon.setOnClickListener {
-            if (isRecording) {
-                stopVoiceRecording()
-                isRecording = false
 
+            if (isRecording) {
+
+                try {
+                    mediaRecorder?.stop()
+                    mediaRecorder?.release()
+                } catch (_: Exception) {}
+
+                mediaRecorder = null
+                isRecording = false
+                isPausedRecording = true
+
+                amplitudeHandler.removeCallbacks(amplitudeRunnable)
+                voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
+                segmentDurations.add(voiceNoteDurationSeconds)
                 pauseIcon.visibility = View.GONE
                 btnRecord.visibility = View.VISIBLE
-                btnDelete.visibility = View.VISIBLE
                 btnPlay.visibility = View.VISIBLE
+                btnDelete.visibility = View.VISIBLE
             }
         }
 
         btnPlay.setOnClickListener {
 
-            voiceNotePath?.let { path ->
+//            voiceNotePath?.let { path ->
+//
+//                if (isPlaying) {
+//                    stopPlayback()
+//                    btnPlay.setImageResource(R.drawable.play_circle)
+//
+//                    btnDelete.isEnabled = true
+//                    btnRecord.isEnabled = true
+//
+//                } else {
+//
+//                    val path = voiceSegments.last()
+//                    playVoiceNote(path, btnPlay, btnDelete, btnRecord)
+//
+//                    btnPlay.setImageResource(R.drawable.pause)
+//                    btnDelete.isEnabled = false
+//                    btnRecord.isEnabled = false
+//                }
+//            }
+
+            if (voiceSegments.isNotEmpty()) {
+
+                val path = voiceSegments.last()
 
                 if (isPlaying) {
                     stopPlayback()
                     btnPlay.setImageResource(R.drawable.play_circle)
-
                     btnDelete.isEnabled = true
                     btnRecord.isEnabled = true
 
                 } else {
 
-                    voiceNoteWaveformView?.setAmplitudes(
-                        recordedAmplitudes.takeLast(50).toIntArray()
-                    )
+                    val mergedFile = mergeVoiceSegments()
 
-                    voiceNoteWaveformView?.resetProgress()
+                    voiceNoteWaveformView?.apply {
 
-                    playVoiceNote(path, btnPlay, btnDelete, btnRecord)
+                        waveBackgroundColor = ContextCompat.getColor(
+                            context,
+                            R.color.grey_txt_color
+                        )
 
+                        waveProgressColor = ContextCompat.getColor(
+                            context,
+                            R.color.color_kia_black
+                        )
+
+                        progress = 0f
+                    }
+
+                    playAllSegments(btnPlay, btnDelete, btnRecord)
                     btnPlay.setImageResource(R.drawable.pause)
-
                     btnDelete.isEnabled = false
                     btnRecord.isEnabled = false
                 }
@@ -1397,20 +1667,23 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 return@setOnClickListener
             }
 
-            voiceNotePath?.let {
-                val file = File(it)
-                if (file.exists()) file.delete()
+//            voiceNotePath?.let {
+//                val file = File(it)
+//                if (file.exists()) file.delete()
+//            }
+
+            voiceSegments.forEach {
+                val f = File(it)
+                if (f.exists()) f.delete()
             }
 
+            voiceSegments.clear()
             voiceNotePath = null
             voiceNoteDurationSeconds = 0
             voiceNoteDialogTimerView?.text = "00:00"
 
             // ⭐ Clear waveform data
-            recordedAmplitudes.clear()
 
-            // ⭐ Clear waveform view
-            voiceNoteWaveformView?.clear()
 
             // ⭐ Hide waveform
             voiceNoteWaveformView?.visibility = View.GONE
@@ -1420,32 +1693,74 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         }
 
+//        btnSave.setOnClickListener {
+//            if (isRecording) {
+//                stopVoiceRecording()
+//                isRecording = false
+//            }
+//            dialog.dismiss()
+//
+////                bottomSheet.dismiss()
+//
+//            voiceNotePath?.let { path ->
+//                val localId = "local_voice_${System.currentTimeMillis()}"
+//                val tempMessage = ChatMessage(
+//                    messageId = localId,
+//                    text = "",
+//                    isSender = true,
+//                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date())
+//                        .lowercase(),
+//                    type = ChatMessageType.VOICE_NOTE,
+//                    attachmentUri = path,
+//                    durationSeconds = voiceNoteDurationSeconds,
+//                    status = MessageStatus.SENDING
+//                )
+//                messageAdapter?.addMessage(tempMessage)
+//                scrollToLast()
+//
+//                val mergedFile = mergeVoiceSegments()
+//                performUpload(mergedFile, "Voice Note", ChatMessageType.VOICE_NOTE, localId)
+//
+////                performUpload(File(path), "Voice Note", ChatMessageType.VOICE_NOTE, localId)
+//            }
+//        }
         btnSave.setOnClickListener {
+
             if (isRecording) {
                 stopVoiceRecording()
-                isRecording = false
             }
-            dialog.dismiss()
-            voiceNotePath?.let { path ->
-                val localId = "local_voice_${System.currentTimeMillis()}"
-                val tempMessage = ChatMessage(
-                    messageId = localId,
-                    text = "",
-                    isSender = true,
-                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date())
-                        .lowercase(),
-                    type = ChatMessageType.VOICE_NOTE,
-                    attachmentUri = path,
-                    durationSeconds = voiceNoteDurationSeconds,
-                    status = MessageStatus.SENDING
-                )
-                messageAdapter?.addMessage(tempMessage)
-                scrollToLast()
-                performUpload(File(path), "Voice Note", ChatMessageType.VOICE_NOTE, localId)
-            }
-        }
 
+            if (voiceSegments.isEmpty()) {
+                Toast.makeText(this, "No recording found", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val mergedFile = mergeVoiceSegments()
+
+            val localId = "local_voice_${System.currentTimeMillis()}"
+
+            val tempMessage = ChatMessage(
+                messageId = localId,
+                text = "",
+                isSender = true,
+                timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
+                type = ChatMessageType.VOICE_NOTE,
+                attachmentUri = mergedFile.absolutePath,
+                durationSeconds = voiceNoteDurationSeconds,
+                status = MessageStatus.SENDING
+            )
+
+            messageAdapter?.addMessage(tempMessage)
+            scrollToLast()
+
+            performUpload(mergedFile, "Voice Note", ChatMessageType.VOICE_NOTE, localId)
+
+            dialog.dismiss()
+        }
         dialog.show()
+
+//            bottomSheet.show()
+
     }
 
     private fun isTablet(): Boolean {
@@ -1521,11 +1836,47 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 //        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
 //    }
 
+//    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+//    private fun startVoiceRecording() {
+//
+//        val file = File(cacheDir, "voice_note_${System.currentTimeMillis()}.m4a")
+//        voiceNotePath = file.absolutePath
+//
+//        mediaRecorder = MediaRecorder().apply {
+//            setAudioSource(MediaRecorder.AudioSource.MIC)
+//            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+//            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+//            setAudioEncodingBitRate(128000)
+//            setAudioSamplingRate(44100)
+//            setOutputFile(voiceNotePath)
+//            prepare()
+//            start()
+//        }
+//
+//        isRecording = true
+//        voiceTimerHandler.post(voiceTimerRunnable)
+//
+//        // ⭐ START WAVEFORM ANIMATION
+//        amplitudeHandler.post(amplitudeRunnable)
+//    }
+
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun startVoiceRecording() {
 
-        val file = File(cacheDir, "voice_note_${System.currentTimeMillis()}.m4a")
-        voiceNotePath = file.absolutePath
+        recordedAmplitudes.clear()
+
+        voiceNoteWaveformView?.apply {
+            waveProgressColor = getColor(R.color.color_kia_black)
+            waveBackgroundColor = getColor(R.color.color_kia_black)
+        }
+
+//        val file = File(cacheDir, "voice_note_${System.currentTimeMillis()}.m4a")
+//        voiceNotePath = file.absolutePath
+
+        val file = File(cacheDir, "voice_${System.currentTimeMillis()}.m4a")
+        currentSegmentPath = file.absolutePath
+
+        voiceSegments.add(currentSegmentPath!!)
 
         mediaRecorder = MediaRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -1533,17 +1884,33 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             setAudioEncodingBitRate(128000)
             setAudioSamplingRate(44100)
-            setOutputFile(voiceNotePath)
+            setOutputFile(currentSegmentPath)
             prepare()
             start()
         }
 
         isRecording = true
-        voiceTimerHandler.post(voiceTimerRunnable)
 
-        // ⭐ START WAVEFORM ANIMATION
+        voiceTimerHandler.post(voiceTimerRunnable)
         amplitudeHandler.post(amplitudeRunnable)
     }
+
+//    private fun stopVoiceRecording() {
+//
+//        try {
+//            mediaRecorder?.stop()
+//            mediaRecorder?.release()
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//        }
+//
+//        mediaRecorder = null
+//        isRecording = false
+//
+//        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
+//    }
+
+
     private fun stopVoiceRecording() {
 
         try {
@@ -1555,14 +1922,22 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         mediaRecorder = null
         isRecording = false
+        voiceNoteWaveformView?.apply {
+            waveProgressColor = getColor(R.color.grey_txt_color)
+            waveBackgroundColor = getColor(R.color.grey_txt_color)
+        }
 
         voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
+
+        amplitudeHandler.removeCallbacks(amplitudeRunnable)
     }
+
     private fun playVoiceNote(path: String) {
 
         // ⭐ STOP waveform animation
         amplitudeHandler.removeCallbacks(amplitudeRunnable)
     }
+
     private fun playVoiceNote(
         path: String,
         btnPlay: ImageView,
@@ -1570,11 +1945,22 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         btnRecord: ImageView
     ) {
 
-        mediaPlayer = MediaPlayer()
-        mediaPlayer?.setDataSource(path)
-        mediaPlayer?.prepare()
-        mediaPlayer?.start()
+        amplitudeHandler.removeCallbacks(amplitudeRunnable)
 
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(path)
+            prepare()
+        }
+
+        voiceNoteWaveformView?.apply {
+            setSampleFrom(recordedAmplitudes.toIntArray())
+            progress = 0f
+            waveProgressColor = ContextCompat.getColor(context, R.color.color_kia_black)
+        }
+
+        voiceNoteWaveformView?.setSampleFrom(recordedAmplitudes.toIntArray())
+        voiceNoteWaveformView?.progress = 0f
+        mediaPlayer?.start()
         isPlaying = true
 
         playbackTimerHandler.post(playbackTimerRunnable)
@@ -1585,14 +1971,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
             runOnUiThread {
 
-                // Reset play icon
                 btnPlay.setImageResource(R.drawable.play_circle)
-
-                // Enable delete + record
                 btnDelete.isEnabled = true
                 btnRecord.isEnabled = true
 
-                // Reset timer to recorded duration
                 voiceNoteDialogTimerView?.text =
                     "%02d:%02d".format(
                         voiceNoteDurationSeconds / 60,
@@ -1601,22 +1983,36 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             }
         }
     }
+
     private fun stopPlayback() {
 
         isPlaying = false
 
         try {
             mediaPlayer?.stop()
-        } catch (_: Exception) {}
-
-        try {
             mediaPlayer?.release()
         } catch (_: Exception) {}
 
         mediaPlayer = null
 
         playbackTimerHandler.removeCallbacks(playbackTimerRunnable)
+        voiceNoteWaveformView?.apply {
+
+            waveBackgroundColor = ContextCompat.getColor(
+                this@VirtualChatRoomActivity,
+                R.color.grey_txt_color
+            )
+
+            waveProgressColor = ContextCompat.getColor(
+                this@VirtualChatRoomActivity,
+                R.color.grey_txt_color
+            )
+
+            progress = 0f
+        }
     }
+
+
 
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -1671,7 +2067,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         val tabParticipants = binding.tabParticipants ?: return
         val tabMedia = binding.tabMedia ?: return
-        val tabRodetails=binding.tabRoDetails?: return
+        val tabRodetails = binding.tabRoDetails ?: return
 
         tabParticipants.setTextColor(
             getColor(R.color.colorPrimary_kia_kandid)
@@ -1701,7 +2097,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         val tabParticipants = binding.tabParticipants ?: return
         val tabMedia = binding.tabMedia ?: return
-        val tabRodetails=binding.tabRoDetails?: return
+        val tabRodetails = binding.tabRoDetails ?: return
 
         tabRodetails.setTextColor(
             getColor(R.color.colorPrimary_kia_kandid)
@@ -1728,7 +2124,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun selectMediaTab() {
-        val tabRodetails=binding.tabRoDetails?: return
+        val tabRodetails = binding.tabRoDetails ?: return
 
         val tabParticipants = binding.tabParticipants ?: return
         val tabMedia = binding.tabMedia ?: return
@@ -1792,7 +2188,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         if (hasMessage(message.messageId)) return
         val ms = message.createdAtMillis ?: System.currentTimeMillis()
         val key = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(ms))
-        val hasHeaderForDay = messages.any { it.type == ChatMessageType.DATE_HEADER && it.messageId == "date_$key" }
+        val hasHeaderForDay =
+            messages.any { it.type == ChatMessageType.DATE_HEADER && it.messageId == "date_$key" }
         if (!hasHeaderForDay) {
             val label = buildMessagesWithDateHeaders(listOf(message))
                 .firstOrNull { it.type == ChatMessageType.DATE_HEADER }
@@ -1871,7 +2268,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 shouldRefetchMessagesOnReconnect = false
                 fetchMessages()
             }
-            pendingReadReceiptMessageIds.toList().sorted().forEach { sendReadReceipt(it.toString()) }
+            pendingReadReceiptMessageIds.toList().sorted()
+                .forEach { sendReadReceipt(it.toString()) }
             scheduleVisibleReadReceipt(150L)
             retryPendingOutgoingMessages()
         }
@@ -1900,7 +2298,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             val fileUrl = jsonObject.get("file_url")?.asString
                                 ?: jsonObject.get("attachment")?.asJsonObject?.get("file_url")?.asString
                             if (!fileUrl.isNullOrBlank()) {
-                                val fullUrl = if (fileUrl.startsWith("http")) fileUrl else ApiDetails.APRIK_Kia_BASE_URL + fileUrl
+                                val fullUrl =
+                                    if (fileUrl.startsWith("http")) fileUrl else ApiDetails.APRIK_Kia_BASE_URL + fileUrl
                                 messageAdapter?.updateMessageAttachmentUrl(msgId, fullUrl)
                             }
                             scrollToLast()
@@ -1928,27 +2327,41 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             }
 
                             val mediaMessage = ChatMessage(
-                                    messageId = messageIdFromJson(jsonObject),
-                                    text = "",
-                                    isSender = false,
-                                    senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
-                                    senderUsername = jsonObject.get("username")?.asString,
-                                    senderId = senderId,
-                                    senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
-                                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
-                                    type = msgType,
-                                    attachmentUri = fullAttachmentUrl,
-                                    fileName = fileName,
-                                    caption = content,
-                                    mimeType = mimeType
-                                )
+                                messageId = messageIdFromJson(jsonObject),
+                                text = "",
+                                isSender = false,
+                                senderName = resolveDisplayName(
+                                    jsonObject.get("sender_id")
+                                        ?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null },
+                                    jsonObject.get("username")?.asString
+                                ),
+                                senderUsername = jsonObject.get("username")?.asString,
+                                senderId = senderId,
+                                senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
+                                timeLabel = SimpleDateFormat(
+                                    "hh:mma",
+                                    Locale.getDefault()
+                                ).format(Date()).lowercase(),
+                                type = msgType,
+                                attachmentUri = fullAttachmentUrl,
+                                fileName = fileName,
+                                caption = content,
+                                mimeType = mimeType
+                            )
                             appendIncomingMessage(mediaMessage)
-                            room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
+                            room?.roNumber?.let {
+                                ChatMediaStore.addOrUpdateMessage(
+                                    it,
+                                    mediaMessage
+                                )
+                            }
                         } else if (jsonObject.has("file_url")) {
                             // Server sent chat.message with top-level file_url (e.g. after chat.media)
                             val fileUrl = jsonObject.get("file_url")?.asString ?: ""
-                            val fullUrl = if (fileUrl.startsWith("http")) fileUrl else ApiDetails.APRIK_Kia_BASE_URL + fileUrl
-                            val messageTypeStr = jsonObject.get("message_type")?.asString ?: "document"
+                            val fullUrl =
+                                if (fileUrl.startsWith("http")) fileUrl else ApiDetails.APRIK_Kia_BASE_URL + fileUrl
+                            val messageTypeStr =
+                                jsonObject.get("message_type")?.asString ?: "document"
                             val msgType = when (messageTypeStr.lowercase(Locale.getDefault())) {
                                 "image" -> ChatMessageType.IMAGE
                                 "video" -> ChatMessageType.VIDEO
@@ -1956,28 +2369,40 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 "audio", "voice" -> ChatMessageType.VOICE_NOTE
                                 else -> ChatMessageType.FILE
                             }
-                            val fileName = fileUrl.substringAfterLast('/', missingDelimiterValue = "")
+                            val fileName =
+                                fileUrl.substringAfterLast('/', missingDelimiterValue = "")
                             val caption = jsonObject.get("content")?.asString
                             val thumbUrl = jsonObject.get("thumbnail_url")?.asString?.let { t ->
                                 if (t.startsWith("http")) t else ApiDetails.APRIK_Kia_BASE_URL + t
                             }
                             val mediaMessage = ChatMessage(
-                                    messageId = messageIdFromJson(jsonObject),
-                                    text = "",
-                                    isSender = false,
-                                    senderName = resolveDisplayName(senderId?.toIntOrNull(), jsonObject.get("username")?.asString),
-                                    senderUsername = jsonObject.get("username")?.asString,
-                                    senderId = senderId,
-                                    senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
-                                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
-                                    type = msgType,
-                                    attachmentUri = fullUrl,
-                                    fileName = if (fileName.isNotBlank()) fileName else null,
-                                    caption = caption,
-                                    thumbnailUrl = thumbUrl
-                                )
+                                messageId = messageIdFromJson(jsonObject),
+                                text = "",
+                                isSender = false,
+                                senderName = resolveDisplayName(
+                                    senderId?.toIntOrNull(),
+                                    jsonObject.get("username")?.asString
+                                ),
+                                senderUsername = jsonObject.get("username")?.asString,
+                                senderId = senderId,
+                                senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
+                                timeLabel = SimpleDateFormat(
+                                    "hh:mma",
+                                    Locale.getDefault()
+                                ).format(Date()).lowercase(),
+                                type = msgType,
+                                attachmentUri = fullUrl,
+                                fileName = if (fileName.isNotBlank()) fileName else null,
+                                caption = caption,
+                                thumbnailUrl = thumbUrl
+                            )
                             appendIncomingMessage(mediaMessage)
-                            room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
+                            room?.roNumber?.let {
+                                ChatMediaStore.addOrUpdateMessage(
+                                    it,
+                                    mediaMessage
+                                )
+                            }
                         }
 //                        if (attachment != null) {
 //                            val attachmentUrl = attachment.get("file_url")?.asString ?: ""
@@ -2011,16 +2436,30 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 //                        }
 //
                         else if (content != null) {
-                            if (content.contains("_image") || content.contains(".jpg", ignoreCase = true) ||
-                                content.contains(".jpeg", ignoreCase = true) || content.contains(".png", ignoreCase = true) ||
-                                content.contains(".mp4", ignoreCase = true) || content.contains(".pdf", ignoreCase = true)) {
+                            if (content.contains("_image") || content.contains(
+                                    ".jpg",
+                                    ignoreCase = true
+                                ) ||
+                                content.contains(
+                                    ".jpeg",
+                                    ignoreCase = true
+                                ) || content.contains(".png", ignoreCase = true) ||
+                                content.contains(".mp4", ignoreCase = true) || content.contains(
+                                    ".pdf",
+                                    ignoreCase = true
+                                )
+                            ) {
                                 fetchMessages()
                             } else {
                                 addMessage(
                                     text = content,
                                     isSender = false,
                                     messageId = messageIdFromJson(jsonObject),
-                                    senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
+                                    senderName = resolveDisplayName(
+                                        jsonObject.get("sender_id")
+                                            ?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null },
+                                        jsonObject.get("username")?.asString
+                                    ),
                                     senderUsername = jsonObject.get("username")?.asString
                                 )
                             }
@@ -2064,25 +2503,37 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         }
 
                         // Derive a filename from URL if server doesn't send it separately
-                        val fileName = rawUrl.substringAfterLast('/', missingDelimiterValue = "")
+                        val fileName =
+                            rawUrl.substringAfterLast('/', missingDelimiterValue = "")
 
                         val mediaMessage = ChatMessage(
-                                messageId = messageIdFromJson(jsonObject),
-                                text = "",
-                                isSender = false,
-                                senderName = resolveDisplayName(jsonObject.get("sender_id")?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null }, jsonObject.get("username")?.asString),
-                                senderUsername = jsonObject.get("username")?.asString,
-                                senderId = senderId,
-                                senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
-                                timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
-                                type = msgType,
-                                attachmentUri = fullUrl,
-                                fileName = if (fileName.isNotBlank()) fileName else null,
-                                caption = caption,
-                                thumbnailUrl = thumbUrl
-                            )
+                            messageId = messageIdFromJson(jsonObject),
+                            text = "",
+                            isSender = false,
+                            senderName = resolveDisplayName(
+                                jsonObject.get("sender_id")
+                                    ?.let { el -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asInt else null },
+                                jsonObject.get("username")?.asString
+                            ),
+                            senderUsername = jsonObject.get("username")?.asString,
+                            senderId = senderId,
+                            senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
+                            timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(
+                                Date()
+                            ).lowercase(),
+                            type = msgType,
+                            attachmentUri = fullUrl,
+                            fileName = if (fileName.isNotBlank()) fileName else null,
+                            caption = caption,
+                            thumbnailUrl = thumbUrl
+                        )
                         appendIncomingMessage(mediaMessage)
-                        room?.roNumber?.let { ChatMediaStore.addOrUpdateMessage(it, mediaMessage) }
+                        room?.roNumber?.let {
+                            ChatMediaStore.addOrUpdateMessage(
+                                it,
+                                mediaMessage
+                            )
+                        }
 
                         scrollToLast()
                         scheduleVisibleReadReceipt(120L)
@@ -2090,20 +2541,25 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
 
                     "chat.typing" -> {
-                        val userId = when (val el = jsonObject.get("user_id") ?: jsonObject.get("sender_id")) {
+                        val userId = when (val el =
+                            jsonObject.get("user_id") ?: jsonObject.get("sender_id")) {
                             null -> null
                             else -> if (el.isJsonPrimitive && el.asJsonPrimitive.isNumber) el.asJsonPrimitive.asInt.toString() else el.asString
                         }
                         PresenceStore.setUserOnline(userId)
                         val currentUserId = PreferenceManager.getUserId()
                         if (userId != null && userId != currentUserId) {
-                            val isTypingBroadcast = jsonObject.get("is_typing")?.asBoolean ?: false
+                            val isTypingBroadcast =
+                                jsonObject.get("is_typing")?.asBoolean ?: false
                             if (isTypingBroadcast) {
                                 val username = jsonObject.get("username")?.asString
-                                val displayName = resolveDisplayName(userId?.toIntOrNull(), username) ?: "Someone"
+                                val displayName =
+                                    resolveDisplayName(userId?.toIntOrNull(), username)
+                                        ?: "Someone"
                                 binding.layoutTypingIndicator?.visibility = View.VISIBLE
                                 binding.txtTypingName?.text = displayName
-                                binding.txtTypingInitial?.text = displayName.firstOrNull()?.uppercase() ?: "?"
+                                binding.txtTypingInitial?.text =
+                                    displayName.firstOrNull()?.uppercase() ?: "?"
                                 binding.txtTypingIndicator?.text = "is typing..."
                             } else {
                                 binding.layoutTypingIndicator?.visibility = View.GONE
@@ -2131,16 +2587,20 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                     // Real-time service lifecycle — update only pinned (lifecycle status); do NOT update txtStatusChip (chip = service status only)
                     "service.lifecycle" -> {
-                        val newStatusLabel = jsonObject.get("status_label")?.asString?.takeIf { it.isNotBlank() }
-                        val newNotes = jsonObject.get("notes")?.asString?.takeIf { it.isNotBlank() }
-                        val previousStatusLabel = jsonObject.get("previous_status_label")?.asString?.takeIf { it.isNotBlank() }
-                        val content = jsonObject.get("content")?.asString?.takeIf { it.isNotBlank() }
+                        val newStatusLabel =
+                            jsonObject.get("status_label")?.asString?.takeIf { it.isNotBlank() }
+                        val newNotes =
+                            jsonObject.get("notes")?.asString?.takeIf { it.isNotBlank() }
+                        val previousStatusLabel =
+                            jsonObject.get("previous_status_label")?.asString?.takeIf { it.isNotBlank() }
+                        val content =
+                            jsonObject.get("content")?.asString?.takeIf { it.isNotBlank() }
 
                         jobNotes = newNotes ?: jobNotes
                         statusLabel = newStatusLabel ?: statusLabel
 
-                        val pinnedText =  buildPinnedLifecycleText(statusLabel)
-                        Log.d(TAG,"service.lifecycle pinned text: $pinnedText")
+                        val pinnedText = buildPinnedLifecycleText(statusLabel)
+                        Log.d(TAG, "service.lifecycle pinned text: $pinnedText")
                         // Pinned: lifecycle only; show on both phone and tablet when we have lifecycle data
                         binding.layoutPinnedStatus?.visibility =
                             if (pinnedText.isNotBlank()) View.VISIBLE else View.GONE
@@ -2155,29 +2615,41 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
                     // Service status — update only txtStatusChip (service status) and RO details; do NOT update pinned (pinned = lifecycle only)
                     "service.status" -> {
-                        val newStatusLabel = jsonObject.get("status_label")?.asString?.takeIf { it.isNotBlank() }
-                        val newStatus = jsonObject.get("status")?.asString?.takeIf { it.isNotBlank() }
-                        val newNotes = jsonObject.get("notes")?.asString?.takeIf { it.isNotBlank() }
+                        val newStatusLabel =
+                            jsonObject.get("status_label")?.asString?.takeIf { it.isNotBlank() }
+                        val newStatus =
+                            jsonObject.get("status")?.asString?.takeIf { it.isNotBlank() }
+                        val newNotes =
+                            jsonObject.get("notes")?.asString?.takeIf { it.isNotBlank() }
 
                         jobNotes = newNotes ?: jobNotes
                         statusLabel = newStatusLabel ?: statusLabel
 
                         // Chip: service status only — prefer status_label, else raw status (e.g. CLOSED), formatted
                         binding.txtStatusChip?.let { tv ->
-                            Log.d(TAG,"service.status::statusLabel: $statusLabel")
+                            Log.d(TAG, "service.status::statusLabel: $statusLabel")
 
-                            Log.d(TAG,"service.status::status: $jobNotes")
-                            val chipText = newStatusLabel ?: newStatus?.replace('_', ' ') ?: statusLabel ?: tv.text
+                            Log.d(TAG, "service.status::status: $jobNotes")
+                            val chipText =
+                                newStatusLabel ?: newStatus?.replace('_', ' ') ?: statusLabel
+                                ?: tv.text
                             tv.text = chipText
-                            tv.visibility = if (chipText.isNotBlank()) View.VISIBLE else View.GONE
+                            tv.visibility =
+                                if (chipText.isNotBlank()) View.VISIBLE else View.GONE
                         }
                         binding.txtLeftStatus?.let { tv ->
-                            Log.d(TAG,"txtLeftStatus service.status::statusLabel: $statusLabel")
+                            Log.d(
+                                TAG,
+                                "txtLeftStatus service.status::statusLabel: $statusLabel"
+                            )
 
-                            Log.d(TAG,"txtLeftStatus service.status::status: $jobNotes")
-                            val chipText = newStatusLabel ?: newStatus?.replace('_', ' ') ?: statusLabel ?: tv.text
+                            Log.d(TAG, "txtLeftStatus service.status::status: $jobNotes")
+                            val chipText =
+                                newStatusLabel ?: newStatus?.replace('_', ' ') ?: statusLabel
+                                ?: tv.text
                             tv.text = chipText
-                            tv.visibility = if (chipText.isNotBlank()) View.VISIBLE else View.GONE
+                            tv.visibility =
+                                if (chipText.isNotBlank()) View.VISIBLE else View.GONE
                         }
 
                         (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
@@ -2212,7 +2684,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         val errorMessage = jsonObject.get("message")?.asString
                             ?: "Unexpected error from server"
                         Log.e(TAG, "Server error event: $errorMessage")
-                        Toast.makeText(this@VirtualChatRoomActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@VirtualChatRoomActivity,
+                            errorMessage,
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             } catch (e: Exception) {
@@ -2270,7 +2746,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val btnSend: View = previewRoot.findViewById(R.id.btnPreviewSend)
         val btnCancel: View = previewRoot.findViewById(R.id.btnPreviewCancel)
         val txtTitle: TextView = previewRoot.findViewById(R.id.txtPreviewTitle)
-        txtTitle.text = if (previewSelectedFiles.size <= 1) "Attach" else "Attach (${previewSelectedFiles.size})"
+        txtTitle.text =
+            if (previewSelectedFiles.size <= 1) "Attach" else "Attach (${previewSelectedFiles.size})"
         if (edtCaption.text.isNullOrEmpty()) {
             edtCaption.setText("")
         }
@@ -2285,7 +2762,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             closePreviewPanel()
             val groupId = "grp_${System.currentTimeMillis()}"
             selectedFiles.forEachIndexed { index, (file, type) ->
-                val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+                val timeLabel =
+                    SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
                 val localId = "local_${System.currentTimeMillis()}_${file.name}"
                 messageAdapter?.addMessage(
                     ChatMessage(
@@ -2306,10 +2784,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 scrollToLast()
                 lifecycleScope.launch {
                     val fileToUpload = if (type == ChatMessageType.IMAGE) {
-                        try { compressImage(file) } catch (e: Exception) { file }
+                        try {
+                            compressImage(file)
+                        } catch (e: Exception) {
+                            file
+                        }
                     } else file
                     // Multi-select: send caption with first upload only (server still receives one caption).
-                    val captionToSend = if (selectedFiles.size == 1) caption else if (index == 0) caption else ""
+                    val captionToSend =
+                        if (selectedFiles.size == 1) caption else if (index == 0) caption else ""
 //                    performUpload(fileToUpload, captionToSend, type, localId)
                     performUpload(file, captionToSend, type, localId)
                 }
@@ -2321,10 +2804,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val itemsContainer = previewRoot.findViewById<LinearLayout>(R.id.layoutPreviewItems)
         val txtTitle = previewRoot.findViewById<TextView>(R.id.txtPreviewTitle)
         itemsContainer.removeAllViews()
-        txtTitle.text = if (previewSelectedFiles.size <= 1) "Attach" else "Attach (${previewSelectedFiles.size})"
+        txtTitle.text =
+            if (previewSelectedFiles.size <= 1) "Attach" else "Attach (${previewSelectedFiles.size})"
 
         previewSelectedFiles.forEachIndexed { index, (file, type) ->
-            val itemView = layoutInflater.inflate(R.layout.vc_item_preview_attachment, itemsContainer, false)
+            val itemView = layoutInflater.inflate(
+                R.layout.vc_item_preview_attachment,
+                itemsContainer,
+                false
+            )
             val imgThumb = itemView.findViewById<ImageView>(R.id.imgPreviewThumb)
             val imgVideo = itemView.findViewById<ImageView>(R.id.imgPreviewVideo)
             val btnRemove = itemView.findViewById<ImageView>(R.id.btnRemovePreview)
@@ -2361,7 +2849,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         try {
                             val retriever = MediaMetadataRetriever()
                             retriever.setDataSource(file.absolutePath)
-                            val frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                            val frame = retriever.getFrameAtTime(
+                                0,
+                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                            )
                             retriever.release()
                             frame
                         } catch (_: Exception) {
@@ -2377,9 +2868,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     }
                 }
             }
+
             ChatMessageType.FILE -> {
                 imgThumb.setImageResource(R.drawable.file_pdf_icon)
             }
+
             else -> imgThumb.setImageResource(R.drawable.file_pdf_icon)
         }
     }
@@ -2389,8 +2882,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             layoutParams = LinearLayout.LayoutParams(dp(72), dp(72)).apply {
                 marginEnd = dp(8)
             }
-            background = ContextCompat.getDrawable(this@VirtualChatRoomActivity, R.drawable.bg_comment_box)
-            foreground = ContextCompat.getDrawable(this@VirtualChatRoomActivity, android.R.drawable.list_selector_background)
+            background = ContextCompat.getDrawable(
+                this@VirtualChatRoomActivity,
+                R.drawable.bg_comment_box
+            )
+            foreground = ContextCompat.getDrawable(
+                this@VirtualChatRoomActivity,
+                android.R.drawable.list_selector_background
+            )
             setOnClickListener { launchAttachmentPicker() }
         }
         val plus = ImageView(this).apply {
@@ -2495,7 +2994,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         compressedFile
     }
 
-    private fun performUpload(file: File, caption: String, type: ChatMessageType, localId: String) {
+    private fun performUpload(
+        file: File,
+        caption: String,
+        type: ChatMessageType,
+        localId: String
+    ) {
         val slug = room?.roNumber ?: return
         val token = PreferenceManager.getAccessToken() ?: return
 
@@ -2509,12 +3013,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 "wav" -> "audio/wav"
                 else -> "audio/*"
             }
+
             ChatMessageType.FILE -> when (file.extension.lowercase()) {
                 "pdf" -> "application/pdf"
                 "doc", "docx" -> "application/msword"
                 "xls", "xlsx" -> "application/vnd.ms-excel"
                 else -> "application/octet-stream"
             }
+
             else -> "application/octet-stream"
         }
 
@@ -2536,7 +3042,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 if (response.isSuccessful && response.body() != null) {
                     val fileResponse = response.body()!!
                     Log.d(TAG, "Upload API response for $slug: ${Gson().toJson(fileResponse)}")
-                    
+
                     val fullFileUrl = if (fileResponse.attachment.fileUrl.startsWith("http")) {
                         fileResponse.attachment.fileUrl
                     } else {
@@ -2558,7 +3064,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             caption = captionText,
                             thumbnailUrl = thumbUrl
                         )
-                        messageAdapter?.updateMessageAttachmentUrl(localId, fullFileUrl, thumbUrl)
+                        messageAdapter?.updateMessageAttachmentUrl(
+                            localId,
+                            fullFileUrl,
+                            thumbUrl
+                        )
                         messageAdapter?.updateMessageId(localId, serverId)
                         messageAdapter?.updateMessageStatus(
                             serverId,
@@ -2572,7 +3082,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                         messageId = serverId,
                                         text = "",
                                         isSender = true,
-                                        timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
+                                        timeLabel = SimpleDateFormat(
+                                            "hh:mma",
+                                            Locale.getDefault()
+                                        ).format(Date()).lowercase(),
                                         status = MessageStatus.SENT,
                                         type = type,
                                         attachmentUri = fullFileUrl,
@@ -2651,7 +3164,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     private fun sendReadReceiptsForVisibleIncomingMessages() {
-        val layoutManager = binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return
+        val layoutManager =
+            binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return
         val firstVisible = layoutManager.findFirstVisibleItemPosition()
         val lastVisible = layoutManager.findLastVisibleItemPosition()
         if (firstVisible == RecyclerView.NO_POSITION || lastVisible == RecyclerView.NO_POSITION) return
@@ -2749,7 +3263,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     }
                 } else file
 //                performUpload(fileToUpload, caption, type, messageId)
-                performUpload(file,caption,type,messageId)
+                performUpload(file, caption, type, messageId)
             }
         }
     }
@@ -2793,7 +3307,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             ?.firstOrNull()
             ?.toString()
             ?.uppercase()
-         binding.txtInitial?.text=initial
+        binding.txtInitial?.text = initial
     }
 
 //    private fun setupMessageList() {
@@ -2872,7 +3386,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             StickyDateHeaderDecoration(messageAdapter!!)
         )
 
-        messageAdapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+        messageAdapter?.registerAdapterDataObserver(object :
+            RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 if (!suppressAutoScroll) {
                     scrollToLast()
@@ -2927,7 +3442,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun handleAttachmentClick(message: ChatMessage) {
         val rawUrl = message.attachmentUri ?: return
-        val fullUrl = if (rawUrl.startsWith("http")) rawUrl else ApiDetails.APRIK_Kia_BASE_URL + rawUrl
+        val fullUrl =
+            if (rawUrl.startsWith("http")) rawUrl else ApiDetails.APRIK_Kia_BASE_URL + rawUrl
         val intent = Intent(this, MediaViewerActivity::class.java).apply {
             putExtra(MediaViewerActivity.EXTRA_URL, fullUrl)
             putExtra(MediaViewerActivity.EXTRA_TYPE, message.type.name)
@@ -2941,7 +3457,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             if (granted) {
                 pendingSaveMessage?.let { doSaveMedia(it) }
             } else {
-                Toast.makeText(this, "Storage permission required to save files", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    "Storage permission required to save files",
+                    Toast.LENGTH_LONG
+                ).show()
             }
             pendingSaveMessage = null
         }
@@ -2951,7 +3471,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun downloadAndSaveMedia(message: ChatMessage) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             val perm = Manifest.permission.WRITE_EXTERNAL_STORAGE
-            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    perm
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
                 pendingSaveMessage = message
                 requestWriteStoragePermission.launch(perm)
                 return
@@ -2982,12 +3506,23 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     downloadRemoteFileToPublicStorage(rawUrl, fileName, message)
                 }
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@VirtualChatRoomActivity, "Saved to gallery: $fileName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@VirtualChatRoomActivity,
+                        "Saved to gallery: $fileName",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
-                Log.e("VirtualChatRoom", "Save failed for $fileName: ${e.javaClass.simpleName} - ${e.message}")
+                Log.e(
+                    "VirtualChatRoom",
+                    "Save failed for $fileName: ${e.javaClass.simpleName} - ${e.message}"
+                )
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@VirtualChatRoomActivity, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        this@VirtualChatRoomActivity,
+                        "Save failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
@@ -3058,8 +3593,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             contentResolver.update(uri, values, null, null)
         } else {
             val directory = when (message.type) {
-                ChatMessageType.IMAGE -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                ChatMessageType.VIDEO -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+                ChatMessageType.IMAGE -> Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_PICTURES
+                )
+
+                ChatMessageType.VIDEO -> Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_MOVIES
+                )
+
                 else -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             }
             val targetDir = File(directory, "KiaKandid")
@@ -3087,11 +3628,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 "webp" -> "image/webp"
                 else -> "image/jpeg"
             }
+
             ChatMessageType.VIDEO -> when (extension) {
                 "3gp" -> "video/3gpp"
                 "mkv" -> "video/x-matroska"
                 else -> "video/mp4"
             }
+
             ChatMessageType.FILE -> when (extension) {
                 "pdf" -> "application/pdf"
                 "doc" -> "application/msword"
@@ -3100,6 +3643,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 else -> "application/octet-stream"
             }
+
             ChatMessageType.VOICE_NOTE -> "audio/*"
             else -> "application/octet-stream"
         }
@@ -3119,7 +3663,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         container.removeAllViews()
         val inflater = LayoutInflater.from(this)
         quickReplies.forEach { text ->
-            val chip = inflater.inflate(R.layout.vc_quick_reply_chip, container, false) as TextView
+            val chip =
+                inflater.inflate(R.layout.vc_quick_reply_chip, container, false) as TextView
             chip.text = text
             chip.setOnClickListener {
                 messageField.setText(text)
@@ -3136,7 +3681,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 if (s.isNullOrBlank()) sendTypingStatus(false)
             }
 
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun beforeTextChanged(
+                s: CharSequence?,
+                start: Int,
+                count: Int,
+                after: Int
+            ) {
+            }
+
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val hasText = !s.isNullOrBlank()
                 binding.recordLayout?.visibility = if (hasText) View.GONE else View.VISIBLE
@@ -3197,7 +3749,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
 
     private fun isUserNearBottom(): Boolean {
-        val layoutManager = binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return true
+        val layoutManager =
+            binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return true
         val lastVisible = layoutManager.findLastVisibleItemPosition()
         val total = messageAdapter?.itemCount ?: 0
         return lastVisible >= total - 3
@@ -3212,7 +3765,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     ) {
         if (TextUtils.isEmpty(text)) return
         if (hasMessage(messageId)) return
-        val timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+        val timeLabel =
+            SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
         messageAdapter?.addMessage(
             ChatMessage(
                 messageId = messageId,
@@ -3230,7 +3784,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val json = JsonObject()
         json.addProperty("type", "chat.message")
         json.addProperty("content", text)
-        // Only add message_id if it's a valid integer. 
+        // Only add message_id if it's a valid integer.
         // If it starts with 'local_', it's a tracking ID, we might need to send it differently or not at all.
         // Assuming the server only wants integer for 'message_id' field.
         return WebSocketManager.getInstance().sendMessage(json.toString())
@@ -3240,11 +3794,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         if (isRetryingPendingMessages) return
         val pendingMessages = messages.filter { message ->
             message.isSender &&
-                message.type != ChatMessageType.DATE_HEADER &&
-                (
-                    message.status == MessageStatus.ERROR ||
-                        (message.type == ChatMessageType.TEXT && message.status == MessageStatus.SENDING)
-                    )
+                    message.type != ChatMessageType.DATE_HEADER &&
+                    (
+                            message.status == MessageStatus.ERROR ||
+                                    (message.type == ChatMessageType.TEXT && message.status == MessageStatus.SENDING)
+                            )
         }
         if (pendingMessages.isEmpty()) return
 
@@ -3312,35 +3866,74 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
     }
 
-    override fun onPartCheckBoxClicked(parentPosition: Int, childPosition: Int, isSelected: Boolean, arrayList: ArrayList<Part>) {
+    override fun onPartCheckBoxClicked(
+        parentPosition: Int,
+        childPosition: Int,
+        isSelected: Boolean,
+        arrayList: ArrayList<Part>
+    ) {
         updatePartListData(parentPosition, childPosition, isSelected, arrayList)
-        updateGrandTotalConsideringPartList(parentPosition, childPosition, isSelected, arrayList)
-        
+        updateGrandTotalConsideringPartList(
+            parentPosition,
+            childPosition,
+            isSelected,
+            arrayList
+        )
+
         val details = messages[parentPosition].estimationDetails ?: return
-        details.areAllItemsSelected = details.labour_list.all { it.isSelected == "Y" } && details.part_list.all { it.isSelected == "Y" }
-        
+        details.areAllItemsSelected =
+            details.labour_list.all { it.isSelected == "Y" } && details.part_list.all { it.isSelected == "Y" }
+
         messageAdapter?.notifyItemChanged(parentPosition)
     }
 
-    override fun onLabourCheckboxClick(parentPosition: Int, childPosition: Int, isSelected: Boolean, arrayList: ArrayList<Labour>) {
+    override fun onLabourCheckboxClick(
+        parentPosition: Int,
+        childPosition: Int,
+        isSelected: Boolean,
+        arrayList: ArrayList<Labour>
+    ) {
         updateLabourListData(parentPosition, childPosition, isSelected, arrayList)
-        updateGrandTotalConsideringLabourList(parentPosition, childPosition, isSelected, arrayList)
-        
+        updateGrandTotalConsideringLabourList(
+            parentPosition,
+            childPosition,
+            isSelected,
+            arrayList
+        )
+
         val details = messages[parentPosition].estimationDetails ?: return
-        details.areAllItemsSelected = details.labour_list.all { it.isSelected == "Y" } && details.part_list.all { it.isSelected == "Y" }
-        
+        details.areAllItemsSelected =
+            details.labour_list.all { it.isSelected == "Y" } && details.part_list.all { it.isSelected == "Y" }
+
         messageAdapter?.notifyItemChanged(parentPosition)
     }
 
-    private fun updatePartListData(parentPosition: Int, childPosition: Int, isSelected: Boolean, arrayList: ArrayList<Part>) {
-        messages[parentPosition].estimationDetails!!.part_list[childPosition].isSelected = if (isSelected) "Y" else "N"
+    private fun updatePartListData(
+        parentPosition: Int,
+        childPosition: Int,
+        isSelected: Boolean,
+        arrayList: ArrayList<Part>
+    ) {
+        messages[parentPosition].estimationDetails!!.part_list[childPosition].isSelected =
+            if (isSelected) "Y" else "N"
     }
 
-    private fun updateLabourListData(parentPosition: Int, childPosition: Int, isSelected: Boolean, arrayList: ArrayList<Labour>) {
-        messages[parentPosition].estimationDetails!!.labour_list[childPosition].isSelected = if (isSelected) "Y" else "N"
+    private fun updateLabourListData(
+        parentPosition: Int,
+        childPosition: Int,
+        isSelected: Boolean,
+        arrayList: ArrayList<Labour>
+    ) {
+        messages[parentPosition].estimationDetails!!.labour_list[childPosition].isSelected =
+            if (isSelected) "Y" else "N"
     }
 
-    private fun updateGrandTotalConsideringPartList(parentPosition: Int, childPosition: Int, isSelected: Boolean, partList: ArrayList<Part>) {
+    private fun updateGrandTotalConsideringPartList(
+        parentPosition: Int,
+        childPosition: Int,
+        isSelected: Boolean,
+        partList: ArrayList<Part>
+    ) {
         val details = messages[parentPosition].estimationDetails ?: return
         val itemPrice = details.part_list[childPosition].totalPrice.toDouble()
         if (isSelected) {
@@ -3351,7 +3944,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         details.selectedItemsTotal = "%.2f".format(details.selectedItemsTotal).toDouble()
     }
 
-    private fun updateGrandTotalConsideringLabourList(parentPosition: Int, childPosition: Int, isSelected: Boolean, labourList: ArrayList<Labour>) {
+    private fun updateGrandTotalConsideringLabourList(
+        parentPosition: Int,
+        childPosition: Int,
+        isSelected: Boolean,
+        labourList: ArrayList<Labour>
+    ) {
         val details = messages[parentPosition].estimationDetails ?: return
         val itemPrice = details.labour_list[childPosition].totalLabourCost.toDouble()
         if (isSelected) {
@@ -3362,11 +3960,20 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         details.selectedItemsTotal = "%.2f".format(details.selectedItemsTotal).toDouble()
     }
 
-    override fun onAcceptClicked(parentPosition: Int, estimationDetails: ResponseModelEstimateData) {
+    override fun onAcceptClicked(
+        parentPosition: Int,
+        estimationDetails: ResponseModelEstimateData
+    ) {
         sharedViewModel.isProgressBarVisible.value = true
-        
-        updateSelectedPartList(parentPosition, messages[parentPosition].estimationDetails!!.part_list)
-        updateSelectedLabourList(parentPosition, messages[parentPosition].estimationDetails!!.labour_list)
+
+        updateSelectedPartList(
+            parentPosition,
+            messages[parentPosition].estimationDetails!!.part_list
+        )
+        updateSelectedLabourList(
+            parentPosition,
+            messages[parentPosition].estimationDetails!!.labour_list
+        )
 
         val approvedEstimateData = ResponseModelEstimateData(
             deferred_job_list = estimationDetails.deferred_job_list,
@@ -3384,18 +3991,27 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         sharedViewModel.updateEstimateStatus.value = true
     }
 
-    override fun onRejectClicked(parentPosition: Int, estimationDetails: ResponseModelEstimateData) {
+    override fun onRejectClicked(
+        parentPosition: Int,
+        estimationDetails: ResponseModelEstimateData
+    ) {
         sharedViewModel.isProgressBarVisible.value = true
         showDialogToConfirmEstimateRejection(parentPosition, estimationDetails)
     }
 
-    private fun showDialogToConfirmEstimateRejection(parentPosition: Int, estimationDetails: ResponseModelEstimateData) {
+    private fun showDialogToConfirmEstimateRejection(
+        parentPosition: Int,
+        estimationDetails: ResponseModelEstimateData
+    ) {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         val dialogBinding = LayoutUniversalDialogBinding.inflate(LayoutInflater.from(this))
         dialog.setContentView(dialogBinding.root)
         dialogBinding.tvDialogMessage.text = "Are you sure you want to reject the estimation."
-        dialog.window?.setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
         dialog.setCancelable(false)
 
         dialogBinding.tvDialogTitle.visibility = View.GONE
@@ -3425,15 +4041,27 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         dialog.show()
     }
 
-    override fun onSelectAllClicked(parentPosition: Int, isSelected: Boolean, estimationDetails: ResponseModelEstimateData) {
-        messages[parentPosition] = messages[parentPosition].copy(estimationDetails = updateEstimationListToSelectAllItems(estimationDetails, isSelected))
+    override fun onSelectAllClicked(
+        parentPosition: Int,
+        isSelected: Boolean,
+        estimationDetails: ResponseModelEstimateData
+    ) {
+        messages[parentPosition] = messages[parentPosition].copy(
+            estimationDetails = updateEstimationListToSelectAllItems(
+                estimationDetails,
+                isSelected
+            )
+        )
         messageAdapter?.notifyItemChanged(parentPosition)
     }
 
-    private fun updateEstimationListToSelectAllItems(estimateData: ResponseModelEstimateData, isSelected: Boolean): ResponseModelEstimateData {
+    private fun updateEstimationListToSelectAllItems(
+        estimateData: ResponseModelEstimateData,
+        isSelected: Boolean
+    ): ResponseModelEstimateData {
         val modifiedEstimateData = estimateData
         val status = if (isSelected) "Y" else "N"
-        
+
         for (part in modifiedEstimateData.part_list) {
             part.isSelected = status
         }
@@ -3502,6 +4130,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         }.start()
     }
+
 
 
 }
