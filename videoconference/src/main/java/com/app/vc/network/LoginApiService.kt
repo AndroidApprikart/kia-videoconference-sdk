@@ -14,6 +14,7 @@ import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
@@ -82,6 +83,18 @@ interface LoginApiService {
         @Path("slug") slug: String
     ): Response<List<GroupMemberResponse>>
 
+    @POST("api/groups/members/add/")
+    suspend fun addGroupMember(
+        @Header("Authorization") token: String,
+        @Body request: AddGroupMemberRequest
+    ): Response<JsonElement>
+
+    @HTTP(method = "DELETE", path = "api/groups/members/remove/", hasBody = true)
+    suspend fun removeGroupMember(
+        @Header("Authorization") token: String,
+        @Body request: RemoveGroupMemberRequest
+    ): Response<JsonElement>
+
     @POST("api/groups/{slug}/messages/mark-all-read/")
     suspend fun getStatusOfMessagesRead(
         @Header("Authorization") token: String,
@@ -140,6 +153,17 @@ data class ApiReceiptResponse(
 data class MarkAllReadResponse(
     @SerializedName("unread_count") val unreadCount: Int = 0,
     @SerializedName("marked_count") val markedCount: Int = 0
+)
+
+data class AddGroupMemberRequest(
+    @SerializedName("unique_id") val uniqueId: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("role") val role: String,
+    @SerializedName("group_slug") val groupSlug: String
+)
+
+data class RemoveGroupMemberRequest(
+    @SerializedName("membership_id") val membershipId: Int
 )
 
 data class ServiceLifecycleCurrentResponse(
