@@ -30,6 +30,9 @@
     <string name="sound_device">Sound Device</string>
 
     <string name="cancel">Cancel</string>
+    <string name="pause">Pause</string>
+    <string name="restart">Restart</string>
+    <string name="recording">Start Recording</string>
     <string name="screen_share_info">People will see everything on your screen</string>
     <string name="start_sharing">Start sharing</string>
     <string name="screen_share_info_ongoing">You are sharing your screen</string>

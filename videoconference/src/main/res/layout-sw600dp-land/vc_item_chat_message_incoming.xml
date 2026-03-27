@@ -18,6 +18,9 @@
         android:maxWidth="600dp"
         android:background="@drawable/vc_bg_chat_bubble_outgoing"
         android:orientation="vertical"
+        android:descendantFocusability="blocksDescendants"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
         android:padding="16dp">
 
         <LinearLayout
@@ -87,6 +90,9 @@
         android:maxWidth="440dp"
         android:visibility="gone"
         app:cardCornerRadius="14dp"
+        android:descendantFocusability="blocksDescendants"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
         app:cardElevation="0dp">
 
         <LinearLayout
@@ -231,6 +237,9 @@
         android:orientation="vertical"
         android:background="@drawable/vc_bg_chat_bubble_outgoing"
         android:padding="10dp"
+        android:descendantFocusability="blocksDescendants"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
         android:visibility="gone">
 
         <LinearLayout
@@ -307,7 +316,7 @@
                     android:padding="5dp"
                     android:background="@drawable/bg_rounded_circle"
                     android:src="@drawable/download_minimalistic_svgrepo_com"
-                   android:backgroundTint="#DDDDDD" />
+                    android:backgroundTint="#DDDDDD" />
 
                 <ImageView
                     android:id="@+id/imgPlayVideo"
@@ -337,38 +346,43 @@
         android:layout_height="wrap_content"
         android:visibility="gone"
         android:background="@drawable/vc_bg_chat_bubble_incoming"
-        android:padding="14dp">
+        android:padding="14dp"
+        android:descendantFocusability="blocksDescendants"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
         <ImageView
-            android:background="@drawable/bg_small_cornerradius"
             android:id="@+id/imgrecordTablet"
             android:layout_width="@dimen/_15sdp"
             android:layout_height="@dimen/_15sdp"
+            android:background="@drawable/bg_small_cornerradius"
             android:padding="@dimen/_3sdp"
-            android:layout_gravity="center"
-            android:src="@drawable/mic__2_"
-            />
+            android:src="@drawable/mic__2_" />
 
         <TextView
+            android:id="@+id/txtVoiceDuration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/txtVoiceDuration"
-            android:layout_gravity="center"
-            android:textSize="14sp" />
+            android:layout_marginStart="8dp"
+            android:textSize="14sp"
+            android:text="00:12"/>
 
-        <com.app.vc.views.WaveformView
-            android:layout_gravity="center"
-            android:id="@+id/voiceWaveformView"
-            android:layout_width="100dp"
-            android:layout_height="28dp" />
+        <com.masoudss.lib.WaveformSeekBar
+            android:id="@+id/waveformView"
+            android:layout_width="120dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="12dp"/>
 
         <ImageView
             android:id="@+id/btnPlayVoice"
-            android:layout_gravity="center"
             android:layout_width="26dp"
-            android:layout_height="26dp" />
-    </LinearLayout>
+            android:layout_height="26dp"
+            android:layout_marginStart="12dp"
+            android:src="@drawable/play_circle"/>
 
+    </LinearLayout>
 
     <TextView
         android:id="@+id/txtTime"

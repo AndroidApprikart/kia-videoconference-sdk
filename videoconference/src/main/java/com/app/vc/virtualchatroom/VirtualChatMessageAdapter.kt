@@ -34,6 +34,7 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
+import com.masoudss.lib.WaveformSeekBar
 
 enum class ChatMessageType { TEXT, IMAGE, FILE, VIDEO, VOICE_NOTE, ESTIMATION, DATE_HEADER }
 enum class MessageStatus { SENDING, SENT, READ, ERROR }
@@ -62,8 +63,8 @@ data class ChatMessage(
     val estimationDetails: ResponseModelEstimateData? = null
 )
 
-interface EstimationInteractionListener : 
-    PartListAdapter.OnPartCheckboxSelectedListener, 
+interface EstimationInteractionListener :
+    PartListAdapter.OnPartCheckboxSelectedListener,
     LabourListAdapter.OnLabourCheckboxSelectedListener {
     fun onAcceptClicked(parentPosition: Int, estimationDetails: ResponseModelEstimateData)
     fun onRejectClicked(parentPosition: Int, estimationDetails: ResponseModelEstimateData)
@@ -79,7 +80,7 @@ class VirtualChatMessageAdapter(
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
 
-//    init {
+    //    init {
 //        setHasStableIds(true)
 //    }
     private var recyclerView: RecyclerView? = null
@@ -99,6 +100,26 @@ class VirtualChatMessageAdapter(
         fun parseWaveformData(waveformData: String?): FloatArray {
             if (waveformData.isNullOrBlank()) return floatArrayOf()
             return waveformData.split(",").mapNotNull { it.trim().toFloatOrNull() }.toFloatArray()
+        }
+    }
+
+    private fun getAudioDuration(context: Context, uri: Uri): Int {
+
+        return try {
+
+            val retriever = MediaMetadataRetriever()
+
+            retriever.setDataSource(context, uri)
+
+            val duration =
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+
+            retriever.release()
+
+            (duration?.toLongOrNull()?.div(1000) ?: 0).toInt()
+
+        } catch (e: Exception) {
+            0
         }
     }
 
@@ -164,12 +185,42 @@ class VirtualChatMessageAdapter(
 
 
 
+//    fun playAudio(message: ChatMessage, position: Int) {
+//
+//        if (playingPosition == position) {
+//            stopAudio()
+//            return
+//        }
+//
+//        mediaPlayer?.release()
+//
+//        mediaPlayer = MediaPlayer().apply {
+//            setDataSource(message.attachmentUri)
+//            prepare()
+//            start()
+//        }
+//
+//        val oldPosition = playingPosition
+//        playingPosition = position
+//
+//        if (oldPosition != -1) notifyItemChanged(oldPosition)
+//        notifyItemChanged(position)
+//
+//        startTimer()
+//
+//        mediaPlayer?.setOnCompletionListener {
+//            stopAudio()
+//        }
+//    }
+
     fun playAudio(message: ChatMessage, position: Int) {
 
         if (playingPosition == position) {
             stopAudio()
             return
         }
+
+        handler.removeCallbacksAndMessages(null)
 
         mediaPlayer?.release()
 
@@ -183,14 +234,57 @@ class VirtualChatMessageAdapter(
         playingPosition = position
 
         if (oldPosition != -1) notifyItemChanged(oldPosition)
+
         notifyItemChanged(position)
 
         startTimer()
 
         mediaPlayer?.setOnCompletionListener {
-            stopAudio()
+
+            val pos = playingPosition
+
+            handler.removeCallbacksAndMessages(null)
+
+            val holder =
+                currentRecyclerView?.findViewHolderForAdapterPosition(pos)
+
+            val durationSec = (mediaPlayer?.duration ?: 0) / 1000
+
+            when (holder) {
+
+                is OutgoingViewHolder -> {
+                    holder.updateVoiceTimer(durationSec)
+                    holder.resetWaveProgress()
+                }
+
+                is IncomingViewHolder -> {
+                    holder.updateVoiceTimer(durationSec)
+                    holder.resetWaveProgress()
+                }
+            }
+
+            mediaPlayer?.release()
+            mediaPlayer = null
+            playingPosition = -1
+
+            notifyItemChanged(pos)
         }
     }
+
+//    fun stopAudio() {
+//
+//        mediaPlayer?.stop()
+//        mediaPlayer?.release()
+//        mediaPlayer = null
+//
+//        handler.removeCallbacksAndMessages(null)
+//
+//        val oldPosition = playingPosition
+//        playingPosition = -1
+//
+//        if (oldPosition != -1) notifyItemChanged(oldPosition)
+//    }
+
     fun stopAudio() {
 
         mediaPlayer?.stop()
@@ -202,7 +296,24 @@ class VirtualChatMessageAdapter(
         val oldPosition = playingPosition
         playingPosition = -1
 
-        if (oldPosition != -1) notifyItemChanged(oldPosition)
+        if (oldPosition != -1) {
+
+            val holder =
+                currentRecyclerView?.findViewHolderForAdapterPosition(oldPosition)
+
+            when (holder) {
+
+                is OutgoingViewHolder -> {
+                    holder.resetWaveProgress()
+                }
+
+                is IncomingViewHolder -> {
+                    holder.resetWaveProgress()
+                }
+            }
+
+            notifyItemChanged(oldPosition)
+        }
     }
 
     private fun startTimer() {
@@ -212,29 +323,40 @@ class VirtualChatMessageAdapter(
             override fun run() {
 
                 val pos = playingPosition
-                if (pos == -1) return
+                val player = mediaPlayer ?: return
 
-                val holder = currentRecyclerView?.findViewHolderForAdapterPosition(pos)
+                val holder =
+                    currentRecyclerView?.findViewHolderForAdapterPosition(pos)
 
-                if (holder != null && mediaPlayer != null) {
+                val currentMs = player.currentPosition
+                val durationMs = player.duration
 
-                    val seconds = mediaPlayer!!.currentPosition / 1000
+                val seconds = currentMs / 1000
 
-                    when (holder) {
-                        is OutgoingViewHolder -> holder.updateVoiceTimer(seconds)
-                        is IncomingViewHolder -> holder.updateVoiceTimer(seconds)
+                val progress =
+                    if (durationMs > 0)
+                        (currentMs.toFloat() / durationMs.toFloat()) * 100f
+                    else 0f
+
+                when (holder) {
+
+                    is OutgoingViewHolder -> {
+                        holder.updateVoiceTimer(seconds)
+                        holder.updateWaveProgress(progress)
+                    }
+
+                    is IncomingViewHolder -> {
+                        holder.updateVoiceTimer(seconds)
+                        holder.updateWaveProgress(progress)
                     }
                 }
 
-                handler.postDelayed(this, 500)
+                handler.postDelayed(this, 50)
             }
         }
 
         handler.post(updateRunnable!!)
     }
-
-
-
 
     fun addMessage(message: ChatMessage) {
         messages.add(message)
@@ -253,7 +375,7 @@ class VirtualChatMessageAdapter(
             txtDate.text = message.text
         }
     }
-    
+
     fun updateMessageStatus(messageId: String, newStatus: MessageStatus) {
         if (messageId.isEmpty() && newStatus == MessageStatus.READ) {
             messages.forEachIndexed { index, msg ->
@@ -336,6 +458,9 @@ class VirtualChatMessageAdapter(
 
         private val btnPlayVoice: ImageView? = itemView.findViewById(R.id.btnPlayVoice)
 
+        private val waveformView: WaveformSeekBar? =
+            itemView.findViewById(R.id.waveformView)
+
         private val txtSenderName: TextView? = itemView.findViewById(R.id.txtSenderName)
         private val txtSenderInitial: TextView? = itemView.findViewById(R.id.txtSenderInitial)
         private val txtMessage: TextView? = itemView.findViewById(R.id.txtMessage)
@@ -372,6 +497,14 @@ class VirtualChatMessageAdapter(
             txtVoiceDuration?.text = formatDuration(seconds)
         }
 
+
+        fun updateWaveProgress(progress: Float) {
+            waveformView?.progress = progress
+        }
+
+        fun resetWaveProgress() {
+            waveformView?.progress = 0f
+        }
         fun bind(message: ChatMessage, position: Int) {
             bindSenderInfo(message)
 
@@ -475,21 +608,82 @@ class VirtualChatMessageAdapter(
                 }
                 ChatMessageType.VOICE_NOTE -> {
 
-                    layoutVoice?.visibility = View.VISIBLE
-                    layoutVoice?.isClickable = false
-                    layoutVoice?.isFocusable = false
 
+
+                    layoutVoice?.visibility = View.VISIBLE
+
+                    val audioPath = message.attachmentUri
+
+                    waveformView?.apply {
+
+                        waveWidth = 4f
+                        waveGap = 2f
+                        waveMinHeight = 2f
+
+                        waveBackgroundColor =
+                            ContextCompat.getColor(itemView.context, R.color.grey_txt_color)
+
+                        waveProgressColor =
+                            ContextCompat.getColor(itemView.context, R.color.color_kia_black)
+                    }
+
+                    if (!audioPath.isNullOrEmpty()) {
+
+                        if (audioPath.startsWith("http")) {
+
+                            Glide.with(itemView.context)
+                                .downloadOnly()
+                                .load(audioPath)
+                                .into(object :
+                                    com.bumptech.glide.request.target.CustomTarget<File>() {
+
+                                    override fun onResourceReady(
+                                        resource: File,
+                                        transition: com.bumptech.glide.request.transition.Transition<in File>?
+                                    ) {
+
+                                        val uri = Uri.fromFile(resource)
+
+                                        if (waveformView?.sample == null) {
+                                            waveformView?.setSampleFrom(uri)
+                                        }
+                                        val isPlaying = adapter.playingPosition == position
+                                        if (!isPlaying) {
+                                            val duration =
+                                                adapter.getAudioDuration(itemView.context, uri)
+                                            txtVoiceDuration?.text = formatDuration(duration)
+                                        }
+
+
+                                    }
+
+                                    override fun onLoadCleared(placeholder: Drawable?) {}
+                                })
+
+                        } else {
+
+                            val uri = Uri.fromFile(File(audioPath))
+
+                            if (waveformView?.sample == null) {
+                                waveformView?.setSampleFrom(uri)
+                            }
+                        }
+
+                    }
                     val isPlaying = adapter.playingPosition == position
 
                     if (isPlaying) {
+
                         btnPlayVoice?.setImageResource(R.drawable.pause)
 
                         val current = (adapter.mediaPlayer?.currentPosition ?: 0) / 1000
                         txtVoiceDuration?.text = formatDuration(current)
 
                     } else {
+
                         btnPlayVoice?.setImageResource(R.drawable.play_circle)
-                        txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
+                        txtVoiceDuration?.text =
+                            formatDuration(message.durationSeconds ?: 0)
                     }
 
                     btnPlayVoice?.setOnClickListener {
@@ -642,6 +836,10 @@ class VirtualChatMessageAdapter(
         private val onClick: (ChatMessage) -> Unit,
         private val onSaveMedia: (ChatMessage) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
+
+
+        private val waveformView: WaveformSeekBar? =
+            itemView.findViewById(R.id.waveformView)
         private val txtSenderName: TextView? = itemView.findViewById(R.id.txtSenderName)
         private val txtSenderInitial: TextView? = itemView.findViewById(R.id.txtSenderInitial)
         private val txtSenderRole: TextView? = itemView.findViewById(R.id.txtSenderRole)
@@ -675,6 +873,15 @@ class VirtualChatMessageAdapter(
         private val mediaLoader: ProgressBar? =
             itemView.findViewById(R.id.mediaLoader)
 
+
+        fun updateWaveProgress(progress: Float) {
+            waveformView?.progress = progress
+        }
+
+        fun resetWaveProgress() {
+            waveformView?.progress = 0f
+
+        }
 
         fun updateVoiceTimer(seconds: Int) {
             txtVoiceDuration?.text = formatDuration(seconds)
@@ -764,21 +971,83 @@ class VirtualChatMessageAdapter(
                 }
                 ChatMessageType.VOICE_NOTE -> {
 
-                    layoutVoice?.visibility = View.VISIBLE
-                    layoutVoice?.isClickable = false
-                    layoutVoice?.isFocusable = false
 
+
+                    layoutVoice?.visibility = View.VISIBLE
+
+                    val audioPath = message.attachmentUri
+
+                    waveformView?.apply {
+
+                        waveWidth = 4f
+                        waveGap = 2f
+                        waveMinHeight = 2f
+
+                        waveBackgroundColor =
+                            ContextCompat.getColor(itemView.context, R.color.grey_txt_color)
+
+                        waveProgressColor =
+                            ContextCompat.getColor(itemView.context, R.color.color_kia_black)
+                    }
+
+                    if (!audioPath.isNullOrEmpty()) {
+
+                        if (audioPath.startsWith("http")) {
+
+                            Glide.with(itemView.context)
+                                .downloadOnly()
+                                .load(audioPath)
+                                .into(object :
+                                    com.bumptech.glide.request.target.CustomTarget<File>() {
+
+                                    override fun onResourceReady(
+                                        resource: File,
+                                        transition: com.bumptech.glide.request.transition.Transition<in File>?
+                                    ) {
+
+                                        val uri = Uri.fromFile(resource)
+
+                                        if (waveformView?.sample == null) {
+                                            waveformView?.setSampleFrom(uri)
+                                        }
+
+                                        val isPlaying = adapter.playingPosition == position
+                                        if (!isPlaying) {
+                                            val duration =
+                                                adapter.getAudioDuration(itemView.context, uri)
+                                            txtVoiceDuration?.text = formatDuration(duration)
+                                        }
+
+
+                                    }
+
+                                    override fun onLoadCleared(placeholder: Drawable?) {}
+                                })
+
+                        } else {
+
+                            val uri = Uri.fromFile(File(audioPath))
+
+                            if (waveformView?.sample == null) {
+                                waveformView?.setSampleFrom(uri)
+                            }
+                        }
+
+                    }
                     val isPlaying = adapter.playingPosition == position
 
                     if (isPlaying) {
+
                         btnPlayVoice?.setImageResource(R.drawable.pause)
 
                         val current = (adapter.mediaPlayer?.currentPosition ?: 0) / 1000
                         txtVoiceDuration?.text = formatDuration(current)
 
                     } else {
+
                         btnPlayVoice?.setImageResource(R.drawable.play_circle)
-                        txtVoiceDuration?.text = formatDuration(message.durationSeconds ?: 0)
+                        txtVoiceDuration?.text =
+                            formatDuration(message.durationSeconds ?: 0)
                     }
 
                     btnPlayVoice?.setOnClickListener {
@@ -790,9 +1059,10 @@ class VirtualChatMessageAdapter(
                         }
                     }
                 }
-
                 else -> {}
             }
+
+
         }
 
         private fun showSavePopup(anchor: View, message: ChatMessage) {

@@ -67,110 +67,163 @@
             android:orientation="horizontal">
 
             <ImageView
-                android:id="@+id/btnRecordVoice"
                 android:layout_width="@dimen/_25sdp"
                 android:layout_height="@dimen/_25sdp"
                 android:padding="@dimen/_5sdp"
                 android:background="@color/colorPrimary_kia_kandid"
-                android:src="@drawable/mic__2_"
-                android:contentDescription="@null" />
+                android:src="@drawable/mic__2_" />
 
-            <ImageView
-                android:id="@+id/btnPlayPauseVoice"
-                android:layout_width="@dimen/_25sdp"
-                android:layout_height="@dimen/_25sdp"
-                android:padding="@dimen/_5sdp"
-                android:visibility="visible"
-                android:layout_weight="1"
-                android:layout_marginStart="16dp"
-                android:src="@drawable/play_circle"
-                />
-            <ImageView
-                android:id="@+id/pauseIcon"
-                android:layout_width="@dimen/_25sdp"
-                android:layout_height="@dimen/_25sdp"
-                android:padding="@dimen/_5sdp"
-                android:visibility="gone"
-                android:layout_marginStart="16dp"
-                android:src="@drawable/pause"
-                />
-
+            <!-- WAVEFORM TAKES REMAINING SPACE -->
             <com.masoudss.lib.WaveformSeekBar
                 android:id="@+id/waveformView"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="12dp"
                 android:layout_weight="1"/>
 
+            <!-- TIMER ALWAYS AT END -->
             <TextView
                 android:id="@+id/txtVoiceTimer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="00:00"
-                android:layout_weight="1"
                 android:fontFamily="@font/kia_signature_fix_regular"
                 android:textColor="@color/black"
-                android:textSize="14sp" />
+                android:textSize="14sp"/>
 
+            <!-- PLAY BUTTON -->
+            <ImageView
+                android:id="@+id/btnPlayPauseVoice"
+                android:layout_width="@dimen/_25sdp"
+                android:layout_height="@dimen/_25sdp"
+                android:padding="@dimen/_5sdp"
+                android:layout_marginStart="12dp"
+                android:visibility="gone"
+                android:src="@drawable/play_circle"/>
+
+            <!-- DELETE BUTTON -->
             <ImageView
                 android:id="@+id/btnDeleteVoice"
                 android:layout_width="@dimen/_25sdp"
                 android:layout_height="@dimen/_25sdp"
                 android:padding="@dimen/_5sdp"
                 android:layout_marginStart="8dp"
-                android:src="@drawable/delete"
-                android:contentDescription="@null" />
+                android:visibility="gone"
+                android:src="@drawable/delete"/>
+
         </LinearLayout>
 
     </LinearLayout>
 
 
     <LinearLayout
+        android:id="@+id/buttonLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center"
-        android:id="@+id/buttonLayout"
-        android:layout_marginTop="@dimen/_15sdp"
         android:background="@color/white"
-        android:paddingBottom="@dimen/_10sdp"
-        android:paddingTop="2dp">
+        android:paddingHorizontal="@dimen/_10sdp"
+        android:paddingTop="2dp"
+        android:paddingBottom="@dimen/_5sdp"
+        android:layout_marginTop="@dimen/_15sdp">
 
+        <!-- RECORD BUTTON -->
         <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btnCancelVoice"
-            android:layout_width="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="@dimen/_5sdp"
-            android:layout_height="wrap_content"
+            android:id="@+id/btnRecordVoice"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/recording"
             android:textAllCaps="false"
             android:gravity="center"
-            android:background="@android:color/transparent"                android:layout_gravity="center"
-            android:fontFamily="@font/kia_signature_fix_bold"
-            android:layout_marginEnd="@dimen/_5sdp"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:text="@string/cancel"/>
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btnSaveVoice"
-            android:layout_width="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="@dimen/_5sdp"
-            android:layout_height="wrap_content"
-            android:textAllCaps="false"
-            android:gravity="center"
-            android:paddingVertical="@dimen/_8sdp"
-            android:layout_gravity="center"
-            android:visibility="visible"
             android:fontFamily="@font/kia_signature_fix_regular"
-            android:layout_marginEnd="@dimen/_5sdp"
-            android:background="@color/colorPrimary_kia_kandid"
             android:textColor="@color/white"
             android:textSize="16sp"
-            android:text="Save"/>
+            android:background="@color/colorPrimary_kia_kandid"
+            android:layout_marginHorizontal="@dimen/_5sdp"/>
 
+        <!-- ACTION BUTTON GROUP -->
+        <LinearLayout
+            android:id="@+id/actionButtonsLayout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/_10sdp"
+            android:visibility="visible">
 
+            <!-- PAUSE -->
+            <LinearLayout
+                android:id="@+id/pauseIcon"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:visibility="gone"
+                android:orientation="horizontal"
+                android:layout_marginEnd="@dimen/_5sdp"
+                android:background="@drawable/bg_main_color_btn">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/pause"
+                    android:contentDescription="@null"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/pause"
+                    android:maxLines="1"
+                    android:layout_marginStart="6dp"
+                    android:textSize="16sp"
+                    android:textColor="@color/color_kia_black"
+                    android:fontFamily="@font/kia_signature_fix_bold"/>
+            </LinearLayout>
+
+            <!-- RESTART -->
+            <LinearLayout
+                android:id="@+id/restart"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:visibility="gone"
+                android:orientation="horizontal"
+                android:layout_marginEnd="@dimen/_5sdp"
+                android:background="@drawable/bg_main_color_btn">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:visibility="gone"
+                    android:contentDescription="@null"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/restart"
+                    android:maxLines="1"
+                    android:layout_marginStart="6dp"
+                    android:textSize="16sp"
+                    android:textColor="@color/color_kia_black"
+                    android:fontFamily="@font/kia_signature_fix_bold"/>
+            </LinearLayout>
+
+            <!-- SEND -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnSaveVoice"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Send"
+                android:visibility="gone"
+                android:gravity="center"
+                android:textAllCaps="false"
+                android:background="@color/colorPrimary_kia_kandid"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:fontFamily="@font/kia_signature_fix_regular"/>
+        </LinearLayout>
 
     </LinearLayout>
 

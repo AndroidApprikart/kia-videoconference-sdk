@@ -54,6 +54,8 @@ import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatButton
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
@@ -238,24 +240,21 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
             mediaPlayer?.let { player ->
 
-                val currentSegmentMs = player.currentPosition
-                val currentSegmentSec = currentSegmentMs / 1000
-
-                val totalPlayedSec = previousSegmentsDuration + currentSegmentSec
+                val currentMs = player.currentPosition
 
                 voiceNoteDialogTimerView?.text =
-                    "%02d:%02d".format(totalPlayedSec / 60, totalPlayedSec % 60)
-
+                    "%02d:%02d".format((currentMs / 1000) / 60, (currentMs / 1000) % 60)
                 // ⭐ TOTAL DURATION OF ALL SEGMENTS
                 val totalDurationSec = segmentDurations.sum()
 
                 if (totalDurationSec > 0) {
                     val progress =
-                        (totalPlayedSec.toFloat() / totalDurationSec.toFloat()) * 100f
+                        (player.currentPosition.toFloat() / player.duration.toFloat()) * 100f
+
                     voiceNoteWaveformView?.progress = progress
                 }
 
-                playbackTimerHandler.postDelayed(this, 50)
+                playbackTimerHandler.postDelayed(this, 20)
             }
         }
     }
@@ -1430,7 +1429,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun playAllSegments(
         btnPlay: ImageView,
         btnDelete: ImageView,
-        btnRecord: ImageView
+        btnRecord: AppCompatButton
     ) {
 
         if (voiceSegments.isEmpty()) return
@@ -1441,7 +1440,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun playNextSegment(
         btnPlay: ImageView,
         btnDelete: ImageView,
-        btnRecord: ImageView
+        btnRecord: AppCompatButton
     ) {
 
         if (currentSegmentIndex >= voiceSegments.size) {
@@ -1484,12 +1483,13 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         voiceNoteWaveformView = view.findViewById(R.id.waveformView)
         voiceNoteDialogTimerView = view.findViewById<TextView>(R.id.txtVoiceTimer)
         val btnClose = view.findViewById<ImageView>(R.id.btnCloseVoice)
-        val btnRecord = view.findViewById<ImageView>(R.id.btnRecordVoice)
+        val btnRecord = view.findViewById<AppCompatButton>(R.id.btnRecordVoice)
         val btnDelete = view.findViewById<ImageView>(R.id.btnDeleteVoice)
         val btnPlay = view.findViewById<ImageView>(R.id.btnPlayPauseVoice)
-        val pauseIcon = view.findViewById<ImageView>(R.id.pauseIcon)
-        val btnSave = view.findViewById<TextView>(R.id.btnSaveVoice)
-        val btnCancel = view.findViewById<TextView>(R.id.btnCancelVoice)
+        val pauseIcon = view.findViewById<LinearLayout>(R.id.pauseIcon)
+        val restart = view.findViewById<LinearLayout>(R.id.restart)
+        val btnSave = view.findViewById<AppCompatButton>(R.id.btnSaveVoice)
+
 
         voiceNoteDurationSeconds = 0
         voiceNotePath = null
@@ -1505,47 +1505,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 //                bottomSheet.dismiss()
 
         }
-        btnCancel.setOnClickListener {
-            dialog.dismiss()
-//                bottomSheet.dismiss()
-        }
 
-//        btnRecord.setOnClickListener {
+
 //
-//            if (isPlaying) {
-//                Toast.makeText(this, "Stop playback before recording", Toast.LENGTH_SHORT)
-//                    .show()
-//                return@setOnClickListener
-//            }
-//
-//
-//
-//            voiceNoteWaveformView?.visibility = View.VISIBLE
-//
-//            // ⭐ If old recording exists, delete it and start new recording
-//            voiceNotePath?.let {
-//                val file = File(it)
-//                if (file.exists()) file.delete()
-//            }
-//
-//            voiceNotePath = null
-//            voiceNoteDurationSeconds = 0
-//            voiceNoteDialogTimerView?.text = "00:00"
-//
-//
-//
-//            if (ContextCompat.checkSelfPermission(
-//                    this,
-//                    Manifest.permission.RECORD_AUDIO
-//                ) == PackageManager.PERMISSION_GRANTED
-//            ) {
-//
-//
-//                startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon)
-//            } else {
-//                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-//            }
-//        }
 
         btnRecord.setOnClickListener {
 
@@ -1556,89 +1518,94 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
             voiceNoteWaveformView?.visibility = View.VISIBLE
 
-            if (!isPausedRecording) {
+            if (mediaRecorder == null) {
 
                 // First recording
                 voiceNoteDurationSeconds = 0
                 voiceNoteDialogTimerView?.text = "00:00"
 
-                startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon)
+                startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon, restart, btnSave)
 
             } else {
 
                 // Resume recording
-                startVoiceRecording()
+                resumeVoiceRecording()
 
                 btnRecord.visibility = View.GONE
                 pauseIcon.visibility = View.VISIBLE
+                btnSave.visibility = View.VISIBLE
+                restart.visibility = View.VISIBLE
                 btnDelete.visibility = View.GONE
                 btnPlay.visibility = View.GONE
-
-                isPausedRecording = false
             }
         }
-
         pauseIcon.setOnClickListener {
 
             if (isRecording) {
 
                 try {
-                    mediaRecorder?.stop()
-                    mediaRecorder?.release()
+                    mediaRecorder?.pause()
                 } catch (_: Exception) {}
 
-                mediaRecorder = null
                 isRecording = false
                 isPausedRecording = true
 
                 amplitudeHandler.removeCallbacks(amplitudeRunnable)
                 voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
-                segmentDurations.add(voiceNoteDurationSeconds)
+
                 pauseIcon.visibility = View.GONE
                 btnRecord.visibility = View.VISIBLE
                 btnPlay.visibility = View.VISIBLE
                 btnDelete.visibility = View.VISIBLE
+                btnSave.visibility = View.GONE
+                restart.visibility = View.GONE
             }
         }
 
         btnPlay.setOnClickListener {
 
-//            voiceNotePath?.let { path ->
-//
-//                if (isPlaying) {
-//                    stopPlayback()
-//                    btnPlay.setImageResource(R.drawable.play_circle)
-//
-//                    btnDelete.isEnabled = true
-//                    btnRecord.isEnabled = true
-//
-//                } else {
-//
-//                    val path = voiceSegments.last()
-//                    playVoiceNote(path, btnPlay, btnDelete, btnRecord)
-//
-//                    btnPlay.setImageResource(R.drawable.pause)
-//                    btnDelete.isEnabled = false
-//                    btnRecord.isEnabled = false
-//                }
-//            }
+            if (isRecording) {
+                Toast.makeText(this, "Stop recording first", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
 
-            if (voiceSegments.isNotEmpty()) {
+            if (voiceNotePath.isNullOrEmpty()) {
+                Toast.makeText(this, "No audio recorded", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (mediaRecorder != null) {
+                stopVoiceRecording()
+            }
 
-                val path = voiceSegments.last()
 
-                if (isPlaying) {
-                    stopPlayback()
-                    btnPlay.setImageResource(R.drawable.play_circle)
-                    btnDelete.isEnabled = true
-                    btnRecord.isEnabled = true
 
-                } else {
+            val file = File(voiceNotePath!!)
 
-                    val mergedFile = mergeVoiceSegments()
+            if (!file.exists() || file.length() == 0L) {
+                Toast.makeText(this, "Audio not ready", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val path = voiceNotePath!!
+
+            if (!File(path).exists()) {
+                Toast.makeText(this, "Audio file missing", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (isPlaying) {
+
+                stopPlayback()
+                btnPlay.setImageResource(R.drawable.play_circle)
+
+                btnDelete.isEnabled = true
+                btnRecord.isEnabled = true
+
+            } else {
+
+                try {
 
                     voiceNoteWaveformView?.apply {
-
                         waveBackgroundColor = ContextCompat.getColor(
                             context,
                             R.color.grey_txt_color
@@ -1652,10 +1619,16 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         progress = 0f
                     }
 
-                    playAllSegments(btnPlay, btnDelete, btnRecord)
+                    playVoiceNote(path, btnPlay, btnDelete, btnRecord)
+
                     btnPlay.setImageResource(R.drawable.pause)
+
                     btnDelete.isEnabled = false
                     btnRecord.isEnabled = false
+
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(this, "Unable to play audio", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -1663,79 +1636,60 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         btnDelete.setOnClickListener {
 
             if (isPlaying) {
-                Toast.makeText(this, "Stop playback before deleting", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+                stopPlayback()
             }
 
-//            voiceNotePath?.let {
-//                val file = File(it)
-//                if (file.exists()) file.delete()
-//            }
-
-            voiceSegments.forEach {
-                val f = File(it)
-                if (f.exists()) f.delete()
+            voiceNotePath?.let {
+                val file = File(it)
+                if (file.exists()) file.delete()
             }
 
-            voiceSegments.clear()
+            mediaRecorder?.release()
+            mediaRecorder = null
+
             voiceNotePath = null
             voiceNoteDurationSeconds = 0
+            isRecording = false
+            isPausedRecording = false
+
+            recordedAmplitudes.clear()
+
+            voiceNoteWaveformView?.progress = 0f
             voiceNoteDialogTimerView?.text = "00:00"
 
-            // ⭐ Clear waveform data
-
-
-            // ⭐ Hide waveform
-            voiceNoteWaveformView?.visibility = View.GONE
             btnDelete.visibility = View.GONE
             btnPlay.visibility = View.GONE
             btnRecord.visibility = View.VISIBLE
-
         }
 
-//        btnSave.setOnClickListener {
-//            if (isRecording) {
-//                stopVoiceRecording()
-//                isRecording = false
-//            }
-//            dialog.dismiss()
-//
-////                bottomSheet.dismiss()
-//
-//            voiceNotePath?.let { path ->
-//                val localId = "local_voice_${System.currentTimeMillis()}"
-//                val tempMessage = ChatMessage(
-//                    messageId = localId,
-//                    text = "",
-//                    isSender = true,
-//                    timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date())
-//                        .lowercase(),
-//                    type = ChatMessageType.VOICE_NOTE,
-//                    attachmentUri = path,
-//                    durationSeconds = voiceNoteDurationSeconds,
-//                    status = MessageStatus.SENDING
-//                )
-//                messageAdapter?.addMessage(tempMessage)
-//                scrollToLast()
-//
-//                val mergedFile = mergeVoiceSegments()
-//                performUpload(mergedFile, "Voice Note", ChatMessageType.VOICE_NOTE, localId)
-//
-////                performUpload(File(path), "Voice Note", ChatMessageType.VOICE_NOTE, localId)
-//            }
-//        }
+
+
+        restart.setOnClickListener {
+
+            restartVoiceRecording(
+                btnRecord,
+                btnDelete,
+                btnPlay,
+                pauseIcon,
+                restart,
+                btnSave
+            )
+        }
+
         btnSave.setOnClickListener {
 
             if (isRecording) {
                 stopVoiceRecording()
             }
 
-            if (voiceSegments.isEmpty()) {
+            if (voiceNotePath.isNullOrEmpty()) {
                 Toast.makeText(this, "No recording found", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val mergedFile = mergeVoiceSegments()
+//            val mergedFile = mergeVoiceSegments()
+
+            val mergedFile = File(voiceNotePath!!)
 
             val localId = "local_voice_${System.currentTimeMillis()}"
 
@@ -1763,6 +1717,45 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     }
 
+
+    private fun restartVoiceRecording(
+        btnRecord: AppCompatButton,
+        btnDelete: ImageView,
+        btnPlay: ImageView,
+        pauseIcon: LinearLayout,
+        restart: LinearLayout,
+        btnSave: AppCompatButton
+    ) {
+
+        try {
+            mediaRecorder?.stop()
+            mediaRecorder?.release()
+        } catch (_: Exception) {}
+
+        mediaRecorder = null
+
+        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
+        amplitudeHandler.removeCallbacks(amplitudeRunnable)
+
+        isRecording = false
+        isPausedRecording = false
+
+        voiceNotePath?.let {
+            val file = File(it)
+            if (file.exists()) file.delete()
+        }
+
+        voiceNotePath = null
+        recordedAmplitudes.clear()
+
+        voiceNoteDurationSeconds = 0
+        voiceNoteDialogTimerView?.text = "00:00"
+
+        voiceNoteWaveformView?.progress = 0f
+
+        startRecordingFlow(btnRecord, btnDelete, btnPlay, pauseIcon, restart, btnSave)
+    }
+
     private fun isTablet(): Boolean {
         val screenLayout = resources.configuration.screenLayout and
                 android.content.res.Configuration.SCREENLAYOUT_SIZE_MASK
@@ -1770,123 +1763,79 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    private fun startRecordingFlow(r: ImageView, d: ImageView, p: ImageView, pause: ImageView) {
+    private fun startRecordingFlow(r: AppCompatButton, d: ImageView, p: ImageView, pause: LinearLayout,restart: LinearLayout,save: AppCompatButton) {
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                101
+            )
+
+            return
+        }
         startVoiceRecording()
         isRecording = true
         r.visibility = View.GONE
         d.visibility = View.GONE
         p.visibility = View.GONE
         pause.visibility = View.VISIBLE
+        restart.visibility= View.VISIBLE
+        save.visibility= View.VISIBLE
+
     }
+
+
+
 
     private val recordAudioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) Toast.makeText(this, "Permission required", Toast.LENGTH_SHORT).show()
         }
-//
-//    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-//    private fun startVoiceRecording() {
-//        val sampleRate = 44100
-//        val bufferSize = AudioRecord.getMinBufferSize(
-//            sampleRate,
-//            AudioFormat.CHANNEL_IN_MONO,
-//            AudioFormat.ENCODING_PCM_16BIT
-//        )
-//        audioRecord = AudioRecord(
-//            MediaRecorder.AudioSource.MIC,
-//            sampleRate,
-//            AudioFormat.CHANNEL_IN_MONO,
-//            AudioFormat.ENCODING_PCM_16BIT,
-//            bufferSize
-//        )
-//        pcmFile = File(cacheDir, "voice_note.pcm")
-//        voiceNotePath = pcmFile?.absolutePath
-//        audioRecord?.startRecording()
-//        isRecording = true
-//        voiceTimerHandler.post(voiceTimerRunnable)
-//        Thread {
-//            val buffer = ShortArray(1024)
-//            val output = FileOutputStream(pcmFile!!)
-//            while (isRecording) {
-//                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-//                if (read > 0) {
-//                    val maxAmp = buffer.take(read).maxOf { abs(it.toInt()) }
-//                    runOnUiThread {
-//                        voiceNoteWaveformView?.addAmplitude(
-//                            (maxAmp / 300).coerceAtLeast(
-//                                1
-//                            )
-//                        )
-//                    }
-//                    output.write(
-//                        ByteBuffer.allocate(read * 2).order(ByteOrder.LITTLE_ENDIAN)
-//                            .apply { buffer.take(read).forEach { putShort(it) } }.array()
-//                    )
-//                }
-//            }
-//            output.close()
-//        }.start()
-//    }
 
-//    private fun stopVoiceRecording() {
-//        isRecording = false
-//        audioRecord?.stop()
-//        audioRecord?.release()
-//        audioRecord = null
-//        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
-//    }
-
-//    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-//    private fun startVoiceRecording() {
-//
-//        val file = File(cacheDir, "voice_note_${System.currentTimeMillis()}.m4a")
-//        voiceNotePath = file.absolutePath
-//
-//        mediaRecorder = MediaRecorder().apply {
-//            setAudioSource(MediaRecorder.AudioSource.MIC)
-//            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-//            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-//            setAudioEncodingBitRate(128000)
-//            setAudioSamplingRate(44100)
-//            setOutputFile(voiceNotePath)
-//            prepare()
-//            start()
-//        }
-//
-//        isRecording = true
-//        voiceTimerHandler.post(voiceTimerRunnable)
-//
-//        // ⭐ START WAVEFORM ANIMATION
-//        amplitudeHandler.post(amplitudeRunnable)
-//    }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun startVoiceRecording() {
 
-        recordedAmplitudes.clear()
-
-        voiceNoteWaveformView?.apply {
-            waveProgressColor = getColor(R.color.color_kia_black)
-            waveBackgroundColor = getColor(R.color.color_kia_black)
-        }
-
-//        val file = File(cacheDir, "voice_note_${System.currentTimeMillis()}.m4a")
-//        voiceNotePath = file.absolutePath
-
+        // Create output file
         val file = File(cacheDir, "voice_${System.currentTimeMillis()}.m4a")
-        currentSegmentPath = file.absolutePath
 
-        voiceSegments.add(currentSegmentPath!!)
+        voiceNotePath = file.absolutePath
 
-        mediaRecorder = MediaRecorder().apply {
+        mediaRecorder = MediaRecorder()
+
+        mediaRecorder?.apply {
+
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+
             setAudioEncodingBitRate(128000)
             setAudioSamplingRate(44100)
-            setOutputFile(currentSegmentPath)
+
+            setOutputFile(voiceNotePath)
+
             prepare()
             start()
+        }
+        voiceNoteWaveformView?.apply {
+
+            waveBackgroundColor = ContextCompat.getColor(
+                this@VirtualChatRoomActivity,
+                R.color.color_kia_black
+            )
+
+            waveProgressColor = ContextCompat.getColor(
+                this@VirtualChatRoomActivity,
+                R.color.color_kia_black
+            )
+
+            progress = 0f
         }
 
         isRecording = true
@@ -1895,92 +1844,104 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         amplitudeHandler.post(amplitudeRunnable)
     }
 
-//    private fun stopVoiceRecording() {
-//
-//        try {
-//            mediaRecorder?.stop()
-//            mediaRecorder?.release()
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//        }
-//
-//        mediaRecorder = null
-//        isRecording = false
-//
-//        voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
-//    }
 
 
     private fun stopVoiceRecording() {
 
         try {
-            mediaRecorder?.stop()
-            mediaRecorder?.release()
+
+            mediaRecorder?.apply {
+                stop()
+                reset()
+                release()
+            }
+
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
+
+
         mediaRecorder = null
         isRecording = false
-        voiceNoteWaveformView?.apply {
-            waveProgressColor = getColor(R.color.grey_txt_color)
-            waveBackgroundColor = getColor(R.color.grey_txt_color)
-        }
+        isPausedRecording = false
 
         voiceTimerHandler.removeCallbacks(voiceTimerRunnable)
-
         amplitudeHandler.removeCallbacks(amplitudeRunnable)
     }
 
-    private fun playVoiceNote(path: String) {
 
-        // ⭐ STOP waveform animation
-        amplitudeHandler.removeCallbacks(amplitudeRunnable)
-    }
 
     private fun playVoiceNote(
         path: String,
         btnPlay: ImageView,
         btnDelete: ImageView,
-        btnRecord: ImageView
+        btnRecord: AppCompatButton
     ) {
 
-        amplitudeHandler.removeCallbacks(amplitudeRunnable)
+        try {
 
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(path)
-            prepare()
-        }
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer()
 
-        voiceNoteWaveformView?.apply {
-            setSampleFrom(recordedAmplitudes.toIntArray())
-            progress = 0f
-            waveProgressColor = ContextCompat.getColor(context, R.color.color_kia_black)
-        }
+            mediaPlayer?.setDataSource(path)
+            mediaPlayer?.prepare()
 
-        voiceNoteWaveformView?.setSampleFrom(recordedAmplitudes.toIntArray())
-        voiceNoteWaveformView?.progress = 0f
-        mediaPlayer?.start()
-        isPlaying = true
+            voiceNoteWaveformView?.setSampleFrom(recordedAmplitudes.toIntArray())
 
-        playbackTimerHandler.post(playbackTimerRunnable)
+            voiceNoteWaveformView?.apply {
 
-        mediaPlayer?.setOnCompletionListener {
+                maxProgress = 100f
+                progress = 0f
+
+                waveBackgroundColor = ContextCompat.getColor(
+                    this@VirtualChatRoomActivity,
+                    R.color.grey_txt_color
+                )
+
+                waveProgressColor = ContextCompat.getColor(
+                    this@VirtualChatRoomActivity,
+                    R.color.color_kia_black
+                )
+            }
+
+            mediaPlayer?.start()
+
+            isPlaying = true
+
+
+
+                playbackTimerHandler.post(playbackTimerRunnable)
+
+            mediaPlayer?.setOnCompletionListener {
+
+                stopPlayback()
+
+                runOnUiThread {
+
+                    btnPlay.setImageResource(R.drawable.play_circle)
+                    btnDelete.isEnabled = true
+                    btnRecord.isEnabled = true
+
+                    voiceNoteDialogTimerView?.text =
+                        "%02d:%02d".format(
+                            voiceNoteDurationSeconds / 60,
+                            voiceNoteDurationSeconds % 60
+                        )
+                }
+            }
+
+        } catch (e: Exception) {
+
+            e.printStackTrace()
 
             stopPlayback()
 
-            runOnUiThread {
+            btnPlay.setImageResource(R.drawable.play_circle)
+            btnDelete.isEnabled = true
+            btnRecord.isEnabled = true
 
-                btnPlay.setImageResource(R.drawable.play_circle)
-                btnDelete.isEnabled = true
-                btnRecord.isEnabled = true
-
-                voiceNoteDialogTimerView?.text =
-                    "%02d:%02d".format(
-                        voiceNoteDurationSeconds / 60,
-                        voiceNoteDurationSeconds % 60
-                    )
-            }
+            Toast.makeText(this, "Playback error", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1996,20 +1957,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         mediaPlayer = null
 
         playbackTimerHandler.removeCallbacks(playbackTimerRunnable)
-        voiceNoteWaveformView?.apply {
 
-            waveBackgroundColor = ContextCompat.getColor(
-                this@VirtualChatRoomActivity,
-                R.color.grey_txt_color
-            )
-
-            waveProgressColor = ContextCompat.getColor(
-                this@VirtualChatRoomActivity,
-                R.color.grey_txt_color
-            )
-
-            progress = 0f
-        }
     }
 
 
@@ -3367,9 +3315,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         binding.recyclerMessages.layoutManager =
             LinearLayoutManager(this).apply { stackFromEnd = true }
 
-        binding.recyclerMessages.setHasFixedSize(false)
+//        binding.recyclerMessages.setHasFixedSize(false)
         binding.recyclerMessages.setItemViewCacheSize(20)
         binding.recyclerMessages.itemAnimator = null
+        binding.recyclerMessages.setItemAnimator(null)
+        binding.recyclerMessages.setHasFixedSize(true)
 
         messageAdapter = VirtualChatMessageAdapter(
             messages,
