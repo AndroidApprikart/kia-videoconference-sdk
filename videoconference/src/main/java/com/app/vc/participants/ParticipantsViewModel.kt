@@ -56,7 +56,6 @@ class ParticipantsViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.postValue(e.message ?: "Unknown Error")
-                _members.postValue(emptyList())
             } finally {
                 _isLoading.postValue(false)
             }

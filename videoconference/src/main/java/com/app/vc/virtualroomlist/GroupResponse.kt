@@ -17,7 +17,11 @@ data class GroupResponse(
     @SerializedName("current_service_status") val currentServiceStatus: GroupCurrentServiceStatus? = null,
     @SerializedName("member_count") val memberCount: Int,
     @SerializedName("members") val members: List<GroupMember>,
-    @SerializedName("created_at") val createdAt: String
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName(
+        value = "last_message_at",
+        alternate = ["last_activity_at", "updated_at", "last_message_time"]
+    ) val lastMessageAt: String? = null
 )
 
 data class GroupCurrentServiceStatus(

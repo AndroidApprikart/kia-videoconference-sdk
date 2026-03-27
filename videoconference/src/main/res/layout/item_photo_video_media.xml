@@ -12,6 +12,13 @@
         android:background="@drawable/bg_comment_box"
         android:contentDescription="@null" />
 
+    <ProgressBar
+        android:id="@+id/progressThumbLoading"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:indeterminate="true" />
+
     <FrameLayout
         android:id="@+id/layoutVideoIndicator"
         android:layout_width="32dp"

@@ -4,12 +4,14 @@ import java.util.concurrent.CopyOnWriteArraySet
 
 data class RoomMediaSnapshot(
     val photosVideos: List<ChatMessage>,
-    val documents: List<ChatMessage>
+    val documents: List<ChatMessage>,
+    val isLoading: Boolean = false
 )
 
 object ChatMediaStore {
     private val roomMessages = mutableMapOf<String, MutableList<ChatMessage>>()
     private val listeners = mutableMapOf<String, CopyOnWriteArraySet<(RoomMediaSnapshot) -> Unit>>()
+    private val roomLoading = mutableMapOf<String, Boolean>()
 
     @Synchronized
     fun replaceMessages(roomSlug: String, messages: List<ChatMessage>) {
@@ -26,6 +28,12 @@ object ChatMediaStore {
         } else {
             list.add(message.copy())
         }
+        notifyListeners(roomSlug)
+    }
+
+    @Synchronized
+    fun setLoading(roomSlug: String, isLoading: Boolean) {
+        roomLoading[roomSlug] = isLoading
         notifyListeners(roomSlug)
     }
 
@@ -48,10 +56,13 @@ object ChatMediaStore {
 
     @Synchronized
     private fun snapshotFor(roomSlug: String): RoomMediaSnapshot {
-        val messages = roomMessages[roomSlug].orEmpty()
+        val messages = roomMessages[roomSlug]
+            .orEmpty()
+            .sortedByDescending { it.createdAtMillis ?: 0L }
         return RoomMediaSnapshot(
             photosVideos = messages.filter { it.type == ChatMessageType.IMAGE || it.type == ChatMessageType.VIDEO },
-            documents = messages.filter { it.type == ChatMessageType.FILE }
+            documents = messages.filter { it.type == ChatMessageType.FILE },
+            isLoading = roomLoading[roomSlug] == true
         )
     }
 }
