@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -58,11 +59,18 @@ class VirtualRoomListActivity : AppCompatActivity() {
     private var hasPreviousPage: Boolean = false
     private val unreadListener: (Map<String, Int>) -> Unit = { counts ->
         if (allRooms.isNotEmpty()) {
+            val now = System.currentTimeMillis()
             val updatedAllRooms = allRooms.map { room ->
-                room.copy(unreadCount = counts[room.roNumber] ?: room.unreadCount)
+                val incomingCount = counts[room.roNumber]
+                if (incomingCount != null && incomingCount > room.unreadCount) {
+                    room.copy(unreadCount = incomingCount, latestActivityMillis = now)
+                } else {
+                    room.copy(unreadCount = incomingCount ?: room.unreadCount)
+                }
             }
-            allRooms = updatedAllRooms
-            latestRooms = filterRooms(updatedAllRooms, searchQuery, selectedReferenceFilter)
+            allRooms = sortRoomsByLatestActivity(updatedAllRooms)
+            latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
+            VirtualRoomStorage.saveRooms(this, allRooms)
             runOnUiThread { adapter.updateRooms(latestRooms) }
         }
     }
@@ -110,6 +118,13 @@ class VirtualRoomListActivity : AppCompatActivity() {
             rootViewProvider = { findViewById<View>(android.R.id.content) }
         )
 
+        val cachedRooms = VirtualRoomStorage.loadRooms(this)
+        if (cachedRooms.isNotEmpty()) {
+            allRooms = sortRoomsByLatestActivity(cachedRooms)
+            latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
+            adapter.updateRooms(latestRooms)
+        }
+
         fetchGroups(page = 1)
         NotificationWebSocketManager.getInstance().connectWithToken(PreferenceManager.getAccessToken())
     }
@@ -130,8 +145,8 @@ class VirtualRoomListActivity : AppCompatActivity() {
             val updatedAllRooms = allRooms.map { room ->
                 room.copy(unreadCount = counts[room.roNumber] ?: room.unreadCount)
             }
-            allRooms = updatedAllRooms
-            latestRooms = filterRooms(updatedAllRooms, searchQuery, selectedReferenceFilter)
+            allRooms = sortRoomsByLatestActivity(updatedAllRooms)
+            latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
             adapter.updateRooms(latestRooms)
         }
     }
@@ -171,9 +186,11 @@ class VirtualRoomListActivity : AppCompatActivity() {
                     totalPages = result.totalPages
                     hasNextPage = result.hasNext
                     hasPreviousPage = result.hasPrevious
-                    allRooms = result.rooms
-                    latestRooms = filterRooms(result.rooms, searchQuery, selectedReferenceFilter)
+                    allRooms = sortRoomsByLatestActivity(result.rooms)
+                    latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
                     adapter.updateRooms(latestRooms)
+                    VirtualRoomStorage.saveRooms(this@VirtualRoomListActivity, allRooms)
+                    showOfflineHint("")
                     updatePaginationUi()
                 }
                 result is GroupsResult.Unauthorized -> {
@@ -181,7 +198,15 @@ class VirtualRoomListActivity : AppCompatActivity() {
                 }
                 result is GroupsResult.Error -> {
                     Log.e("VirtualRoomList", "Failed to fetch groups: ${result.message}")
-                    Toast.makeText(this@VirtualRoomListActivity, "Failed to load rooms", Toast.LENGTH_SHORT).show()
+                    val cachedRooms = VirtualRoomStorage.loadRooms(this@VirtualRoomListActivity)
+                    if (cachedRooms.isNotEmpty()) {
+                        allRooms = sortRoomsByLatestActivity(cachedRooms)
+                        latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
+                        adapter.updateRooms(latestRooms)
+                        showOfflineHint("No internet. Showing previously loaded rooms.")
+                    } else {
+                        showOfflineHint("No internet. Unable to load rooms.")
+                    }
                 }
             }
         }
@@ -220,7 +245,8 @@ class VirtualRoomListActivity : AppCompatActivity() {
                             lifecycleStatusLabel = serviceStatus?.statusLabel,
                             roNumberDisplay = group.roNumber, // Tablet view displays this as RO No
                             appointmentIdDisplay = resolveAppointmentId(group),
-                            serviceNotes = serviceStatus?.notes
+                            serviceNotes = serviceStatus?.notes,
+                            latestActivityMillis = parseCreatedAtMillis(group.lastMessageAt ?: group.createdAt)
                         )
                     }
                     GroupsResult.Success(
@@ -281,13 +307,23 @@ class VirtualRoomListActivity : AppCompatActivity() {
                         totalPages = result.totalPages
                         hasNextPage = result.hasNext
                         hasPreviousPage = result.hasPrevious
-                        allRooms = result.rooms
-                        latestRooms = filterRooms(result.rooms, searchQuery, selectedReferenceFilter)
+                        allRooms = sortRoomsByLatestActivity(result.rooms)
+                        latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
                         adapter.updateRooms(latestRooms)
+                        VirtualRoomStorage.saveRooms(this@VirtualRoomListActivity, allRooms)
+                        showOfflineHint("")
                         updatePaginationUi()
                     } else if (result is GroupsResult.Error) {
                         Log.e("VirtualRoomList", "Failed to fetch groups after refresh: ${result.message}")
-                        Toast.makeText(this@VirtualRoomListActivity, "Failed to load rooms", Toast.LENGTH_SHORT).show()
+                        val cachedRooms = VirtualRoomStorage.loadRooms(this@VirtualRoomListActivity)
+                        if (cachedRooms.isNotEmpty()) {
+                            allRooms = sortRoomsByLatestActivity(cachedRooms)
+                            latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
+                            adapter.updateRooms(latestRooms)
+                            showOfflineHint("No internet. Showing previously loaded rooms.")
+                        } else {
+                            showOfflineHint("No internet. Unable to load rooms.")
+                        }
                     }
                 } else {
                     SocketSessionCoordinator.getInstance().clearSession()
@@ -384,6 +420,8 @@ class VirtualRoomListActivity : AppCompatActivity() {
         allRooms = allRooms.map { existing ->
             if (existing.roNumber == room.roNumber) existing.copy(unreadCount = 0) else existing
         }
+        allRooms = sortRoomsByLatestActivity(allRooms)
+        VirtualRoomStorage.saveRooms(this, allRooms)
         latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
         adapter.updateRooms(latestRooms)
         NotificationWebSocketManager.getInstance().setActiveGroupSlug(room.roNumber)
@@ -634,7 +672,32 @@ class VirtualRoomListActivity : AppCompatActivity() {
             ).any { value ->
                 value?.lowercase(Locale.getDefault())?.contains(normalizedQuery) == true
             }
+        }.sortedByDescending { it.latestActivityMillis }
+    }
+
+    private fun sortRoomsByLatestActivity(rooms: List<VirtualRoomUiModel>): List<VirtualRoomUiModel> {
+        return rooms.sortedByDescending { it.latestActivityMillis }
+    }
+
+    private fun parseCreatedAtMillis(createdAt: String?): Long {
+        if (createdAt.isNullOrBlank()) return 0L
+        return try {
+            val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+            parser.parse(createdAt.take(19))?.time ?: 0L
+        } catch (_: Exception) {
+            0L
         }
+    }
+
+    private fun showOfflineHint(message: String) {
+        val hint = findViewById<TextView?>(R.id.txtRoomsOfflineHint) ?: return
+        if (message.isBlank()) {
+            hint.visibility = View.GONE
+            return
+        }
+        hint.visibility = View.VISIBLE
+        hint.text = message
+        hint.setTextColor(ContextCompat.getColor(this, R.color.red))
     }
 
     private fun resolveAppointmentId(group: GroupResponse): String? {

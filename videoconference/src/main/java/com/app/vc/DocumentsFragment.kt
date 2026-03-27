@@ -23,8 +23,11 @@ class DocumentsFragment : Fragment() {
 
     private val mediaListener: (com.app.vc.virtualchatroom.RoomMediaSnapshot) -> Unit = { snapshot ->
         adapter.updateItems(snapshot.documents)
-        binding.recyclerDocuments.visibility = if (snapshot.documents.isEmpty()) View.GONE else View.VISIBLE
-        binding.txtEmptyDocuments.visibility = if (snapshot.documents.isEmpty()) View.VISIBLE else View.GONE
+        binding.progressMediaDocuments.visibility = if (snapshot.isLoading) View.VISIBLE else View.GONE
+        binding.recyclerDocuments.visibility =
+            if (!snapshot.isLoading && snapshot.documents.isNotEmpty()) View.VISIBLE else View.GONE
+        binding.txtEmptyDocuments.visibility =
+            if (!snapshot.isLoading && snapshot.documents.isEmpty()) View.VISIBLE else View.GONE
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

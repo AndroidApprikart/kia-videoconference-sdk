@@ -147,8 +147,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private var isRecoveryBannerShowing = false
     private var socketRecoveryBannerPending = false
     private var shouldRefetchMessagesOnReconnect = false
-    private var suppressSocketToastUntilMs = 0L
     private var isRetryingPendingMessages = false
+    private var appWentToBackground = false
+    private var suppressRecoveryBannerForNextConnect = false
     private var isLoadingOlderMessages = false
     private var hasMoreOlderMessages = true
     private var oldestLoadedMessageId: Int? = null
@@ -347,12 +348,31 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             .show()
                     } else {
                         val mimeType = contentResolver.getType(uri) ?: ""
+                        val extension = file.extension.lowercase(Locale.getDefault())
+                        val isSupportedDocument = extension in setOf(
+                            "pdf", "doc", "docx", "xls", "xlsx", "txt", "csv"
+                        )
                         val type = when {
                             mimeType.startsWith("image") -> ChatMessageType.IMAGE
                             mimeType.startsWith("video") -> ChatMessageType.VIDEO
-                            else -> ChatMessageType.FILE
+                            mimeType.startsWith("audio") -> ChatMessageType.VOICE_NOTE
+                            mimeType.isBlank() && isSupportedDocument -> ChatMessageType.FILE
+                            mimeType.contains("pdf", ignoreCase = true) ||
+                                mimeType.contains("word", ignoreCase = true) ||
+                                mimeType.contains("excel", ignoreCase = true) ||
+                                mimeType.contains("spreadsheet", ignoreCase = true) ||
+                                mimeType.contains("text", ignoreCase = true) -> ChatMessageType.FILE
+                            else -> null
                         }
-                        selectedFiles.add(file to type)
+                        if (type != null) {
+                            selectedFiles.add(file to type)
+                        } else {
+                            Toast.makeText(
+                                this,
+                                "Unsupported file type. Please upload image/video/audio/PDF/DOC/XLS/TXT/CSV.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                 }
             }
@@ -608,7 +628,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 isNetworkAvailable = connected
                 if (connected) {
                     pendingRecoveryBanner = !wasConnected || shouldShowRecoveryBannerOnReconnect
-                    suppressSocketToastUntilMs = SystemClock.elapsedRealtime() + 5000L
                     if (!pendingRecoveryBanner) {
                         hideNetworkErrorBanner()
                     }
@@ -616,7 +635,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 } else {
                     pendingRecoveryBanner = false
                     shouldShowRecoveryBannerOnReconnect = true
-                    suppressSocketToastUntilMs = SystemClock.elapsedRealtime() + 5000L
                     showNetworkErrorBanner()
                 }
             }
@@ -710,13 +728,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         setupSendActions()
         setupAttachmentAndMedia()
         setupVoiceNote()
-        setMessagesLoading(true)
+        loadCachedMessages()
+        setMessagesLoading(currentRawMessages().isEmpty())
         connectToWebSocket()
         fetchGroupMembers()
         fetchQuickReplies()
         fetchMessages()
         fetchServiceLifecycle()
         fetchTemplates()
+        restoreDraftMessage()
 
         sharedViewModel.estimateDetailsResponse.observe(this) {
             if (it != null) {
@@ -764,7 +784,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
     override fun onResume() {
         super.onResume()
-
+        appWentToBackground = false
         if (!WebSocketManager.getInstance().isConnected()) {
             WebSocketManager.getInstance().reconnectNow()
         }
@@ -791,6 +811,9 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
     override fun onStop() {
+        persistDraftMessage()
+        appWentToBackground = true
+        suppressRecoveryBannerForNextConnect = true
         connectivityBannerHandler?.unregister()
         super.onStop()
     }
@@ -886,8 +909,12 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val response = apiService.getMessages("Bearer $token", slug, beforeMessageId)
                 if (response.isSuccessful && response.body() != null) {
                     val currentUserId = PreferenceManager.getUserId()
+                    val cachedLastDisplayedId = if (!isPagination) {
+                        ChatMessageStorage.getLastDisplayedMessageId(this@VirtualChatRoomActivity, slug)
+                    } else null
                     val apiMessages = parseApiMessagesResponse(response.body())
                     Log.d(TAG, "Messages API response for $slug before=$beforeMessageId: ${gson.toJson(apiMessages)}")
+                    Log.d(TAG, "Cached last displayed id for $slug: $cachedLastDisplayedId")
                     val chatMessages = apiMessages.map { apiMsg -> apiMessageToChatMessage(apiMsg, currentUserId) }
                     val markAllReadResponse = if (!isPagination) {
                         try {
@@ -935,18 +962,24 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                 GroupUnreadStore.updateUnreadCount(slug, responseBody.unreadCount)
                             }
                         }
-                        oldestLoadedMessageId = (currentRawMessages() + chatMessages)
+                        val displayMessages = if (isPagination) {
+                            chatMessages
+                        } else {
+                            mergeMessagesKeepingCache(currentRawMessages(), chatMessages)
+                        }
+                        oldestLoadedMessageId = (if (isPagination) currentRawMessages() + chatMessages else displayMessages)
                             .mapNotNull { it.messageId?.toIntOrNull() }
                             .minOrNull()
                         hasMoreOlderMessages = chatMessages.isNotEmpty()
                         if (isPagination) {
                             prependOlderMessages(chatMessages)
                         } else {
-                            val withHeaders = buildMessagesWithDateHeaders(chatMessages)
+                            val withHeaders = buildMessagesWithDateHeaders(displayMessages)
                             messages.clear()
                             messages.addAll(withHeaders)
-                            ChatMediaStore.replaceMessages(slug, chatMessages)
+                            ChatMediaStore.replaceMessages(slug, displayMessages)
                             messageAdapter?.notifyDataSetChanged()
+                            persistCurrentMessages(slug)
                             scrollToLast()
                             scheduleVisibleReadReceipt(120L)
                         }
@@ -1051,6 +1084,78 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun currentRawMessages(): List<ChatMessage> =
         messages.filter { it.type != ChatMessageType.DATE_HEADER }
 
+    private fun loadCachedMessages() {
+        val slug = room?.roNumber ?: return
+        val cachedMessages = ChatMessageStorage.loadMessages(this, slug)
+        if (cachedMessages.isEmpty()) return
+        val withHeaders = buildMessagesWithDateHeaders(cachedMessages)
+        messages.clear()
+        messages.addAll(withHeaders)
+        oldestLoadedMessageId = cachedMessages.mapNotNull { it.messageId?.toIntOrNull() }.minOrNull()
+        ChatMediaStore.replaceMessages(slug, cachedMessages)
+        messageAdapter?.notifyDataSetChanged()
+        scrollToLast()
+    }
+
+    private fun persistCurrentMessages(slug: String? = null) {
+        val resolvedSlug = slug ?: room?.roNumber ?: return
+        ChatMessageStorage.saveMessages(this, resolvedSlug, currentRawMessages())
+    }
+
+    private fun mergeMessagesKeepingCache(
+        cachedMessages: List<ChatMessage>,
+        latestMessages: List<ChatMessage>
+    ): List<ChatMessage> {
+        val merged = linkedMapOf<String, ChatMessage>()
+
+        fun stableKey(message: ChatMessage): String {
+            return message.messageId?.takeIf { it.isNotBlank() }
+                ?: listOf(
+                    message.type.name,
+                    message.createdAtMillis?.toString().orEmpty(),
+                    message.text,
+                    message.caption.orEmpty(),
+                    message.attachmentUri.orEmpty(),
+                    message.fileName.orEmpty()
+                ).joinToString("|")
+        }
+
+        cachedMessages.forEach { merged[stableKey(it)] = it }
+        latestMessages.forEach { merged[stableKey(it)] = it }
+        val normalized = merged.values.sortedWith(
+            compareBy<ChatMessage> { it.createdAtMillis ?: Long.MAX_VALUE }
+                .thenBy { it.messageId?.toIntOrNull() ?: Int.MAX_VALUE }
+        )
+
+        // Remove local pending/sent placeholders when equivalent server messages exist.
+        val serverMessages = normalized.filter { it.messageId?.startsWith("local_") != true }
+        return normalized.filterNot { message ->
+            val isLocalPlaceholder = message.messageId?.startsWith("local_") == true
+            if (!isLocalPlaceholder) return@filterNot false
+
+            serverMessages.any { server ->
+                if (server.type != message.type) return@any false
+                if (server.isSender != message.isSender) return@any false
+
+                val sameText = server.text.trim() == message.text.trim()
+                val sameCaption = (server.caption ?: "").trim() == (message.caption ?: "").trim()
+                val sameAttachment = (server.attachmentUri ?: "").substringAfterLast('/') ==
+                    (message.attachmentUri ?: "").substringAfterLast('/')
+                val timeDelta = kotlin.math.abs(
+                    (server.createdAtMillis ?: 0L) - (message.createdAtMillis ?: 0L)
+                )
+                val closeEnoughTime = timeDelta in 0..(5 * 60 * 1000L)
+
+                when (message.type) {
+                    ChatMessageType.TEXT -> sameText && closeEnoughTime
+                    ChatMessageType.IMAGE, ChatMessageType.VIDEO, ChatMessageType.FILE, ChatMessageType.VOICE_NOTE ->
+                        (sameAttachment || sameCaption) && closeEnoughTime
+                    else -> false
+                }
+            }
+        }
+    }
+
     private fun prependOlderMessages(olderMessages: List<ChatMessage>) {
         if (olderMessages.isEmpty()) return
         val recycler = binding.recyclerMessages
@@ -1073,6 +1178,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         suppressAutoScroll = true
         messageAdapter?.replaceAll(withHeaders)
         ChatMediaStore.replaceMessages(room?.roNumber ?: return, combinedMessages)
+        persistCurrentMessages()
         recycler.post {
             val anchorIndex = if (anchorId.isNullOrBlank()) -1 else messages.indexOfFirst { it.messageId == anchorId }
             if (anchorIndex >= 0) {
@@ -1434,12 +1540,14 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     isSender = true,
                     timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date())
                         .lowercase(),
+                    createdAtMillis = System.currentTimeMillis(),
                     type = ChatMessageType.VOICE_NOTE,
                     attachmentUri = path,
                     durationSeconds = voiceNoteDurationSeconds,
                     status = MessageStatus.SENDING
                 )
                 messageAdapter?.addMessage(tempMessage)
+                persistCurrentMessages()
                 scrollToLast()
                 performUpload(File(path), "Voice Note", ChatMessageType.VOICE_NOTE, localId)
             }
@@ -1812,6 +1920,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             }
         }
         messageAdapter?.addMessage(message)
+        persistCurrentMessages()
     }
 
     private fun resolveSenderDisplayName(username: String?): String? {
@@ -1860,7 +1969,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         runOnUiThread {
             Log.d("VirtualChatRoom", "WebSocket Connected Successfully")
             PresenceStore.setUserOnline(PreferenceManager.getUserId())
-            if (socketRecoveryBannerPending || pendingRecoveryBanner || shouldShowRecoveryBannerOnReconnect) {
+            if (suppressRecoveryBannerForNextConnect) {
+                suppressRecoveryBannerForNextConnect = false
+                socketRecoveryBannerPending = false
+                pendingRecoveryBanner = false
+                shouldShowRecoveryBannerOnReconnect = false
+                if (networkErrorVisible && isNetworkAvailable) {
+                    hideNetworkErrorBanner()
+                }
+            } else if (socketRecoveryBannerPending || pendingRecoveryBanner || shouldShowRecoveryBannerOnReconnect) {
                 showNetworkRecoveryBanner()
                 socketRecoveryBannerPending = false
                 pendingRecoveryBanner = false
@@ -2229,9 +2346,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 socketRecoveryBannerPending = true
                 showNetworkErrorBanner()
                 WebSocketManager.getInstance().reconnectNow()
-                if (SystemClock.elapsedRealtime() >= suppressSocketToastUntilMs) {
-                    showWebSocketDisconnectedToast("Chat connection lost")
-                }
             }
         }
     }
@@ -2242,15 +2356,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             shouldRefetchMessagesOnReconnect = true
             socketRecoveryBannerPending = true
             showNetworkErrorBanner()
-            if (isNetworkAvailable && SystemClock.elapsedRealtime() >= suppressSocketToastUntilMs) {
-                showWebSocketDisconnectedToast(
-                    if (error.contains("not connected", ignoreCase = true)) {
-                        "WebSocket disconnected. Reconnecting..."
-                    } else {
-                        "Chat connection lost"
-                    }
-                )
-            }
         }
     }
 
@@ -2293,6 +2398,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         text = "",
                         isSender = true,
                         timeLabel = timeLabel,
+                        createdAtMillis = System.currentTimeMillis(),
                         type = type,
                         attachmentUri = file.absolutePath,
                         // Multi-select: show caption on first item only (like WhatsApp group). Single-select: show caption on the item.
@@ -2303,6 +2409,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                         uploadProgressPercent = 0
                     )
                 )
+                persistCurrentMessages()
                 scrollToLast()
                 lifecycleScope.launch {
                     val fileToUpload = if (type == ChatMessageType.IMAGE) {
@@ -2583,32 +2690,47 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                                     )
                                 )
                             }
+                            persistCurrentMessages(slug)
                             hideNetworkErrorBanner()
                         } else {
+                            persistCurrentMessages(slug)
                             showNetworkErrorBanner()
                         }
                     }
                 } else {
 
                     val errorBody = response.errorBody()?.string()
+                    val code = response.code()
+                    val isClientValidationError = code == 400 || code == 415 || code == 422
+                    val uploadMessage = if (isClientValidationError) {
+                        "Unsupported or invalid file. Please choose a supported format."
+                    } else {
+                        "Upload failed: $code"
+                    }
 
-                    Log.e("UploadDebug", "Code: ${response.code()}")
+                    Log.e("UploadDebug", "Code: $code")
                     Log.e("UploadDebug", "ErrorBody: $errorBody")
 
                     runOnUiThread {
                         messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR)
-                        showNetworkErrorBanner()
+                        persistCurrentMessages(slug)
+                        if (isClientValidationError) {
+                            hideNetworkErrorBanner()
+                        } else {
+                            showNetworkErrorBanner()
+                        }
                     }
 
                     Toast.makeText(
                         this@VirtualChatRoomActivity,
-                        "Upload failed: ${response.code()}",
+                        uploadMessage,
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     messageAdapter?.updateMessageStatus(localId, MessageStatus.ERROR)
+                    persistCurrentMessages(slug)
                     showNetworkErrorBanner()
                 }
                 Log.e("VirtualChatRoom", "Upload Error: ${e.message}")
@@ -2676,6 +2798,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val message = messages[index]
         if (message.isSender || message.type == ChatMessageType.DATE_HEADER || message.status == MessageStatus.READ) return
         message.status = MessageStatus.READ
+        persistCurrentMessages()
     }
 
     private fun sendMediaMessageOverWebSocket(
@@ -2982,7 +3105,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     downloadRemoteFileToPublicStorage(rawUrl, fileName, message)
                 }
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@VirtualChatRoomActivity, "Saved to gallery: $fileName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@VirtualChatRoomActivity, "File saved successfully ", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e("VirtualChatRoom", "Save failed for $fileName: ${e.javaClass.simpleName} - ${e.message}")
@@ -3133,6 +3256,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     private fun setupSendActions() {
         binding.edtMessageTablet.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
+                persistDraftMessage(s?.toString().orEmpty())
                 if (s.isNullOrBlank()) sendTypingStatus(false)
             }
 
@@ -3160,9 +3284,28 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                     showNetworkErrorBanner()
                 }
                 binding.edtMessageTablet.setText("")
+                room?.roNumber?.let { ChatMessageStorage.clearDraft(this@VirtualChatRoomActivity, it) }
                 scrollToLast()
                 sendTypingStatus(false)
             }
+        }
+    }
+
+    private fun restoreDraftMessage() {
+        val slug = room?.roNumber ?: return
+        val draft = ChatMessageStorage.loadDraft(this, slug)
+        if (draft.isBlank()) return
+        binding.edtMessageTablet.setText(draft)
+        binding.edtMessageTablet.setSelection(draft.length)
+    }
+
+    private fun persistDraftMessage(value: String? = null) {
+        val slug = room?.roNumber ?: return
+        val text = value ?: binding.edtMessageTablet.text?.toString().orEmpty()
+        if (text.isBlank()) {
+            ChatMessageStorage.clearDraft(this, slug)
+        } else {
+            ChatMessageStorage.saveDraft(this, slug, text)
         }
     }
 
@@ -3221,9 +3364,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 senderName = senderName,
                 senderUsername = senderUsername,
                 timeLabel = timeLabel,
+                createdAtMillis = System.currentTimeMillis(),
                 status = if (isSender) MessageStatus.SENDING else MessageStatus.SENT
             )
         )
+        persistCurrentMessages()
     }
 
     private fun sendWebSocketMessage(text: String, messageId: String? = null): Boolean {
@@ -3259,10 +3404,6 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 isRetryingPendingMessages = false
             }
         }
-    }
-
-    private fun showWebSocketDisconnectedToast(message: String) {
-        Toast.makeText(this@VirtualChatRoomActivity, message, Toast.LENGTH_LONG).show()
     }
 
     private fun setupAttachmentAndMedia() {

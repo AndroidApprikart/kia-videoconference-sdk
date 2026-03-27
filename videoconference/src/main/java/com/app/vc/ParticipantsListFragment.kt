@@ -24,6 +24,7 @@ import com.app.vc.network.RemoveGroupMemberRequest
 import com.app.vc.participants.EmployeeAdvisorAdapter
 import com.app.vc.participants.ManageParticipantsAdapter
 import com.app.vc.participants.ParticipantsAdapter
+import com.app.vc.participants.ParticipantsStorage
 import com.app.vc.participants.ParticipantsViewModel
 import com.app.vc.presence.PresenceStore
 import com.app.vc.utils.ApiDetails
@@ -72,12 +73,16 @@ class ParticipantsListFragment : Fragment() {
         viewModel = ViewModelProvider(this)[ParticipantsViewModel::class.java]
 
         setupObservers()
-        val token = PreferenceManager.getAccessToken() ?: ""
         val groupSlug = arguments?.getString(KEY_GROUP_SLUG)
+        if (!groupSlug.isNullOrBlank()) {
+            val cachedMembers = ParticipantsStorage.load(requireContext(), groupSlug)
+            if (cachedMembers.isNotEmpty()) {
+                participantsAdapter.updateList(cachedMembers)
+            }
+        }
+        val token = PreferenceManager.getAccessToken() ?: ""
         if (token.isNotEmpty()) {
             viewModel.fetchParticipants(token, groupSlug)
-        } else {
-            Toast.makeText(requireContext(), "No access token found", Toast.LENGTH_SHORT).show()
         }
         PresenceStore.addListener(presenceListener)
     }
@@ -86,14 +91,28 @@ class ParticipantsListFragment : Fragment() {
         viewModel.members.observe(viewLifecycleOwner) { members ->
             if (members != null) {
                 participantsAdapter.updateList(members)
+                arguments?.getString(KEY_GROUP_SLUG)?.let { groupSlug ->
+                    ParticipantsStorage.save(requireContext(), groupSlug, members)
+                }
             }
         }
 
         viewModel.error.observe(viewLifecycleOwner) { error ->
             error?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+                if (!isLikelyNetworkError(it)) {
+                    Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+                }
             }
         }
+    }
+
+    private fun isLikelyNetworkError(message: String): Boolean {
+        val text = message.lowercase(Locale.getDefault())
+        return text.contains("unable to resolve host") ||
+            text.contains("failed to connect") ||
+            text.contains("timeout") ||
+            text.contains("socket") ||
+            text.contains("network")
     }
 
     private fun setupParticipantsList() {

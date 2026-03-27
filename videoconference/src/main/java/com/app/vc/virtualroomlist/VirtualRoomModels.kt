@@ -39,7 +39,8 @@ data class VirtualRoomUiModel(
     val lifecycleStatusLabel: String? = null,
     val roNumberDisplay: String? = null,
     val appointmentIdDisplay: String? = null,
-    val serviceNotes: String? = null
+    val serviceNotes: String? = null,
+    val latestActivityMillis: Long = 0L
 )
 
 internal fun VirtualRoomDto.toUiModel(): VirtualRoomUiModel {

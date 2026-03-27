@@ -22,8 +22,11 @@ class PhotosAndVideosFragment : Fragment() {
     private var groupSlug: String? = null
     private val mediaListener: (com.app.vc.virtualchatroom.RoomMediaSnapshot) -> Unit = { snapshot ->
         adapter.updateItems(snapshot.photosVideos)
-        binding.recyclerPhotosVideos.visibility = if (snapshot.photosVideos.isEmpty()) View.GONE else View.VISIBLE
-        binding.txtEmptyPhotosVideos.visibility = if (snapshot.photosVideos.isEmpty()) View.VISIBLE else View.GONE
+        binding.progressMediaPhotosVideos.visibility = if (snapshot.isLoading) View.VISIBLE else View.GONE
+        binding.recyclerPhotosVideos.visibility =
+            if (!snapshot.isLoading && snapshot.photosVideos.isNotEmpty()) View.VISIBLE else View.GONE
+        binding.txtEmptyPhotosVideos.visibility =
+            if (!snapshot.isLoading && snapshot.photosVideos.isEmpty()) View.VISIBLE else View.GONE
     }
 
 

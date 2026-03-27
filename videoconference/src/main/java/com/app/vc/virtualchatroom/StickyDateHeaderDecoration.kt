@@ -18,6 +18,7 @@ class StickyDateHeaderDecoration(
         val position = parent.getChildAdapterPosition(child)
 
         if (position == RecyclerView.NO_POSITION) return
+        if (isHeader(position) && child.top >= 0) return
 
         val headerPosition = getHeaderPositionForItem(position)
         if (headerPosition == -1) return

@@ -7,6 +7,8 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.app.vc.virtualchatroom.ChatMessage
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class DocumentMediaAdapter(
@@ -31,7 +33,9 @@ class DocumentMediaAdapter(
         holder.docImage.setImageResource(R.drawable.file_pdf_icon)
         holder.fileName.text = item.fileName ?: "Document"
         holder.fileType.text = item.fileName?.substringAfterLast('.', "pdf")?.uppercase(Locale.getDefault()) ?: "PDF"
-        holder.date.text = item.timeLabel
+        holder.date.text = item.createdAtMillis?.let { millis ->
+            SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(millis))
+        } ?: item.timeLabel
         holder.pages.visibility = View.GONE
 
 
