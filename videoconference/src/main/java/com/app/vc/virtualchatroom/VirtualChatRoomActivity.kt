@@ -1623,7 +1623,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val btnPlay = view.findViewById<ImageView>(R.id.btnPlayPauseVoice)
         val pauseIcon = view.findViewById<ImageView>(R.id.pauseIcon)
         val btnSave = view.findViewById<TextView>(R.id.btnSaveVoice)
-        val btnCancel = view.findViewById<TextView>(R.id.btnCancelVoice)
+//        val btnCancel = view.findViewById<TextView>(R.id.btnCancelVoice)
 
         voiceNoteDurationSeconds = 0
         voiceNotePath = null
@@ -1639,10 +1639,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 //                bottomSheet.dismiss()
 
         }
-        btnCancel.setOnClickListener {
-            dialog.dismiss()
-//                bottomSheet.dismiss()
-        }
+//        btnCancel.setOnClickListener {
+//            dialog.dismiss()
+////                bottomSheet.dismiss()
+//        }
 
 //        btnRecord.setOnClickListener {
 //
