@@ -151,7 +151,7 @@
                             android:id="@+id/txtStatusLabel"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Service Status"
+                            android:text="Status"
                             android:textSize="11sp"
                             android:textColor="@color/black"
                             android:alpha="0.8"/>

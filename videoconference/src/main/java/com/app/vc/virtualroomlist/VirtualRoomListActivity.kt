@@ -51,6 +51,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
     private val gson = Gson()
     private var selectedAppointmentDate: String? = null
     private var selectedServiceStatus: String? = null
+    private var selectedWorkType: String? = null
     private var selectedReferenceFilter: ReferenceFilter = ReferenceFilter.ALL
     private var searchQuery: String = ""
     private var currentPage: Int = 1
@@ -459,6 +460,9 @@ class VirtualRoomListActivity : AppCompatActivity() {
         findViewById<LinearLayout?>(R.id.filterStatusLayout)?.setOnClickListener {
             showServiceStatusMenu()
         }
+        findViewById<LinearLayout?>(R.id.filterWorkTypeLayout)?.setOnClickListener {
+            showSelectedWorkType()
+        }
     }
 
     private fun setupPaginationControls() {
@@ -643,6 +647,26 @@ class VirtualRoomListActivity : AppCompatActivity() {
                 val selected = options[item.itemId]
                 selectedServiceStatus = selected.second
                 findViewById<TextView?>(R.id.txtFilterStatus)?.text = selected.first
+                fetchGroups(page = 1)
+                true
+            }
+        }.show()
+    }
+
+    private fun showSelectedWorkType() {
+        val anchor = findViewById<View>(R.id.filterWorkTypeLayout) ?: return
+        val options = listOf(
+            "Paid Service" to "PAID_SERVICE",
+            "Free Service" to "Free_SERVICE"
+        )
+        PopupMenu(this, anchor).apply {
+            options.forEachIndexed { index, option ->
+                menu.add(0, index, index, option.first)
+            }
+            setOnMenuItemClickListener { item ->
+                val selected = options[item.itemId]
+                selectedWorkType = selected.second
+                findViewById<TextView?>(R.id.txtFilterWorkType)?.text = selected.first
                 fetchGroups(page = 1)
                 true
             }
