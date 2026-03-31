@@ -630,35 +630,36 @@ class VirtualChatMessageAdapter(
                     if (!audioPath.isNullOrEmpty()) {
 
                         if (audioPath.startsWith("http")) {
+                            try {
+                                Glide.with(itemView.context)
+                                    .downloadOnly()
+                                    .load(audioPath)
+                                    .into(object :
+                                        com.bumptech.glide.request.target.CustomTarget<File>() {
 
-                            Glide.with(itemView.context)
-                                .downloadOnly()
-                                .load(audioPath)
-                                .into(object :
-                                    com.bumptech.glide.request.target.CustomTarget<File>() {
+                                        override fun onResourceReady(
+                                            resource: File,
+                                            transition: com.bumptech.glide.request.transition.Transition<in File>?
+                                        ) {
 
-                                    override fun onResourceReady(
-                                        resource: File,
-                                        transition: com.bumptech.glide.request.transition.Transition<in File>?
-                                    ) {
+                                            val uri = Uri.fromFile(resource)
 
-                                        val uri = Uri.fromFile(resource)
-
-                                        if (waveformView?.sample == null) {
-                                            waveformView?.setSampleFrom(uri)
+                                            if (waveformView?.sample == null) {
+                                                waveformView?.setSampleFrom(uri)
+                                            }
+                                            val isPlaying = adapter.playingPosition == position
+                                            if (!isPlaying) {
+                                                val duration =
+                                                    adapter.getAudioDuration(itemView.context, uri)
+                                                txtVoiceDuration?.text = formatDuration(duration)
+                                            }
                                         }
-                                        val isPlaying = adapter.playingPosition == position
-                                        if (!isPlaying) {
-                                            val duration =
-                                                adapter.getAudioDuration(itemView.context, uri)
-                                            txtVoiceDuration?.text = formatDuration(duration)
-                                        }
 
-
-                                    }
-
-                                    override fun onLoadCleared(placeholder: Drawable?) {}
-                                })
+                                        override fun onLoadCleared(placeholder: Drawable?) {}
+                                    })
+                            } catch (_: Throwable) {
+                                // Host app may not package Glide when consuming local AAR.
+                            }
 
                         } else {
 
@@ -731,33 +732,38 @@ class VirtualChatMessageAdapter(
             else
                 Uri.fromFile(File(uri))
 
-            Glide.with(context)
-                .load(loadUri)
-                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
-                .listener(object : RequestListener<Drawable> {
+            try {
+                Glide.with(context)
+                    .load(loadUri)
+                    .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+                    .listener(object : RequestListener<Drawable> {
 
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Drawable>,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        mediaLoader?.visibility = View.GONE
-                        return false
-                    }
+                        override fun onLoadFailed(
+                            e: GlideException?,
+                            model: Any?,
+                            target: Target<Drawable>,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            mediaLoader?.visibility = View.GONE
+                            return false
+                        }
 
-                    override fun onResourceReady(
-                        resource: Drawable,
-                        model: Any,
-                        target: Target<Drawable>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        mediaLoader?.visibility = View.GONE
-                        return false
-                    }
-                })
-                .into(imageView!!)
+                        override fun onResourceReady(
+                            resource: Drawable,
+                            model: Any,
+                            target: Target<Drawable>?,
+                            dataSource: DataSource,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            mediaLoader?.visibility = View.GONE
+                            return false
+                        }
+                    })
+                    .into(imageView!!)
+            } catch (_: Throwable) {
+                mediaLoader?.visibility = View.GONE
+                imageView?.setImageResource(android.R.drawable.ic_menu_gallery)
+            }
         }
 
 //        private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
@@ -785,35 +791,40 @@ class VirtualChatMessageAdapter(
             else
                 Uri.fromFile(File(uri))
 
-            Glide.with(context)
-                .asBitmap()
-                .load(loadUri)
-                .frame(1000000)
-                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
-                .listener(object : RequestListener<Bitmap> {
+            try {
+                Glide.with(context)
+                    .asBitmap()
+                    .load(loadUri)
+                    .frame(1000000)
+                    .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+                    .listener(object : RequestListener<Bitmap> {
 
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Bitmap>,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        mediaLoader?.visibility = View.GONE
-                        return false
-                    }
+                        override fun onLoadFailed(
+                            e: GlideException?,
+                            model: Any?,
+                            target: Target<Bitmap>,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            mediaLoader?.visibility = View.GONE
+                            return false
+                        }
 
-                    override fun onResourceReady(
-                        resource: Bitmap,
-                        model: Any,
-                        target: Target<Bitmap>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        mediaLoader?.visibility = View.GONE
-                        return false
-                    }
-                })
-                .into(imageView!!)
+                        override fun onResourceReady(
+                            resource: Bitmap,
+                            model: Any,
+                            target: Target<Bitmap>?,
+                            dataSource: DataSource,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            mediaLoader?.visibility = View.GONE
+                            return false
+                        }
+                    })
+                    .into(imageView!!)
+            } catch (_: Throwable) {
+                mediaLoader?.visibility = View.GONE
+                imageView?.setImageResource(android.R.drawable.ic_media_play)
+            }
         }
 
         private fun formatDuration(seconds: Int): String {
@@ -993,36 +1004,37 @@ class VirtualChatMessageAdapter(
                     if (!audioPath.isNullOrEmpty()) {
 
                         if (audioPath.startsWith("http")) {
+                            try {
+                                Glide.with(itemView.context)
+                                    .downloadOnly()
+                                    .load(audioPath)
+                                    .into(object :
+                                        com.bumptech.glide.request.target.CustomTarget<File>() {
 
-                            Glide.with(itemView.context)
-                                .downloadOnly()
-                                .load(audioPath)
-                                .into(object :
-                                    com.bumptech.glide.request.target.CustomTarget<File>() {
+                                        override fun onResourceReady(
+                                            resource: File,
+                                            transition: com.bumptech.glide.request.transition.Transition<in File>?
+                                        ) {
 
-                                    override fun onResourceReady(
-                                        resource: File,
-                                        transition: com.bumptech.glide.request.transition.Transition<in File>?
-                                    ) {
+                                            val uri = Uri.fromFile(resource)
 
-                                        val uri = Uri.fromFile(resource)
+                                            if (waveformView?.sample == null) {
+                                                waveformView?.setSampleFrom(uri)
+                                            }
 
-                                        if (waveformView?.sample == null) {
-                                            waveformView?.setSampleFrom(uri)
+                                            val isPlaying = adapter.playingPosition == position
+                                            if (!isPlaying) {
+                                                val duration =
+                                                    adapter.getAudioDuration(itemView.context, uri)
+                                                txtVoiceDuration?.text = formatDuration(duration)
+                                            }
                                         }
 
-                                        val isPlaying = adapter.playingPosition == position
-                                        if (!isPlaying) {
-                                            val duration =
-                                                adapter.getAudioDuration(itemView.context, uri)
-                                            txtVoiceDuration?.text = formatDuration(duration)
-                                        }
-
-
-                                    }
-
-                                    override fun onLoadCleared(placeholder: Drawable?) {}
-                                })
+                                        override fun onLoadCleared(placeholder: Drawable?) {}
+                                    })
+                            } catch (_: Throwable) {
+                                // Host app may not package Glide when consuming local AAR.
+                            }
 
                         } else {
 
@@ -1098,33 +1110,38 @@ class VirtualChatMessageAdapter(
             else
                 Uri.fromFile(File(uri))
 
-            Glide.with(context)
-                .load(loadUri)
-                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
-                .listener(object : RequestListener<Drawable> {
+            try {
+                Glide.with(context)
+                    .load(loadUri)
+                    .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+                    .listener(object : RequestListener<Drawable> {
 
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Drawable>,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        mediaLoader?.visibility = View.GONE
-                        return false
-                    }
+                        override fun onLoadFailed(
+                            e: GlideException?,
+                            model: Any?,
+                            target: Target<Drawable>,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            mediaLoader?.visibility = View.GONE
+                            return false
+                        }
 
-                    override fun onResourceReady(
-                        resource: Drawable,
-                        model: Any,
-                        target: Target<Drawable>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        mediaLoader?.visibility = View.GONE
-                        return false
-                    }
-                })
-                .into(imageView!!)
+                        override fun onResourceReady(
+                            resource: Drawable,
+                            model: Any,
+                            target: Target<Drawable>?,
+                            dataSource: DataSource,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            mediaLoader?.visibility = View.GONE
+                            return false
+                        }
+                    })
+                    .into(imageView!!)
+            } catch (_: Throwable) {
+                mediaLoader?.visibility = View.GONE
+                imageView?.setImageResource(android.R.drawable.ic_menu_gallery)
+            }
         }
 
 //        private fun loadVideoThumbnail(context: Context, imageView: ImageView?, uri: String) {
@@ -1152,35 +1169,40 @@ class VirtualChatMessageAdapter(
             else
                 Uri.fromFile(File(uri))
 
-            Glide.with(context)
-                .asBitmap()
-                .load(loadUri)
-                .frame(1000000)
-                .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
-                .listener(object : RequestListener<Bitmap> {
+            try {
+                Glide.with(context)
+                    .asBitmap()
+                    .load(loadUri)
+                    .frame(1000000)
+                    .apply(RequestOptions().transform(CenterCrop(), RoundedCorners(24)))
+                    .listener(object : RequestListener<Bitmap> {
 
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Bitmap>,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        mediaLoader?.visibility = View.GONE
-                        return false
-                    }
+                        override fun onLoadFailed(
+                            e: GlideException?,
+                            model: Any?,
+                            target: Target<Bitmap>,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            mediaLoader?.visibility = View.GONE
+                            return false
+                        }
 
-                    override fun onResourceReady(
-                        resource: Bitmap,
-                        model: Any,
-                        target: Target<Bitmap>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        mediaLoader?.visibility = View.GONE
-                        return false
-                    }
-                })
-                .into(imageView!!)
+                        override fun onResourceReady(
+                            resource: Bitmap,
+                            model: Any,
+                            target: Target<Bitmap>?,
+                            dataSource: DataSource,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            mediaLoader?.visibility = View.GONE
+                            return false
+                        }
+                    })
+                    .into(imageView!!)
+            } catch (_: Throwable) {
+                mediaLoader?.visibility = View.GONE
+                imageView?.setImageResource(android.R.drawable.ic_media_play)
+            }
         }
         private fun formatDuration(seconds: Int): String {
             val m = seconds / 60

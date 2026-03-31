@@ -11,7 +11,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.app.kiakandid.databinding.ActivityMainBinding
 import com.app.vc.VCDynamicActivity4
 import com.app.vc.utils.PreferenceManager
-import com.app.vc.virtualchattoken.LoginKiaKrystal
 import com.app.vc.virtualroomlist.VirtualRoomListActivity
 
 class MainActivity : AppCompatActivity() {
@@ -117,7 +116,7 @@ class MainActivity : AppCompatActivity() {
         })
 
         btnOpenVirtualChat.setOnClickListener {
-            val intent = Intent(this@MainActivity, LoginKiaKrystal::class.java)
+            val intent = Intent(this@MainActivity, VirtualChatHostLoginActivity::class.java)
             startActivity(intent)
         }
     }

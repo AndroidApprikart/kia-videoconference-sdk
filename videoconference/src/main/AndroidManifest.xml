@@ -47,6 +47,9 @@
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true">
         <activity
+            android:name=".virtualchattoken.SdkAuthGateActivity"
+            android:exported="false" />
+        <activity
             android:name=".virtualchattoken.LoginKiaKrystal"
             android:exported="false" />
         <activity

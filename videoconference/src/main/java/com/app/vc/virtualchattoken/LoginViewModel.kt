@@ -83,11 +83,13 @@ class LoginViewModel : ViewModel() {
 
                     verifyToken(loginData.access!!)
                 } else {
-                    _errorMessage.value = "Login failed: ${response.message()}"
+                    val reason = response.message().takeIf { it.isNotBlank() } ?: "Unknown server error"
+                    _errorMessage.value = "Login failed: $reason"
                     _isLoading.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Error: ${e.localizedMessage}"
+                val reason = e.localizedMessage?.takeIf { it.isNotBlank() } ?: "Unexpected error"
+                _errorMessage.value = "Error: $reason"
                 _isLoading.value = false
             }
         }

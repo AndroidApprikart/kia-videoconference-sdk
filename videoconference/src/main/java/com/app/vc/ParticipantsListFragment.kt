@@ -1,6 +1,7 @@
 package com.app.vc
 
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -237,15 +238,29 @@ class ParticipantsListFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val request = EmployeeListRequest(
+                    companyNumber = EMPLOYEE_COMPANY_NUMBER,
+                    corporateNumber = EMPLOYEE_CORPORATE_NUMBER,
+                    dealerNumber = dealerCode,
+                    areaWorkType = EMPLOYEE_AREA_WORK_TYPE
+                )
+
+                Log.d(TAG, "Request: $request")
+
                 val response = employeeApiService.getEmployeeList(
                     apiKey = EMPLOYEE_API_KEY,
-                    request = EmployeeListRequest(
-                        companyNumber = EMPLOYEE_COMPANY_NUMBER,
-                        corporateNumber = EMPLOYEE_CORPORATE_NUMBER,
-                        dealerNumber = dealerCode,
-                        areaWorkType = EMPLOYEE_AREA_WORK_TYPE
-                    )
+                    request = request
                 )
+
+                Log.d(TAG, "Response Code: ${response.code()}")
+                Log.d(TAG, "Response Message: ${response.message()}")
+
+                if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Error Body: $errorBody")
+                } else {
+                    Log.d(TAG, "Success Body: ${response.body()}")
+                }
 
                 val employees = if (response.isSuccessful) {
                     response.body()?.data.orEmpty()
@@ -257,14 +272,16 @@ class ParticipantsListFragment : Fragment() {
                     .filterNot { it.employeeName.equals(currentAdvisor.displayName, ignoreCase = true) }
 
                 progressBar.visibility = View.GONE
+
                 if (employees.isEmpty()) {
                     recyclerView.visibility = View.GONE
                     emptyView.visibility = View.VISIBLE
                     emptyView.text = "No service advisors found."
+
                     if (!response.isSuccessful) {
                         Toast.makeText(
                             requireContext(),
-                            "Failed to load employees: ${response.code()}",
+                            "API Failed: ${response.code()}",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -273,14 +290,19 @@ class ParticipantsListFragment : Fragment() {
 
                 recyclerView.visibility = View.VISIBLE
                 emptyView.visibility = View.GONE
+
                 recyclerView.adapter = EmployeeAdvisorAdapter(employees) { employee ->
                     confirmAdvisorReplacement(currentAdvisor, employee, dialog)
                 }
+
             } catch (e: Exception) {
+                Log.e(TAG, "Exception: ", e)
+
                 progressBar.visibility = View.GONE
                 recyclerView.visibility = View.GONE
                 emptyView.visibility = View.VISIBLE
                 emptyView.text = "Unable to load employees."
+
                 Toast.makeText(
                     requireContext(),
                     e.message ?: "Unable to load employees",

@@ -118,6 +118,10 @@ object VCConstants {
     private const val AES_ALGORITHM = "AES"
     private const val AES_KEY_SIZE = 16 // 128 bits
     private const val ENCRYPTION_KEY = "Replace_With_A_Strong_Password"
+    const val EXTRA_USERNAME = "username"
+    const val EXTRA_UNIQUE_ID = "unique_id"
+    const val EXTRA_ROLE = "role"
+    const val EXTRA_DEALER_CODE ="dealer_code"
     @RequiresApi(Build.VERSION_CODES.O)
     fun decrypt(input: String): String {
         val cipher = Cipher.getInstance(AES_ALGORITHM)
