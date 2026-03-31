@@ -515,8 +515,6 @@ class VCDynamicActivity4 : BaseActivity() {
         }
 
 
-
-
     }
     private fun calculateNotificationTime(endTime:Long): Pair<Int, Int> {
         Log.d(TAG, "endVcNotification: calculateNotificationTime: ")
@@ -610,6 +608,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+
         viewModel.stopScreenShare.observe(this) {
             it?.let {
                 if (it) {
@@ -636,6 +635,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+
         viewModel.sendLocalTextMessageToDataChannel.observe(this) {
             it?.let {
                 if (it!=-1L) {
@@ -682,6 +682,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+
         viewModel.messageUnreadCount.observe(this){
             it?.let{
                 if(it.isBlank()){
@@ -1031,6 +1032,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+
         binding.btnEndCall.setOnClickListener {
             if (conferenceManager != null) {
                 if (conferenceManager!!.isJoined) {
@@ -1091,7 +1093,6 @@ class VCDynamicActivity4 : BaseActivity() {
             }
         }
 
-
         binding.btnMoreMenu?.setOnClickListener {
             Log.d(TAG, "setUpOnClickListeners: moreOptionsClicked: ")
             if (conferenceManager != null) {
@@ -1134,6 +1135,7 @@ class VCDynamicActivity4 : BaseActivity() {
                 }
             }
         }
+
         binding.btnParticipants?.setOnClickListener {
             /*check for participants and do action*/
             if (conferenceManager != null) {

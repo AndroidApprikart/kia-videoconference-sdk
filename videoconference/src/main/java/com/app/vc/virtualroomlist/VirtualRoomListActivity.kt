@@ -247,6 +247,10 @@ class VirtualRoomListActivity : AppCompatActivity() {
                             roNumberDisplay = group.roNumber, // Tablet view displays this as RO No
                             appointmentIdDisplay = resolveAppointmentId(group),
                             serviceNotes = serviceStatus?.notes,
+                            work_type = group.work_type,
+                            dealer_name = group.dealer_name,
+                            service_type = group.service_type,
+                            appointment_date = group.appointment_date,
                             latestActivityMillis = parseCreatedAtMillis(group.lastMessageAt ?: group.createdAt)
                         )
                     }
