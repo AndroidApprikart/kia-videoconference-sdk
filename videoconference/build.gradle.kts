@@ -95,8 +95,10 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     // Internal fallback class is used for waveform to avoid host-app transitive dependency issues.
-    implementation("com.github.lincollincol:amplituda:2.2.2")
     implementation("com.github.massoudss:waveformSeekBar:5.0.2")
+    implementation("com.github.lincollincol:amplituda:2.2.2")
+
+
 
 
 //    commented out dependency

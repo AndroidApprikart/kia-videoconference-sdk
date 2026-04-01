@@ -91,6 +91,7 @@
                 android:layout_marginStart="16dp"
                 android:layout_weight="1"/>
 
+
             <TextView
                 android:id="@+id/txtVoiceTimer"
                 android:layout_width="wrap_content"

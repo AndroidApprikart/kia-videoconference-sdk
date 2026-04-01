@@ -1886,10 +1886,10 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
 
     private fun isTablet(): Boolean {
-    val screenLayout = resources.configuration.screenLayout and
-            android.content.res.Configuration.SCREENLAYOUT_SIZE_MASK
-    return screenLayout >= android.content.res.Configuration.SCREENLAYOUT_SIZE_LARGE
-}
+        val screenLayout = resources.configuration.screenLayout and
+                android.content.res.Configuration.SCREENLAYOUT_SIZE_MASK
+        return screenLayout >= android.content.res.Configuration.SCREENLAYOUT_SIZE_LARGE
+    }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun startRecordingFlow(r: AppCompatButton, d: ImageView, p: ImageView, pause: LinearLayout,restart: LinearLayout,save: AppCompatButton) {
@@ -1920,7 +1920,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
     }
 
 
-private val recordAudioPermissionLauncher =
+    private val recordAudioPermissionLauncher =
     registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (!granted) Toast.makeText(this, "Permission required", Toast.LENGTH_SHORT).show()
     }
@@ -2076,9 +2076,9 @@ private val recordAudioPermissionLauncher =
 
     private fun playVoiceNote(path: String) {
 
-    // ⭐ STOP waveform animation
-    amplitudeHandler.removeCallbacks(amplitudeRunnable)
-}
+        // ⭐ STOP waveform animation
+        amplitudeHandler.removeCallbacks(amplitudeRunnable)
+    }
 
     private fun playVoiceNote(
         path: String,
@@ -2176,7 +2176,9 @@ private val recordAudioPermissionLauncher =
 
 
 
-@RequiresApi(Build.VERSION_CODES.O)
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
 private fun setupTabs() {
 
     val tabParticipants = binding.tabParticipants ?: return

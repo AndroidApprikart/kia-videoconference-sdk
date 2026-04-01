@@ -32,7 +32,11 @@ class WaveformSeekBar @JvmOverloads constructor(
             invalidate()
         }
 
-
+    var maxProgress: Float = 100F
+        set(value) {
+            field = value
+            invalidate()
+        }
     var progress: Float = 0f
         set(value) {
             field = value.coerceIn(0f, 100f)
