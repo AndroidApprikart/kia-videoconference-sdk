@@ -23,7 +23,11 @@ data class VirtualRoomDto(
     val timeLabel: String,
     val unreadCount: Int,
     val customerName: String,
-    val contactNumber: String
+    val contactNumber: String,
+    val work_type: String,
+    val service_type: String,
+    val dealer_name: String,
+    val appointment_date: String
 )
 
 data class VirtualRoomUiModel(
@@ -40,7 +44,12 @@ data class VirtualRoomUiModel(
     val roNumberDisplay: String? = null,
     val appointmentIdDisplay: String? = null,
     val serviceNotes: String? = null,
+    val work_type: String? = null,
+    val service_type: String? = null,
+    val dealer_name: String? = null,
+    val appointment_date: String? = null,
     val latestActivityMillis: Long = 0L
+
 )
 
 internal fun VirtualRoomDto.toUiModel(): VirtualRoomUiModel {
@@ -58,7 +67,11 @@ internal fun VirtualRoomDto.toUiModel(): VirtualRoomUiModel {
         timeLabel = timeLabel,
         unreadCount = unreadCount,
         customerName = customerName,
-        contactNumber = contactNumber
+        contactNumber = contactNumber,
+        work_type = work_type,
+        service_type = service_type,
+        dealer_name = dealer_name,
+        appointment_date = appointment_date
     )
 }
 

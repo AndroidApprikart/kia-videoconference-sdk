@@ -244,6 +244,59 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/filterWorkTypeLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginStart="@dimen/_3sdp"
+                    android:paddingVertical="@dimen/_3sdp"
+                    android:layout_gravity="bottom"
+                    android:paddingHorizontal="@dimen/_5sdp"
+                    android:background="@drawable/bg_comment_box">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/txtFilterWorkTypetv"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:paddingHorizontal="8dp"
+                        android:fontFamily="@font/kia_signature_fix_regular"
+                        android:background="@color/white"
+                        android:text="Work Type"
+                        android:textColorHint="#999999"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                        <TextView
+                        android:id="@+id/txtFilterWorkType"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/kia_signature_fix_regular"
+                        android:background="@color/white"
+                        android:text="Paid Service"
+                        android:paddingHorizontal="8dp"
+                        android:textColorHint="#999999"
+                        android:textColor="@color/color_kia_black"
+                        android:textSize="16sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/filterWorkTypeIcon"
+                        android:layout_width="@dimen/_8sdp"
+                        android:layout_height="@dimen/_8sdp"
+                        android:padding="@dimen/_2sdp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/keyboard_arrow_down"/>
+
+                </LinearLayout>
+
+                <LinearLayout
                     android:id="@+id/filterStatusLayout"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

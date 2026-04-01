@@ -85,6 +85,7 @@ class MainActivity : AppCompatActivity() {
                 intent.putExtra("deviceToken", deviceToken.getText().toString())
                 intent.putExtra("vcEndTime", vcEndTime.getText().toString())
                 startActivity(intent)
+
             } else {
                 Toast.makeText(applicationContext, "Fields cannot be empty", Toast.LENGTH_SHORT)
                     .show()

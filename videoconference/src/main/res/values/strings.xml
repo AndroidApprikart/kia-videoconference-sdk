@@ -271,7 +271,7 @@
     <string name="vc_back_to_home">Back to Home</string>
     <string name="vc_new_rooms_today">1 New Room </string>
     <string name="vc_new_rooms_todaycreated">created today </string>
-    <string name="vc_hint_search_customer_or_ro">Search Customer by name or RO number</string>
+    <string name="vc_hint_search_customer_or_ro">Search by RO number</string>
     <string name="vc_label_all_rooms">All Rooms</string>
     <string name="vc_col_customer_name">Customer Name</string>
     <string name="vc_col_ro_no">RO No</string>
