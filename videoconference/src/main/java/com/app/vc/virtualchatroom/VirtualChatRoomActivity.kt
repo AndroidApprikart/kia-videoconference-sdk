@@ -94,6 +94,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.kia.vc.message.Labour
 import com.kia.vc.message.Part
+import com.masoudss.lib.WaveformSeekBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -119,7 +120,6 @@ import java.nio.ByteOrder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.masoudss.lib.WaveformSeekBar
 import kotlin.math.abs
 
 class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketCallback, EstimationInteractionListener {

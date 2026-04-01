@@ -214,12 +214,6 @@ android:layout_marginTop="@dimen/_5sdp"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
-
-
-
-
-
-
         </LinearLayout>
 
 
