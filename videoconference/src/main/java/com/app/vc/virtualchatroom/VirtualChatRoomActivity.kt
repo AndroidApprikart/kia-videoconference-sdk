@@ -9,6 +9,8 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.pdf.PdfRenderer
 import android.media.AudioFormat
 import android.media.AudioManager
@@ -1838,6 +1840,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             dialog.dismiss()
         }
         dialog.show()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
 //            bottomSheet.show()
 
@@ -2027,6 +2030,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         }
         voiceNoteWaveformView?.apply {
 
+            waveWidth = 4f
+            waveGap = 2f
+            waveMinHeight = 2f
+
+
             waveBackgroundColor = ContextCompat.getColor(
                 this@VirtualChatRoomActivity,
                 R.color.color_kia_black
@@ -2096,6 +2104,11 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             mediaPlayer?.prepare()
 
             voiceNoteWaveformView?.apply {
+
+                waveWidth = 4f
+                waveGap = 2f
+                waveMinHeight = 2f
+
 
                 setSampleFrom(recordedAmplitudes.toIntArray())
 

@@ -4,9 +4,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-
-
-    android:background="@color/white"
+    android:background="@drawable/drawable_dialog_background"
     android:orientation="vertical">
 
     <RelativeLayout
@@ -65,7 +63,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:padding="@dimen/_10sdp"
-            android:background="@drawable/darawable_greyborder_darkgreyfilled"
+            android:background="@drawable/background_greyborder_filled_cornered"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             >
@@ -130,7 +128,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="@color/white"
         android:layout_marginTop="@dimen/_10sdp"
         android:paddingBottom="@dimen/_10sdp"
         android:paddingTop="2dp">
