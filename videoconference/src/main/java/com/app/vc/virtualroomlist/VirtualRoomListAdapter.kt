@@ -52,6 +52,7 @@ class VirtualRoomListAdapter(
         private val txtRoNumber: TextView? = itemView.findViewById(R.id.txtRoNumber)
 //        private val txtContactNumber: TextView? = itemView.findViewById(R.id.txtContactNumber)
         private val btnViewRoom: Button? = itemView.findViewById(R.id.btnViewRoom)
+        private val workType: TextView? = itemView.findViewById(R.id.txtWorkType)
 
         fun formatAppointmentDate(dateStr: String?): String {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
@@ -104,6 +105,7 @@ class VirtualRoomListAdapter(
             }
 
             // Tablet view: show RO when present, otherwise appointment id
+            workType?.text=room.work_type
             txtCustomerName?.text = room.customerName
             dealerShipName?.text = room.dealer_name
             val hasRoNumber = !room.roNumberDisplay.isNullOrBlank()

@@ -23,4 +23,20 @@
         <item name="android:background">@drawable/bg_page_selected</item>
     </style>
 
+    <style name="CardShapeoutgoing">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">@dimen/_8sdp</item>
+        <item name="cornerSizeTopRight">0dp</item>
+        <item name="cornerSizeBottomLeft">@dimen/_8sdp</item>
+        <item name="cornerSizeBottomRight">@dimen/_8sdp</item>
+    </style>
+
+    <style name="CardShapeicoming">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">0dp</item>
+        <item name="cornerSizeTopRight">@dimen/_8sdp</item>
+        <item name="cornerSizeBottomLeft">@dimen/_8sdp</item>
+        <item name="cornerSizeBottomRight">@dimen/_8sdp</item>
+    </style>
+
 </resources>

@@ -79,6 +79,7 @@
             android:visibility="gone"
             android:textColor="@color/color_kia_black"
             android:textSize="13sp" />
+
     </LinearLayout>
 
     <com.google.android.material.card.MaterialCardView
@@ -89,7 +90,6 @@
         android:layout_height="wrap_content"
         android:visibility="gone"
         android:background="@drawable/vc_bg_chat_bubble_incoming"
-        app:cardCornerRadius="12dp"
         app:cardElevation="0dp"
         app:strokeWidth="0dp">
 
@@ -131,6 +131,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+
                     android:id="@+id/txtFileSenderRole"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -142,6 +143,7 @@
                     android:textColor="@color/white"
                     android:textSize="10sp"
                     android:visibility="gone" />
+
             </LinearLayout>
 
             <LinearLayout
@@ -151,6 +153,7 @@
                 android:gravity="end"
                 android:paddingTop="4dp"
                 android:paddingEnd="4dp">
+
                 <ImageView
                     android:id="@+id/btnFileOverflow"
                     android:layout_width="30dp"
@@ -162,6 +165,7 @@
                     android:src="@drawable/download_minimalistic_svgrepo_com"
                     android:backgroundTint="#DDDDDD" />
             </LinearLayout>
+
             <ImageView
                 android:id="@+id/imgFileThumbnail"
                 android:layout_width="match_parent"
@@ -185,12 +189,14 @@
                     android:src="@drawable/file_pdf_icon"
                     android:contentDescription="@null"
                     android:padding="8dp" />
+
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="8dp"
                     android:orientation="vertical">
+
                     <TextView
                         android:id="@+id/txtFileTitle"
                         android:layout_width="wrap_content"

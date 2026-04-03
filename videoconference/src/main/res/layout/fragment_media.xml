@@ -49,7 +49,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:paddingHorizontal="8dp"
-                android:text="Documents"
+                android:text="Docs"
                 android:fontFamily="@font/kia_signature_fix_regular"
                 android:textSize="13sp"
                 android:textColor="#343434"
