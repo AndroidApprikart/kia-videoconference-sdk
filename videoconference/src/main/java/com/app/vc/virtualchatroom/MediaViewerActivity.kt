@@ -2,6 +2,7 @@ package com.app.vc.virtualchatroom
 
 import android.content.ContentValues
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +20,8 @@ import android.widget.VideoView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import com.app.vc.R
 import com.app.vc.utils.PreferenceManager
 import com.bumptech.glide.Glide
@@ -52,6 +55,11 @@ class MediaViewerActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedOrientation = if (isTablet()) {
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
         setContentView(R.layout.vc_activity_media_viewer)
 
         val url = intent.getStringExtra(EXTRA_URL) ?: run {
@@ -59,10 +67,10 @@ class MediaViewerActivity : AppCompatActivity() {
             return
         }
         currentUrl = url
-        val type = intent.getStringExtra(EXTRA_TYPE) ?: "TEXT"
-        currentType = type
         val fileName = intent.getStringExtra(EXTRA_FILE_NAME)
         currentFileName = fileName
+        val type = normalizeType(intent.getStringExtra(EXTRA_TYPE) ?: "TEXT", url, fileName)
+        currentType = type
 
         val imgFullScreen: ImageView = findViewById(R.id.imgFullScreen)
         val layoutVideo: View = findViewById(R.id.layoutVideo)
@@ -361,11 +369,7 @@ class MediaViewerActivity : AppCompatActivity() {
                                 "${packageName}.fileprovider",
                                 file
                             )
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, if (url.contains(".pdf", ignoreCase = true)) "application/pdf" else "*/*")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            startActivity(Intent.createChooser(intent, "Open with"))
+                            openDocumentChooser(uri, resolveMimeType(file.name))
                         } catch (_: Exception) {
                             finish()
                         }
@@ -374,21 +378,59 @@ class MediaViewerActivity : AppCompatActivity() {
             }
         } else {
             val uri = Uri.fromFile(File(url))
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, if (url.contains(".pdf", ignoreCase = true)) "application/pdf" else "*/*")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
             try {
-                startActivity(Intent.createChooser(intent, "Open with"))
+                openDocumentChooser(uri, resolveMimeType(url))
             } catch (_: Exception) {
                 finish()
             }
         }
     }
 
+    private fun resolveMimeType(fileNameOrUrl: String): String {
+        val clean = fileNameOrUrl.substringAfterLast('/').substringBefore('?')
+        return URLConnection.guessContentTypeFromName(clean) ?: "application/octet-stream"
+    }
+
+    private fun normalizeType(rawType: String, url: String, fileName: String?): String {
+        val base = rawType.uppercase()
+        if (base == "IMAGE" || base == "VIDEO" || base == "FILE") return base
+        val source = (fileName ?: url).lowercase()
+        return when {
+            source.endsWith(".mp4") || source.endsWith(".3gp") || source.endsWith(".mkv") || source.endsWith(".mov") -> "VIDEO"
+            source.endsWith(".jpg") || source.endsWith(".jpeg") || source.endsWith(".png") || source.endsWith(".webp") || source.endsWith(".gif") -> "IMAGE"
+            else -> "FILE"
+        }
+    }
+
+    private fun openDocumentChooser(uri: Uri, mimeType: String) {
+        val base = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val matches = packageManager.queryIntentActivities(base, PackageManager.MATCH_DEFAULT_ONLY)
+        if (matches.isEmpty()) {
+            Toast.makeText(this, "No supported app found to open this file", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val targeted = matches.map {
+            Intent(base).setPackage(it.activityInfo.packageName)
+        }
+        val chooser = Intent.createChooser(targeted.first(), "Open with").apply {
+            if (targeted.size > 1) {
+                putExtra(Intent.EXTRA_INITIAL_INTENTS, targeted.drop(1).toTypedArray())
+            }
+        }
+        startActivity(chooser)
+    }
+
     companion object {
         const val EXTRA_URL = "url"
         const val EXTRA_TYPE = "type"
         const val EXTRA_FILE_NAME = "file_name"
+    }
+
+    private fun isTablet(): Boolean {
+        val screenLayout = resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK
+        return screenLayout >= Configuration.SCREENLAYOUT_SIZE_LARGE
     }
 }

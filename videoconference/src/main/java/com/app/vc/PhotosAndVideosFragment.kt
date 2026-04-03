@@ -21,12 +21,13 @@ class PhotosAndVideosFragment : Fragment() {
     private lateinit var adapter: PhotoVideoMediaAdapter
     private var groupSlug: String? = null
     private val mediaListener: (com.app.vc.virtualchatroom.RoomMediaSnapshot) -> Unit = { snapshot ->
-        adapter.updateItems(snapshot.photosVideos)
+        val sorted = snapshot.photosVideos.sortedByDescending { it.createdAtMillis ?: 0L }
+        adapter.updateItems(toSectionedRows(sorted))
         binding.progressMediaPhotosVideos.visibility = if (snapshot.isLoading) View.VISIBLE else View.GONE
         binding.recyclerPhotosVideos.visibility =
-            if (!snapshot.isLoading && snapshot.photosVideos.isNotEmpty()) View.VISIBLE else View.GONE
+            if (!snapshot.isLoading && sorted.isNotEmpty()) View.VISIBLE else View.GONE
         binding.txtEmptyPhotosVideos.visibility =
-            if (!snapshot.isLoading && snapshot.photosVideos.isEmpty()) View.VISIBLE else View.GONE
+            if (!snapshot.isLoading && sorted.isEmpty()) View.VISIBLE else View.GONE
     }
 
 
@@ -46,9 +47,44 @@ class PhotosAndVideosFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         groupSlug = arguments?.getString(KEY_GROUP_SLUG)
         adapter = PhotoVideoMediaAdapter(emptyList()) { message -> openMedia(message) }
-        binding.recyclerPhotosVideos.layoutManager = GridLayoutManager(requireContext(), 3)
+        val gridLayoutManager = GridLayoutManager(requireContext(), 3)
+        gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                return if (adapter.getItemViewType(position) == 0) 3 else 1
+            }
+        }
+        binding.recyclerPhotosVideos.layoutManager = gridLayoutManager
         binding.recyclerPhotosVideos.adapter = adapter
         groupSlug?.let { ChatMediaStore.addListener(it, mediaListener) }
+    }
+
+    private fun toSectionedRows(items: List<ChatMessage>): List<PhotoVideoMediaAdapter.RowItem> {
+        if (items.isEmpty()) return emptyList()
+        val out = mutableListOf<PhotoVideoMediaAdapter.RowItem>()
+        var lastHeader: String? = null
+        items.forEach { message ->
+            val header = headerLabelFor(message.createdAtMillis ?: 0L)
+            if (header != lastHeader) {
+                out.add(PhotoVideoMediaAdapter.RowItem.Header(header))
+                lastHeader = header
+            }
+            out.add(PhotoVideoMediaAdapter.RowItem.Media(message))
+        }
+        return out
+    }
+
+    private fun headerLabelFor(timeMs: Long): String {
+        val today = java.util.Calendar.getInstance()
+        val target = java.util.Calendar.getInstance().apply { timeInMillis = timeMs }
+        val dayFormat = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.getDefault())
+        val targetDay = dayFormat.format(target.time)
+        val todayDay = dayFormat.format(today.time)
+        if (targetDay == todayDay) return "Today"
+        today.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        val yesterdayDay = dayFormat.format(today.time)
+        if (targetDay == yesterdayDay) return "Yesterday"
+        return java.text.SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault())
+            .format(target.time)
     }
 
     private fun openMedia(message: ChatMessage) {

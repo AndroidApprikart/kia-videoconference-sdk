@@ -331,6 +331,8 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private var quickReplies = mutableListOf<String>()
     private val previewSelectedFiles = mutableListOf<Pair<File, ChatMessageType>>()
+    private var previewDraftCaption: String = ""
+    private var suppressRecoveryBannerForAttachmentFlow = false
 
     private val requestPermission =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
@@ -611,7 +613,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
     private fun sendEstimationMessage(estimationDetails: ResponseModelEstimateData) {
         val timeLabel =
-            SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+            SimpleDateFormat("h:mma", Locale.getDefault()).format(Date()).lowercase()
         val localIdLong = System.currentTimeMillis()
         val localId = "local_est_$localIdLong"
 
@@ -670,9 +672,16 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 val wasConnected = isNetworkAvailable
                 isNetworkAvailable = connected
                 if (connected) {
-                    pendingRecoveryBanner = !wasConnected || shouldShowRecoveryBannerOnReconnect
-                    if (!pendingRecoveryBanner) {
+                    if (suppressRecoveryBannerForAttachmentFlow) {
+                        suppressRecoveryBannerForAttachmentFlow = false
+                        pendingRecoveryBanner = false
+                        shouldShowRecoveryBannerOnReconnect = false
                         hideNetworkErrorBanner()
+                    } else {
+                        pendingRecoveryBanner = !wasConnected || shouldShowRecoveryBannerOnReconnect
+                        if (!pendingRecoveryBanner) {
+                            hideNetworkErrorBanner()
+                        }
                     }
                     WebSocketManager.getInstance().reconnectNow()
                 } else {
@@ -706,6 +715,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             val initialStatus = room?.status ?: roomStatus ?: ""
             tv.text = initialStatus.replace('_', ' ')
             tv.visibility = if (initialStatus.isNotBlank()) View.VISIBLE else View.GONE
+            applyStatusChipStyle(tv, initialStatus)
         }
 
         currentRole = when (roleFromIntent) {
@@ -720,17 +730,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         dataList.clear()
         dataList.addAll(sharedViewModel.messageListInMVM)
         if (binding.tabParticipants != null) {
-            val tabRoDetails = binding.tabRoDetails ?: return
-            loadFragment(RODetailsFragment().apply {
+            val tabParticipants = binding.tabParticipants ?: return
+            loadFragment(ParticipantsListFragment().apply {
                 arguments = Bundle().apply {
-                    putString(RODetailsFragment.KEY_JOB_NOTES, jobNotes ?: "")
-                    putString(RODetailsFragment.KEY_STATUS_LABEL, statusLabel ?: "")
-                    putString(RODetailsFragment.KEY_RO_NUMBER, room?.roNumberDisplay ?: "")
+                    putString(ParticipantsListFragment.KEY_GROUP_SLUG, room?.roNumber)
                 }
             })
             setupTabs()
-            selectRoDetailsTab()
-            moveIndicator(tabRoDetails)
+            selectParticipantsTab()
+            moveIndicator(tabParticipants)
 
         } else {
             // Orientation already enforced at onCreate start.
@@ -1048,12 +1056,15 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                             prependOlderMessages(chatMessages)
                         } else {
                             val withHeaders = buildMessagesWithDateHeaders(displayMessages)
-                            messages.clear()
-                            messages.addAll(withHeaders)
+                            val hasVisualChanges = !sameMessageSnapshot(messages, withHeaders)
+                            if (hasVisualChanges) {
+                                messages.clear()
+                                messages.addAll(withHeaders)
+                                messageAdapter?.notifyDataSetChanged()
+                                scrollToLast()
+                            }
                             ChatMediaStore.replaceMessages(slug, displayMessages)
-                            messageAdapter?.notifyDataSetChanged()
                             persistCurrentMessages(slug)
-                            scrollToLast()
                             scheduleVisibleReadReceipt(120L)
                         }
                         setMessagesLoading(false)
@@ -1213,7 +1224,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
 
         // Remove local pending/sent placeholders when equivalent server messages exist.
         val serverMessages = normalized.filter { it.messageId?.startsWith("local_") != true }
-        return normalized.filterNot { message ->
+        val withoutLocalPlaceholders = normalized.filterNot { message ->
             val isLocalPlaceholder = message.messageId?.startsWith("local_") == true
             if (!isLocalPlaceholder) return@filterNot false
 
@@ -1238,6 +1249,21 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 }
             }
         }
+
+        // Additional protection: collapse accidental duplicate outgoing messages after reopen.
+        return withoutLocalPlaceholders.fold(mutableListOf<ChatMessage>()) { acc, msg ->
+            val duplicate = acc.lastOrNull()?.let { prev ->
+                prev.type == msg.type &&
+                    prev.isSender == msg.isSender &&
+                    prev.text.trim() == msg.text.trim() &&
+                    (prev.caption ?: "").trim() == (msg.caption ?: "").trim() &&
+                    (prev.attachmentUri ?: "").substringAfterLast('/') ==
+                    (msg.attachmentUri ?: "").substringAfterLast('/') &&
+                    kotlin.math.abs((prev.createdAtMillis ?: 0L) - (msg.createdAtMillis ?: 0L)) <= 10_000L
+            } == true
+            if (!duplicate) acc.add(msg)
+            acc
+        }
     }
 
     private fun prependOlderMessages(olderMessages: List<ChatMessage>) {
@@ -1260,6 +1286,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
         val combinedMessages = uniqueOlderMessages + currentRawMessages()
         val withHeaders = buildMessagesWithDateHeaders(combinedMessages)
         suppressAutoScroll = true
+        recycler.suppressLayout(true)
         messageAdapter?.replaceAll(withHeaders)
         ChatMediaStore.replaceMessages(room?.roNumber ?: return, combinedMessages)
         persistCurrentMessages()
@@ -1269,6 +1296,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             if (anchorIndex >= 0) {
                 layoutManager.scrollToPositionWithOffset(anchorIndex, anchorTop)
             }
+            recycler.suppressLayout(false)
             suppressAutoScroll = false
         }
     }
@@ -1437,7 +1465,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
             val date = inputFormat.parse(dateStr)
             if (date != null) {
-                SimpleDateFormat("hh:mma", Locale.getDefault()).format(date).lowercase()
+                SimpleDateFormat("h:mma", Locale.getDefault()).format(date).lowercase()
             } else ""
         } catch (e: Exception) {
             ""
@@ -1498,6 +1526,20 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             out.add(msg)
         }
         return out
+    }
+
+    private fun sameMessageSnapshot(old: List<ChatMessage>, new: List<ChatMessage>): Boolean {
+        if (old.size != new.size) return false
+        return old.indices.all { i ->
+            val a = old[i]
+            val b = new[i]
+            a.type == b.type &&
+                a.messageId == b.messageId &&
+                a.text == b.text &&
+                a.caption == b.caption &&
+                a.attachmentUri == b.attachmentUri &&
+                a.status == b.status
+        }
     }
 
     private fun updateEstimateStatusApi(estimationStatus: Boolean) {
@@ -1825,7 +1867,7 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
                 messageId = localId,
                 text = "",
                 isSender = true,
-                timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase(),
+                timeLabel = SimpleDateFormat("h:mma", Locale.getDefault()).format(Date()).lowercase(),
                 type = ChatMessageType.VOICE_NOTE,
                 attachmentUri = mergedFile.absolutePath,
                 durationSeconds = voiceNoteDurationSeconds,
@@ -2390,7 +2432,22 @@ private fun appendIncomingMessage(message: ChatMessage) {
 
 private fun resolveSenderDisplayName(username: String?): String? {
     if (username.isNullOrBlank()) return null
-    return memberFirstNameByUsername[username]?.takeIf { it.isNotBlank() } ?: username
+    return memberFirstNameByUsername[username]?.takeIf { it.isNotBlank() }
+        ?: usernameToDisplayName(username)
+}
+
+private fun usernameToDisplayName(username: String?): String? {
+    if (username.isNullOrBlank()) return null
+    // Convert values like service_manager_DLR1345_3 to "Service Manager"
+    val prefix = username.substringBefore("_DLR", missingDelimiterValue = username)
+        .substringBeforeLast("_", missingDelimiterValue = username)
+    val cleaned = prefix.replace('_', ' ').trim()
+    if (cleaned.isBlank()) return null
+    return cleaned.split(' ')
+        .filter { it.isNotBlank() }
+        .joinToString(" ") { token ->
+            token.lowercase().replaceFirstChar { c -> c.uppercase() }
+        }
 }
 
 private fun resolveSenderDisplayNameByUserId(userId: Int?): String? {
@@ -2479,13 +2536,26 @@ override fun onMessageReceived(message: String) {
                     if (senderId != null && senderId == currentUserId) {
                         // Echoed message from self: update local message status and attachment URL so bubble shows server file
                         val msgId = messageIdFromJson(jsonObject) ?: return@runOnUiThread
-                        messageAdapter?.updateMessageStatus(msgId, MessageStatus.SENT)
                         val fileUrl = jsonObject.get("file_url")?.asString
                             ?: jsonObject.get("attachment")?.asJsonObject?.get("file_url")?.asString
-                        if (!fileUrl.isNullOrBlank()) {
-                            val fullUrl =
-                                if (fileUrl.startsWith("http")) fileUrl else ApiDetails.APRIK_Kia_BASE_URL + fileUrl
-                            messageAdapter?.updateMessageAttachmentUrl(msgId, fullUrl)
+                        val thumbnailUrl = jsonObject.get("thumbnail_url")?.asString
+                            ?: jsonObject.get("attachment")?.asJsonObject?.get("thumbnail_url")?.asString
+                        val fullUrl = fileUrl?.takeIf { it.isNotBlank() }?.let {
+                            if (it.startsWith("http")) it else ApiDetails.APRIK_Kia_BASE_URL + it
+                        }
+                        val fullThumbUrl = thumbnailUrl?.takeIf { it.isNotBlank() }?.let {
+                            if (it.startsWith("http")) it else ApiDetails.APRIK_Kia_BASE_URL + it
+                        }
+                        val reconciled = messageAdapter?.reconcileOutgoingMediaAck(
+                            serverId = msgId,
+                            serverUrl = fullUrl,
+                            thumbnailUrl = fullThumbUrl
+                        ) == true
+                        if (!reconciled) {
+                            messageAdapter?.updateMessageStatus(msgId, MessageStatus.SENT)
+                            if (!fullUrl.isNullOrBlank()) {
+                                messageAdapter?.updateMessageAttachmentUrl(msgId, fullUrl, fullThumbUrl)
+                            }
                         }
                         scrollToLast()
                         return@runOnUiThread
@@ -2524,7 +2594,7 @@ override fun onMessageReceived(message: String) {
                             senderId = senderId,
                             senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
                             timeLabel = SimpleDateFormat(
-                                "hh:mma",
+                                "h:mma",
                                 Locale.getDefault()
                             ).format(Date()).lowercase(),
                             type = msgType,
@@ -2573,7 +2643,7 @@ override fun onMessageReceived(message: String) {
                             senderId = senderId,
                             senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
                             timeLabel = SimpleDateFormat(
-                                "hh:mma",
+                                "h:mma",
                                 Locale.getDefault()
                             ).format(Date()).lowercase(),
                             type = msgType,
@@ -2704,7 +2774,7 @@ override fun onMessageReceived(message: String) {
                         senderUsername = jsonObject.get("username")?.asString,
                         senderId = senderId,
                         senderRoleAbbrev = resolveRoleAbbrevByUserId(senderId?.toIntOrNull()),
-                        timeLabel = SimpleDateFormat("hh:mma", Locale.getDefault()).format(
+                        timeLabel = SimpleDateFormat("h:mma", Locale.getDefault()).format(
                             Date()
                         ).lowercase(),
                         type = msgType,
@@ -2810,33 +2880,29 @@ override fun onMessageReceived(message: String) {
                         jsonObject.get("notes")?.asString?.takeIf { it.isNotBlank() }
 
                     jobNotes = newNotes ?: jobNotes
-                    statusLabel = newStatusLabel ?: statusLabel
 
                     // Chip: service status only — prefer status_label, else raw status (e.g. CLOSED), formatted
+                    val chipText = (newStatusLabel ?: newStatus?.replace('_', ' '))
+                        ?.trim()
+                        .orEmpty()
+                    if (chipText.isNotBlank()) {
+                        room = room?.copy(status = chipText)
+                    }
                     binding.txtStatusChip?.let { tv ->
-                        Log.d(TAG, "service.status::statusLabel: $statusLabel")
-
-                        Log.d(TAG, "service.status::status: $jobNotes")
-                        val chipText =
-                            newStatusLabel ?: newStatus?.replace('_', ' ') ?: statusLabel
-                            ?: tv.text
+                        Log.d(TAG, "service.status::statusLabel: $newStatusLabel")
+                        Log.d(TAG, "service.status::status: $newStatus")
                         tv.text = chipText
                         tv.visibility =
                             if (chipText.isNotBlank()) View.VISIBLE else View.GONE
+                        applyStatusChipStyle(tv, chipText)
                     }
                     binding.txtLeftStatus?.let { tv ->
-                        Log.d(
-                            TAG,
-                            "txtLeftStatus service.status::statusLabel: $statusLabel"
-                        )
-
-                        Log.d(TAG, "txtLeftStatus service.status::status: $jobNotes")
-                        val chipText =
-                            newStatusLabel ?: newStatus?.replace('_', ' ') ?: statusLabel
-                            ?: tv.text
+                        Log.d(TAG, "txtLeftStatus service.status::statusLabel: $newStatusLabel")
+                        Log.d(TAG, "txtLeftStatus service.status::status: $newStatus")
                         tv.text = chipText
                         tv.visibility =
                             if (chipText.isNotBlank()) View.VISIBLE else View.GONE
+                        applyStatusChipStyle(tv, chipText)
                     }
 
                     (supportFragmentManager.findFragmentById(R.id.FragmentContainer) as? RODetailsFragment)?.let { frag ->
@@ -2910,6 +2976,9 @@ override fun onError(error: String) {
 private fun showPreviewBottomSheet(selectedFiles: List<Pair<File, ChatMessageType>>) {
     previewSelectedFiles.clear()
     previewSelectedFiles.addAll(selectedFiles)
+    if (previewDraftCaption.isBlank()) {
+        previewDraftCaption = binding.edtMessageTablet.text?.toString().orEmpty()
+    }
     showPreviewInPlace()
 }
 
@@ -2925,22 +2994,24 @@ private fun showPreviewInPlace() {
     val txtTitle: TextView = previewRoot.findViewById(R.id.txtPreviewTitle)
     txtTitle.text =
         if (previewSelectedFiles.size <= 1) "Attach" else "Attach (${previewSelectedFiles.size})"
-    if (edtCaption.text.isNullOrEmpty()) {
-        edtCaption.setText("")
-    }
+    edtCaption.setText(previewDraftCaption)
+    edtCaption.setSelection(edtCaption.text?.length ?: 0)
     renderPreviewSelection(previewRoot)
 
     btnCancel.setOnClickListener {
-        closePreviewPanel()
+        previewDraftCaption = edtCaption.text?.toString().orEmpty()
+        closePreviewPanel(clearDraft = false)
     }
     btnSend.setOnClickListener {
-        val caption = edtCaption.text.toString()
+        previewDraftCaption = edtCaption.text?.toString().orEmpty()
+        val caption = previewDraftCaption
         val selectedFiles = previewSelectedFiles.toList()
-        closePreviewPanel()
+        closePreviewPanel(clearDraft = true)
+        binding.edtMessageTablet.setText("")
         val groupId = "grp_${System.currentTimeMillis()}"
         selectedFiles.forEachIndexed { index, (file, type) ->
             val timeLabel =
-                SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+                SimpleDateFormat("h:mma", Locale.getDefault()).format(Date()).lowercase()
             val localId = "local_${System.currentTimeMillis()}_${file.name}"
             messageAdapter?.addMessage(
                 ChatMessage(
@@ -3000,7 +3071,7 @@ private fun renderPreviewSelection(previewRoot: View) {
             if (index in previewSelectedFiles.indices) {
                 previewSelectedFiles.removeAt(index)
                 if (previewSelectedFiles.isEmpty()) {
-                    closePreviewPanel()
+                    closePreviewPanel(clearDraft = false)
                 } else {
                     renderPreviewSelection(previewRoot)
                 }
@@ -3091,12 +3162,18 @@ private fun createAddMorePreviewView(): View {
     return container
 }
 
-private fun closePreviewPanel() {
+private fun closePreviewPanel(clearDraft: Boolean) {
     val previewRoot = binding.layoutPreviewContainer.getChildAt(0)
     previewRoot?.findViewById<EditText>(R.id.edtPreviewCaption)?.setText("")
     previewSelectedFiles.clear()
     binding.layoutPreviewContainer.visibility = View.GONE
     binding.cardViewBottomChat?.visibility = View.VISIBLE
+    if (!clearDraft) {
+        binding.edtMessageTablet.setText(previewDraftCaption)
+        binding.edtMessageTablet.setSelection(binding.edtMessageTablet.text?.length ?: 0)
+    } else {
+        previewDraftCaption = ""
+    }
 }
 
 private fun appendFilesToPreview(newFiles: List<Pair<File, ChatMessageType>>) {
@@ -3110,6 +3187,7 @@ private fun appendFilesToPreview(newFiles: List<Pair<File, ChatMessageType>>) {
 }
 
 private fun launchAttachmentPicker() {
+    suppressRecoveryBannerForAttachmentFlow = true
     fileLauncher.launch(arrayOf("image/*", "video/*", "application/pdf", "*/*"))
 }
 
@@ -3273,7 +3351,7 @@ private fun performUpload(
                                     text = "",
                                     isSender = true,
                                     timeLabel = SimpleDateFormat(
-                                        "hh:mma",
+                                        "h:mma",
                                         Locale.getDefault()
                                     ).format(Date()).lowercase(),
                                     status = MessageStatus.SENT,
@@ -3504,6 +3582,7 @@ private fun bindStaticTabletPanels() {
     binding.txtLeftCustomerName?.text = room.customerName
     binding.txtLeftRoNumber?.text = room.roNumber
     binding.txtLeftStatus?.text = room.status
+    binding.txtLeftStatus?.let { applyStatusChipStyle(it, room.status) }
 //        binding.txtLeftCustomerName?.text= PreferenceManager.getName()
 
     Log.d(TAG, "bindStaticTabletPanels:  ${PreferenceManager.getName()}")
@@ -3514,6 +3593,24 @@ private fun bindStaticTabletPanels() {
         ?.toString()
         ?.uppercase()
     binding.txtInitial?.text = initial
+}
+
+private fun applyStatusChipStyle(view: TextView, statusText: String?) {
+    val statusNorm = statusText.orEmpty().lowercase(Locale.getDefault())
+    val bgRes = when {
+        statusNorm.contains("closed") ->
+            R.drawable.vc_bg_status_chip_closed
+        statusNorm.contains("open") || statusNorm.contains("active") ||
+            statusNorm.contains("re-open") || statusNorm.contains("reopened") ->
+            R.drawable.vc_bg_status_chip_open
+        statusNorm.contains("no show") || statusNorm.contains("disabled") ||
+            statusNorm.contains("cancel") ->
+            R.drawable.vc_bg_status_chip_neutral
+        else ->
+            R.drawable.vc_bg_status_chip_open
+    }
+    view.setBackgroundResource(bgRes)
+    view.setTextColor(getColor(android.R.color.white))
 }
 
 //    private fun setupMessageList() {
@@ -3582,7 +3679,12 @@ private fun setupMessageList() {
         onRetryClick = { message -> retryOutgoingMessage(message) },
         onItemClick = { message -> handleAttachmentClick(message) },
         onSaveMedia = { message -> downloadAndSaveMedia(message) },
-        estimationListener = this
+        estimationListener = this,
+        onMediaContentBound = {
+            if (isUserNearBottom()) {
+                scrollToLast(force = true)
+            }
+        }
     )
 
     binding.recyclerMessages.adapter = messageAdapter
@@ -3652,10 +3754,26 @@ private fun handleAttachmentClick(message: ChatMessage) {
         if (rawUrl.startsWith("http")) rawUrl else ApiDetails.APRIK_Kia_BASE_URL + rawUrl
     val intent = Intent(this, MediaViewerActivity::class.java).apply {
         putExtra(MediaViewerActivity.EXTRA_URL, fullUrl)
-        putExtra(MediaViewerActivity.EXTRA_TYPE, message.type.name)
+        putExtra(MediaViewerActivity.EXTRA_TYPE, inferMediaViewerType(message))
         putExtra(MediaViewerActivity.EXTRA_FILE_NAME, message.fileName)
     }
     startActivity(intent)
+}
+
+private fun inferMediaViewerType(message: ChatMessage): String {
+    return when (message.type) {
+        ChatMessageType.IMAGE -> "IMAGE"
+        ChatMessageType.VIDEO -> "VIDEO"
+        ChatMessageType.FILE -> {
+            val source = (message.fileName ?: message.attachmentUri).orEmpty().lowercase(Locale.getDefault())
+            when {
+                source.endsWith(".mp4") || source.endsWith(".3gp") || source.endsWith(".mkv") || source.endsWith(".mov") -> "VIDEO"
+                source.endsWith(".jpg") || source.endsWith(".jpeg") || source.endsWith(".png") || source.endsWith(".webp") || source.endsWith(".gif") -> "IMAGE"
+                else -> "FILE"
+            }
+        }
+        else -> message.type.name
+    }
 }
 
 private val requestWriteStoragePermission =
@@ -3712,11 +3830,11 @@ private fun doSaveMedia(message: ChatMessage) {
                 downloadRemoteFileToPublicStorage(rawUrl, fileName, message)
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    this@VirtualChatRoomActivity,
-                    "Saved to gallery: $fileName",
-                    Toast.LENGTH_SHORT
-                ).show()
+//                Toast.makeText(
+//                    this@VirtualChatRoomActivity,
+//                    "Saved to gallery: $fileName",
+//                    Toast.LENGTH_SHORT
+//                ).show()
                 Toast.makeText(this@VirtualChatRoomActivity, "File saved successfully ", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
@@ -3910,6 +4028,7 @@ private fun setupSendActions() {
     })
 
     binding.imgSendTablet.setOnClickListener {
+        val wasNearBottom = isUserNearBottom()
         val text = binding.edtMessageTablet.text.toString().trim()
         if (text.isNotEmpty()) {
             val localId = "local_txt_${System.currentTimeMillis()}"
@@ -3921,7 +4040,7 @@ private fun setupSendActions() {
             }
             binding.edtMessageTablet.setText("")
             room?.roNumber?.let { ChatMessageStorage.clearDraft(this@VirtualChatRoomActivity, it) }
-            scrollToLast()
+            scrollToLast(force = wasNearBottom)
             sendTypingStatus(false)
         }
     }
@@ -3959,16 +4078,19 @@ private fun persistDraftMessage(value: String? = null) {
 //        }
 //    }
 
-private fun scrollToLast() {
+private fun scrollToLast(force: Boolean = false) {
 
     val recycler = binding.recyclerMessages
     val layoutManager = recycler.layoutManager as? LinearLayoutManager ?: return
     val position = messageAdapter?.itemCount?.minus(1) ?: return
+    if (position < 0) return
 
     recycler.post {
 
-        if (isUserNearBottom()) {
-            recycler.scrollToPosition(position)
+        if (force || isUserNearBottom()) {
+            layoutManager.scrollToPositionWithOffset(position, 0)
+            recycler.postDelayed({ layoutManager.scrollToPositionWithOffset(position, 0) }, 60L)
+            recycler.postDelayed({ layoutManager.scrollToPositionWithOffset(position, 0) }, 180L)
         }
 
     }
@@ -3993,7 +4115,7 @@ private fun addMessage(
     if (TextUtils.isEmpty(text)) return
     if (hasMessage(messageId)) return
     val timeLabel =
-        SimpleDateFormat("hh:mma", Locale.getDefault()).format(Date()).lowercase()
+        SimpleDateFormat("h:mma", Locale.getDefault()).format(Date()).lowercase()
     messageAdapter?.addMessage(
         ChatMessage(
             messageId = messageId,

@@ -9,7 +9,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.app.vc.R
 
@@ -107,7 +106,6 @@ class ConnectivityBannerHandler(
         banner.findViewById<TextView>(R.id.txtNetworkError)?.text =
             "Network error Please check your Internet connection."
         banner.visibility = View.VISIBLE
-        Toast.makeText(appContext, "Network error", Toast.LENGTH_SHORT).show()
     }
 
     private fun showRecoveryBanner() {
