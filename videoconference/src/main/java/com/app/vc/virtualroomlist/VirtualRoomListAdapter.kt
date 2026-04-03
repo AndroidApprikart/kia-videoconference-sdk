@@ -82,7 +82,7 @@ class VirtualRoomListAdapter(
 
             // Phone view: show RO number first, otherwise appointment id.
 
-            val formatted = formatWorkType(room.work_type)
+            val formatted = formatWorkType(room.work_type ?: room.service_type)
             txtTitle?.text = formatted
 
             if (room.roNumberDisplay.isNullOrEmpty()){
@@ -94,7 +94,21 @@ class VirtualRoomListAdapter(
 
 //            txtSubtitle?.text = "${room.dayLabel} ${if (room.dayLabel.isNotBlank() && room.timeLabel.isNotBlank()) "\u2022" else ""} ${room.timeLabel}".trim()
 
-            txtStatus.text = room.lifecycleStatusLabel?.takeIf { it.isNotBlank() } ?: room.status.replace('_', ' ')
+            val statusText = room.lifecycleStatusLabel?.takeIf { it.isNotBlank() } ?: room.status.replace('_', ' ')
+            txtStatus.text = statusText
+            val statusNorm = statusText.lowercase(Locale.getDefault())
+            val bgRes = when {
+                statusNorm.contains("closed") -> R.drawable.vc_bg_status_chip_closed
+                statusNorm.contains("open") || statusNorm.contains("active") ||
+                    statusNorm.contains("re-open") || statusNorm.contains("reopened") ->
+                    R.drawable.vc_bg_status_chip_open
+                statusNorm.contains("no show") || statusNorm.contains("disabled") ||
+                    statusNorm.contains("cancel") ->
+                    R.drawable.vc_bg_status_chip_neutral
+                else -> R.drawable.vc_bg_status_chip_open
+            }
+            txtStatus.setBackgroundResource(bgRes)
+            txtStatus.setTextColor(itemView.context.getColor(android.R.color.white))
 
              val appointmentidlayout="Appointment confirmed for ${formatAppointmentDate(room.appointment_date)}"
             appointmentdate?.text =appointmentidlayout
@@ -105,7 +119,7 @@ class VirtualRoomListAdapter(
             }
 
             // Tablet view: show RO when present, otherwise appointment id
-            workType?.text=room.work_type
+            workType?.text = formatWorkType(room.work_type ?: room.service_type)
             txtCustomerName?.text = room.customerName
             dealerShipName?.text = room.dealer_name
             val hasRoNumber = !room.roNumberDisplay.isNullOrBlank()

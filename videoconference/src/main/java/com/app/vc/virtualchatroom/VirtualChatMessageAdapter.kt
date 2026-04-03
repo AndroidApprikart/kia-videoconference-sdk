@@ -76,7 +76,8 @@ class VirtualChatMessageAdapter(
     private val onRetryClick: (ChatMessage) -> Unit,
     private val onItemClick: (ChatMessage) -> Unit,
     private val onSaveMedia: (ChatMessage) -> Unit = {},
-    private val estimationListener: EstimationInteractionListener? = null
+    private val estimationListener: EstimationInteractionListener? = null,
+    private val onMediaContentBound: () -> Unit = {}
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
 
@@ -147,11 +148,11 @@ class VirtualChatMessageAdapter(
             }
             VIEW_TYPE_OUTGOING -> {
                 val view = inflater.inflate(R.layout.vc_item_chat_message_outgoing, parent, false)
-                OutgoingViewHolder(view, this, onRetryClick, onItemClick, onSaveMedia)
+                OutgoingViewHolder(view, this, onRetryClick, onItemClick, onSaveMedia, onMediaContentBound)
             }
             VIEW_TYPE_INCOMING -> {
                 val view = inflater.inflate(R.layout.vc_item_chat_message_incoming, parent, false)
-                IncomingViewHolder(view, this, onItemClick, onSaveMedia)
+                IncomingViewHolder(view, this, onItemClick, onSaveMedia, onMediaContentBound)
             }
             VIEW_TYPE_ESTIMATION_OUTGOING -> {
                 val view = inflater.inflate(R.layout.layout_estimation_message_self, parent, false)
@@ -458,12 +459,46 @@ class VirtualChatMessageAdapter(
         return time
     }
 
+    fun reconcileOutgoingMediaAck(
+        serverId: String,
+        serverUrl: String?,
+        thumbnailUrl: String? = null
+    ): Boolean {
+        val directIndex = messages.indexOfLast { it.messageId == serverId }
+        if (directIndex != -1) {
+            messages[directIndex].status = MessageStatus.SENT
+            if (!serverUrl.isNullOrBlank()) messages[directIndex].attachmentUri = serverUrl
+            if (!thumbnailUrl.isNullOrBlank()) messages[directIndex].thumbnailUrl = thumbnailUrl
+            notifyItemChanged(directIndex)
+            return true
+        }
+
+        val fallbackIndex = messages.indexOfLast {
+            it.isSender &&
+                it.status == MessageStatus.SENDING &&
+                (it.type == ChatMessageType.IMAGE || it.type == ChatMessageType.VIDEO || it.type == ChatMessageType.FILE || it.type == ChatMessageType.VOICE_NOTE) &&
+                (it.messageId?.startsWith("local_") == true || it.messageId?.toIntOrNull() == null)
+        }
+
+        if (fallbackIndex != -1) {
+            messages[fallbackIndex].messageId = serverId
+            messages[fallbackIndex].status = MessageStatus.SENT
+            if (!serverUrl.isNullOrBlank()) messages[fallbackIndex].attachmentUri = serverUrl
+            if (!thumbnailUrl.isNullOrBlank()) messages[fallbackIndex].thumbnailUrl = thumbnailUrl
+            notifyItemChanged(fallbackIndex)
+            return true
+        }
+
+        return false
+    }
+
     class OutgoingViewHolder(
         itemView: View,
         private val adapter: VirtualChatMessageAdapter,
         private val onRetry: (ChatMessage) -> Unit,
         private val onClick: (ChatMessage) -> Unit,
-        private val onSaveMedia: (ChatMessage) -> Unit
+        private val onSaveMedia: (ChatMessage) -> Unit,
+        private val onMediaContentBound: () -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
 
         private val btnPlayVoice: ImageView? = itemView.findViewById(R.id.btnPlayVoice)
@@ -518,13 +553,7 @@ class VirtualChatMessageAdapter(
         fun bind(message: ChatMessage, position: Int) {
             bindSenderInfo(message)
 
-
-            itemView.setOnClickListener {
-                if (message.type == ChatMessageType.VOICE_NOTE) return@setOnClickListener
-
-                if (message.status == MessageStatus.ERROR) onRetry(message)
-                else onClick(message)
-            }
+            itemView.setOnClickListener(null)
 
             btnPlayVoice?.isFocusable = false
             btnPlayVoice?.isFocusableInTouchMode = false
@@ -562,6 +591,9 @@ class VirtualChatMessageAdapter(
                 }
                 ChatMessageType.IMAGE, ChatMessageType.VIDEO -> {
                     layoutImageContainer?.visibility = View.VISIBLE
+                    layoutImageContainer?.setOnClickListener {
+                        if (message.status == MessageStatus.ERROR) onRetry(message) else onClick(message)
+                    }
 
                     layoutError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
                     btnImageOverflow?.visibility = View.VISIBLE
@@ -588,6 +620,9 @@ class VirtualChatMessageAdapter(
                 ChatMessageType.FILE -> {
                     layoutImageContainer?.visibility = View.GONE
                     layoutFileContainer?.visibility = View.VISIBLE
+                    layoutFileContainer?.setOnClickListener {
+                        if (message.status == MessageStatus.ERROR) onRetry(message) else onClick(message)
+                    }
                     layoutFileError?.visibility = if (message.status == MessageStatus.ERROR) View.VISIBLE else View.GONE
                     btnFileOverflow?.visibility = View.VISIBLE
                     btnFileOverflow?.setOnClickListener { v -> showSavePopup(v, message) }
@@ -766,6 +801,7 @@ class VirtualChatMessageAdapter(
                             isFirstResource: Boolean
                         ): Boolean {
                             mediaLoader?.visibility = View.GONE
+                            onMediaContentBound()
                             return false
                         }
                     })
@@ -773,6 +809,7 @@ class VirtualChatMessageAdapter(
             } catch (_: Throwable) {
                 mediaLoader?.visibility = View.GONE
                 imageView?.setImageResource(android.R.drawable.ic_menu_gallery)
+                onMediaContentBound()
             }
         }
 
@@ -816,6 +853,7 @@ class VirtualChatMessageAdapter(
                             isFirstResource: Boolean
                         ): Boolean {
                             mediaLoader?.visibility = View.GONE
+                            onMediaContentBound()
                             return false
                         }
 
@@ -827,6 +865,7 @@ class VirtualChatMessageAdapter(
                             isFirstResource: Boolean
                         ): Boolean {
                             mediaLoader?.visibility = View.GONE
+                            onMediaContentBound()
                             return false
                         }
                     })
@@ -855,7 +894,8 @@ class VirtualChatMessageAdapter(
         itemView: View,
         private val adapter: VirtualChatMessageAdapter,
         private val onClick: (ChatMessage) -> Unit,
-        private val onSaveMedia: (ChatMessage) -> Unit
+        private val onSaveMedia: (ChatMessage) -> Unit,
+        private val onMediaContentBound: () -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
 
 
@@ -910,10 +950,7 @@ class VirtualChatMessageAdapter(
 
 
         fun bind(message: ChatMessage, position: Int) {
-            itemView.setOnClickListener {
-                if (message.type == ChatMessageType.VOICE_NOTE) return@setOnClickListener
-                else onClick(message)
-            }
+            itemView.setOnClickListener(null)
 
             btnPlayVoice?.isFocusable = false
             btnPlayVoice?.isFocusableInTouchMode = false
@@ -938,6 +975,7 @@ class VirtualChatMessageAdapter(
 
                 ChatMessageType.IMAGE, ChatMessageType.VIDEO -> {
                     layoutImageContainer?.visibility = View.VISIBLE
+                    layoutImageContainer?.setOnClickListener { onClick(message) }
                     layoutMediaSenderRow?.visibility = View.VISIBLE
                     bindMediaSenderInfo(message)
                     btnImageOverflow?.visibility = View.VISIBLE
@@ -961,6 +999,7 @@ class VirtualChatMessageAdapter(
                     layoutImageContainer?.visibility = View.GONE
                     layoutText?.visibility = View.GONE
                     layoutFileContainer?.visibility = View.VISIBLE
+                    layoutFileContainer?.setOnClickListener { onClick(message) }
                     layoutFileSenderRow?.visibility = View.VISIBLE
                     bindFileSenderInfo(message)
                     btnFileOverflow?.visibility = View.VISIBLE

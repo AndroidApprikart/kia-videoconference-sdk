@@ -4,6 +4,8 @@ import android.content.Intent
 import android.app.DatePickerDialog
 import android.app.AlertDialog
 import android.content.pm.ActivityInfo
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
@@ -141,6 +143,16 @@ class VirtualRoomListActivity : AppCompatActivity() {
         connectivityBannerHandler?.register()
         NotificationWebSocketManager.getInstance().setActiveGroupSlug(null)
         NotificationWebSocketManager.getInstance().connectWithToken(PreferenceManager.getAccessToken())
+        if (!hasValidatedInternet()) {
+            val cachedRooms = VirtualRoomStorage.loadRooms(this)
+            showOfflineHint(
+                if (cachedRooms.isNotEmpty()) {
+                    "No internet. Showing previously loaded rooms."
+                } else {
+                    "No internet. Unable to load rooms."
+                }
+            )
+        }
         if (latestRooms.isNotEmpty()) {
             val counts = GroupUnreadStore.snapshot()
             val updatedAllRooms = allRooms.map { room ->
@@ -465,7 +477,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
             showServiceStatusMenu()
         }
         findViewById<LinearLayout?>(R.id.filterWorkTypeLayout)?.setOnClickListener {
-            showSelectedWorkType()
+            showWorkTypeMenu()
         }
     }
 
@@ -634,7 +646,7 @@ class VirtualRoomListActivity : AppCompatActivity() {
 
     private fun showServiceStatusMenu() {
         val anchor = findViewById<View>(R.id.filterStatusLayout) ?: return
-        val options = listOf(
+        val options = listOf<Pair<String, String?>>(
             "All Rooms" to null,
             "Active" to "ACTIVE",
             "Disabled" to "DISABLED",
@@ -657,12 +669,17 @@ class VirtualRoomListActivity : AppCompatActivity() {
         }.show()
     }
 
-    private fun showSelectedWorkType() {
+    private fun showWorkTypeMenu() {
         val anchor = findViewById<View>(R.id.filterWorkTypeLayout) ?: return
-        val options = listOf(
-            "Paid Service" to "PAID_SERVICE",
-            "Free Service" to "Free_SERVICE"
-        )
+        val dynamicTypes = allRooms
+            .mapNotNull { it.work_type?.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .sorted()
+        val options = mutableListOf<Pair<String, String?>>("All Work Types" to null)
+        dynamicTypes.forEach { raw ->
+            options.add(formatWorkTypeLabel(raw) to raw)
+        }
         PopupMenu(this, anchor).apply {
             options.forEachIndexed { index, option ->
                 menu.add(0, index, index, option.first)
@@ -671,7 +688,8 @@ class VirtualRoomListActivity : AppCompatActivity() {
                 val selected = options[item.itemId]
                 selectedWorkType = selected.second
                 findViewById<TextView?>(R.id.txtFilterWorkType)?.text = selected.first
-                fetchGroups(page = 1)
+                latestRooms = filterRooms(allRooms, searchQuery, selectedReferenceFilter)
+                adapter.updateRooms(latestRooms)
                 true
             }
         }.show()
@@ -684,6 +702,11 @@ class VirtualRoomListActivity : AppCompatActivity() {
     ): List<VirtualRoomUiModel> {
         val normalizedQuery = query.trim().lowercase(Locale.getDefault())
         return rooms.filter { room ->
+            val selectedWorkTypeNormalized = selectedWorkType?.trim()?.lowercase(Locale.getDefault())
+            if (!selectedWorkTypeNormalized.isNullOrBlank()) {
+                val roomType = room.work_type?.trim()?.lowercase(Locale.getDefault())
+                if (roomType != selectedWorkTypeNormalized) return@filter false
+            }
             val referenceMatches = when (referenceFilter) {
                 ReferenceFilter.ALL -> true
                 ReferenceFilter.RO_NUMBER -> !room.roNumberDisplay.isNullOrBlank()
@@ -701,6 +724,14 @@ class VirtualRoomListActivity : AppCompatActivity() {
                 value?.lowercase(Locale.getDefault())?.contains(normalizedQuery) == true
             }
         }.sortedByDescending { it.latestActivityMillis }
+    }
+
+    private fun formatWorkTypeLabel(raw: String): String {
+        return raw.lowercase(Locale.getDefault())
+            .split('_')
+            .joinToString(" ") { token ->
+                token.replaceFirstChar { ch -> ch.uppercase() }
+            }
     }
 
     private fun sortRoomsByLatestActivity(rooms: List<VirtualRoomUiModel>): List<VirtualRoomUiModel> {
@@ -845,6 +876,14 @@ class VirtualRoomListActivity : AppCompatActivity() {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun hasValidatedInternet(): Boolean {
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     private enum class ReferenceFilter(val label: String) {

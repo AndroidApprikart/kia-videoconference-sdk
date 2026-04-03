@@ -113,7 +113,10 @@ class ParticipantsListFragment : Fragment() {
             text.contains("failed to connect") ||
             text.contains("timeout") ||
             text.contains("socket") ||
-            text.contains("network")
+            text.contains("network") ||
+            text.contains("internet") ||
+            text.contains("no connection") ||
+            text.contains("offline")
     }
 
     private fun setupParticipantsList() {
