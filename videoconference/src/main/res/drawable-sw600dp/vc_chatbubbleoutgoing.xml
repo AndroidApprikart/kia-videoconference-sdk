@@ -4,10 +4,10 @@
     android:shape="rectangle"
     tools:ignore="MissingDefaultResource">
     <corners
-        android:topLeftRadius="@dimen/_8sdp"
+        android:topLeftRadius="@dimen/_5sdp"
         android:topRightRadius="0dp"
-        android:bottomLeftRadius="@dimen/_8sdp"
-        android:bottomRightRadius="@dimen/_8sdp" />
+        android:bottomLeftRadius="@dimen/_5sdp"
+        android:bottomRightRadius="@dimen/_5sdp" />
     <solid android:color="#F7F7F7" />
 
     <stroke

@@ -1,7 +1,10 @@
 package com.app.vc.virtualchatroom
 
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -49,9 +52,27 @@ class MediaViewerActivity : AppCompatActivity() {
     private var currentFileName: String? = null
     private var currentType: String = "TEXT"
 
+
+
+    fun isTablet(context: Context): Boolean {
+        return (context.resources.configuration.screenLayout
+                and Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_LARGE
+    }
+
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (isTablet(this)) {
+            requestedOrientation = if (isTablet(
+                    context = this
+                )) {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+        }
+
         setContentView(R.layout.vc_activity_media_viewer)
 
         val url = intent.getStringExtra(EXTRA_URL) ?: run {

@@ -15,7 +15,7 @@
         android:id="@+id/layoutText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/vc_bg_chat_bubble_incoming"
+        android:background="@drawable/vc_chatbubbleincoming"
         android:orientation="vertical"
         android:padding="12dp">
 
@@ -89,7 +89,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        android:background="@drawable/vc_bg_chat_bubble_incoming"
+        app:shapeAppearanceOverlay="@style/CardShapeicoming"
         app:cardElevation="0dp"
         app:strokeWidth="0dp">
 
@@ -236,7 +236,7 @@
         android:layout_width="180dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/vc_bg_chat_bubble_incoming"
+        android:background="@drawable/vc_chatbubbleincoming"
         android:padding="@dimen/_8sdp"
         android:visibility="gone">
 
@@ -349,7 +349,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        android:background="@drawable/vc_bg_chat_bubble_incoming"
+        android:background="@drawable/vc_chatbubbleincoming"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="12dp">

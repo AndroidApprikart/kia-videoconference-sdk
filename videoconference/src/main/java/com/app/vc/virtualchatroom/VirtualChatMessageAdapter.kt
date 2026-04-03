@@ -448,6 +448,16 @@ class VirtualChatMessageAdapter(
         }
     }
 
+    fun formatTime(time: String): String {
+        val parts = time.split(":")
+        if (parts.size >= 2) {
+            val hour = parts[0].toIntOrNull()?.toString() ?: parts[0]
+            val minute = parts[1]
+            return "$hour:$minute"
+        }
+        return time
+    }
+
     class OutgoingViewHolder(
         itemView: View,
         private val adapter: VirtualChatMessageAdapter,
@@ -525,7 +535,7 @@ class VirtualChatMessageAdapter(
             btnFileOverflow?.visibility = View.GONE
             btnImageOverflow?.visibility = View.GONE
 
-            txtTime.text = message.timeLabel
+            txtTime.text = adapter.formatTime(message.timeLabel)
             layoutText?.visibility = View.GONE
 
             layoutImageContainer?.visibility = View.GONE
@@ -908,7 +918,7 @@ class VirtualChatMessageAdapter(
             btnPlayVoice?.isFocusable = false
             btnPlayVoice?.isFocusableInTouchMode = false
 
-            txtTime.text = message.timeLabel
+            txtTime.text = adapter.formatTime(message.timeLabel)
             layoutText?.visibility = View.GONE
             layoutImageContainer?.visibility = View.GONE
             layoutFileContainer?.visibility = View.GONE

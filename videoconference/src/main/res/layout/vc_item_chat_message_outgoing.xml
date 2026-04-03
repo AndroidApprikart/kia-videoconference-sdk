@@ -14,7 +14,7 @@
         android:id="@+id/layoutText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/vc_bg_chat_bubble_outgoing"
+        android:background="@drawable/vc_chatbubbleoutgoing"
         android:orientation="vertical"
         android:padding="12dp">
 

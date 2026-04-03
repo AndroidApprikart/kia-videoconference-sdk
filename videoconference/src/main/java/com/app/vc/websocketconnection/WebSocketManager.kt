@@ -170,6 +170,9 @@ class WebSocketManager {
     }
 
     fun sendMessage(message: String): Boolean {
+
+
+
         if (!isConnected || webSocket == null) {
             Log.e(TAG, "WebSocket not connected")
             scheduleReconnect()

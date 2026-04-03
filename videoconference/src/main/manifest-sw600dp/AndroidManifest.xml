@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name=".virtualchatroom.MediaViewerActivity"
+            android:screenOrientation="landscape"/>
+        <activity
+            android:name=".virtualchatroom.VirtualChatRoomActivity"
+            android:screenOrientation="landscape"/>
+        <activity
+            android:name=".virtualroomlist.VirtualRoomListActivity"
+            android:screenOrientation="landscape"/>
+    </application>
+
+</manifest>
