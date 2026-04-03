@@ -2,9 +2,16 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:paddingBottom="@dimen/_12sdp"
     android:background="@drawable/drawable_dialog_background"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/drawable_dialog_background"
+        android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -32,7 +39,6 @@
             android:layout_alignParentEnd="true"
             android:src="@drawable/cancel__1_" />
     </RelativeLayout>
-
 
 
     <View
@@ -224,10 +230,6 @@
                 android:textSize="16sp"
                 android:fontFamily="@font/kia_signature_fix_regular"/>
         </LinearLayout>
-
     </LinearLayout>
-
-
-
-
+    </LinearLayout>
 </LinearLayout>

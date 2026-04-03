@@ -41,6 +41,11 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Locale
+import android.content.Context
+import android.view.MotionEvent
+import android.view.inputmethod.InputMethodManager
+
+
 
 class VirtualRoomListActivity : AppCompatActivity() {
 
@@ -87,6 +92,16 @@ class VirtualRoomListActivity : AppCompatActivity() {
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(LoginApiService::class.java)
+    }
+
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (currentFocus != null) {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(currentFocus!!.windowToken, 0)
+            currentFocus!!.clearFocus()
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

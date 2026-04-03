@@ -1883,7 +1883,27 @@ class VirtualChatRoomActivity : AppCompatActivity(), WebSocketManager.WebSocketC
             dialog.dismiss()
         }
         dialog.show()
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+
+
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+            if (isTablet()) {
+                // Tablet → smaller width so height fits
+                val width = (resources.displayMetrics.widthPixels * 0.55).toInt()
+                val height = ViewGroup.LayoutParams.WRAP_CONTENT
+
+                setLayout(width, height)
+
+            } else {
+                // Phone → full width
+                setLayout(
+                    (resources.displayMetrics.widthPixels * 0.95).toInt(),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
+        }
 
 //            bottomSheet.show()
 
