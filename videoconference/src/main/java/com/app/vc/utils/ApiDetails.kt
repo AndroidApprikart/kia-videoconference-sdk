@@ -1,6 +1,7 @@
 package com.app.vc.utils
 
 internal class ApiDetails {
+
     companion object{
         const val BASE_URL = "https://kia.apprikart.com/"
         const val KIA_BASE_URL = "https://kialinkd-qa.kiaindia.net/dev/"

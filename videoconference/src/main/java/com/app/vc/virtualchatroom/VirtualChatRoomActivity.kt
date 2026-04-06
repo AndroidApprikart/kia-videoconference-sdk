@@ -2559,8 +2559,12 @@ override fun onMessageReceived(message: String) {
                         val msgId = messageIdFromJson(jsonObject) ?: return@runOnUiThread
                         val fileUrl = jsonObject.get("file_url")?.asString
                             ?: jsonObject.get("attachment")?.asJsonObject?.get("file_url")?.asString
-                        val thumbnailUrl = jsonObject.get("thumbnail_url")?.asString
-                            ?: jsonObject.get("attachment")?.asJsonObject?.get("thumbnail_url")?.asString
+                        val thumbnailUrl =
+                            if (jsonObject.has("thumbnail_url") && !jsonObject.get("thumbnail_url").isJsonNull) {
+                                jsonObject.get("thumbnail_url").asString
+                            } else {
+                                null
+                            }
                         val fullUrl = fileUrl?.takeIf { it.isNotBlank() }?.let {
                             if (it.startsWith("http")) it else ApiDetails.APRIK_Kia_BASE_URL + it
                         }
@@ -2775,9 +2779,16 @@ override fun onMessageReceived(message: String) {
                     val fullUrl =
                         if (rawUrl.startsWith("http")) rawUrl else ApiDetails.APRIK_Kia_BASE_URL + rawUrl
                     val caption = jsonObject.get("caption")?.asString
-                    val thumbUrl = jsonObject.get("thumbnail_url")?.asString?.let { t ->
-                        if (t.startsWith("http")) t else ApiDetails.APRIK_Kia_BASE_URL + t
-                    }
+//                    val thumbUrl = jsonObject.get("thumbnail_url")?.asString?.let { t ->
+//                        if (t.startsWith("http")) t else ApiDetails.APRIK_Kia_BASE_URL + t
+//                    }
+
+                    val thumbUrl =
+                        if (jsonObject.has("thumbnail_url") && !jsonObject.get("thumbnail_url").isJsonNull) {
+                            jsonObject.get("thumbnail_url").asString
+                        } else {
+                            null
+                        }
 
                     // Derive a filename from URL if server doesn't send it separately
                     val fileName =
