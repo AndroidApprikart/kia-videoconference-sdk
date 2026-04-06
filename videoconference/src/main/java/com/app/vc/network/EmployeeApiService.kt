@@ -9,7 +9,7 @@ import retrofit2.http.POST
 interface EmployeeApiService {
     @POST("api/krystal/getEmployeeList")
     suspend fun getEmployeeList(
-        @Header("x-API-Key") apiKey: String,
+        @Header("X-API-Key") apiKey: String,
         @Body request: EmployeeListRequest
     ): Response<EmployeeListResponse>
 }

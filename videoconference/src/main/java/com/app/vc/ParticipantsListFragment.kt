@@ -392,6 +392,9 @@ class ParticipantsListFragment : Fragment() {
     }
 
     private fun resolveDealerCode(): String {
+        if (USE_STATIC_EMPLOYEE_DEALER_CODE) {
+            return EMPLOYEE_STATIC_DEALER_NUMBER
+        }
         val savedDealerCode = PreferenceManager.getDealerCode().orEmpty().trim()
         if (savedDealerCode.isNotBlank()) {
             return savedDealerCode
@@ -438,10 +441,14 @@ class ParticipantsListFragment : Fragment() {
     companion object {
         const val KEY_GROUP_SLUG = "group_slug"
         private const val EMPLOYEE_BASE_URL = "https://kialinkd-qa.kiaindia.net/"
-        private const val EMPLOYEE_API_KEY = "APPRIKART-mQ7xKZnP9vR4sT6wY8zA3bC5dE1YG0hJqLp2"
+        private const val EMPLOYEE_API_KEY =
+            "APPRIKART-mQ7xK2nP9vR4sT6wY8zA3bC5dE1fG0hJqLp2"
         private const val EMPLOYEE_COMPANY_NUMBER = "K"
-        private const val EMPLOYEE_CORPORATE_NUMBER = "AL01VA"
+        private const val EMPLOYEE_CORPORATE_NUMBER = "A10VA"
         private const val EMPLOYEE_AREA_WORK_TYPE = "SA"
+
+        private const val USE_STATIC_EMPLOYEE_DEALER_CODE = true
+        private const val EMPLOYEE_STATIC_DEALER_NUMBER = "UP307"
     }
 
     override fun onDestroyView() {
