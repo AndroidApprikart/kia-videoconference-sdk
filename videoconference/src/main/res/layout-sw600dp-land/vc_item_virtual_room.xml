@@ -174,7 +174,6 @@
         android:paddingHorizontal="14dp"
         android:paddingVertical="8dp"
         android:text="OPEN"
-        android:paddingHorizontal="@dimen/_10sdp"
         android:textAllCaps="false"
         android:textFontWeight="400"
         android:fontFamily="@font/kia_signature_fix_regular"
