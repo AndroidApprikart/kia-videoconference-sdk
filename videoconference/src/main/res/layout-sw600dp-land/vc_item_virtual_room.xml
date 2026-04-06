@@ -168,12 +168,17 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:background="@drawable/vc_bg_status_chip_open"
+        android:gravity="center"
+        android:minHeight="36dp"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="8dp"
         android:text="OPEN"
         android:textAllCaps="false"
         android:textFontWeight="400"
         android:fontFamily="@font/kia_signature_fix_regular"
-        android:textColor="@color/color_kia_black"
-        android:textSize="16sp" />
+        android:textColor="@color/white"
+        android:textSize="14sp" />
 
     </LinearLayout>
 
