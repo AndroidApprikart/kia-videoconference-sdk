@@ -124,6 +124,8 @@ class PreferenceManager {
                 ?.apply()
         }
 
-
+        fun clearAllPreferences() {
+            mSharedPrefs?.edit()?.clear()?.apply()
+        }
     }
 }

@@ -1,11 +1,10 @@
 import com.android.build.api.dsl.LintOptions
 
 plugins {
-//    id("com.android.application")
-    id("com.android.library")
-    id("org.jetbrains.kotlin.android")
-    // Sentry Gradle plugin disabled for demo to avoid Android 14 receiver crash
-    // id ("io.sentry.android.gradle")version("4.6.0")
+
+        id("com.android.library")
+        id("org.jetbrains.kotlin.android")
+        id("maven-publish")
 
 }
 
@@ -109,4 +108,18 @@ dependencies {
     //    implementation(project(mapOf("path" to ":webrtc-android-framework")))
 
 
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+
+                groupId = "com.github.SanjayAradhya123"
+                artifactId = "kia-videoconference-sdk"
+                version = "1.0.0"
+            }
+        }
+    }
 }

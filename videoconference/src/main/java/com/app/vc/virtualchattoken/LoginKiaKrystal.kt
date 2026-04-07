@@ -28,12 +28,7 @@ class LoginKiaKrystal : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         PreferenceManager.init(applicationContext)
 
-        // Check if user is already logged in
-        if (!PreferenceManager.getAccessToken().isNullOrEmpty()) {
-            navigateToRoomList()
-            return 
-        }
-
+        PreferenceManager.clearAllPreferences()
         binding = ActivityLoginKiaKrystalBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
