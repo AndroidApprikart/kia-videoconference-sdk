@@ -344,15 +344,17 @@ class ParticipantsListFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val addResponse = chatApiService.addGroupMember(
-                    token = "Bearer $token",
-                    request = AddGroupMemberRequest(
-                        uniqueId = newAdvisor.employeeNumber,
-                        name = newAdvisor.employeeName,
-                        role = "service_advisor",
-                        groupSlug = groupSlug
-                    )
+
+                    val addResponse = chatApiService.addGroupMember(
+                        token = "Bearer $token",
+                slug = groupSlug,
+                request = AddGroupMemberRequest(
+                    uniqueId = newAdvisor.employeeNumber,
+                    name = newAdvisor.employeeName,
+                    role = "service_advisor"
+
                 )
+                    )
 
                 if (!addResponse.isSuccessful) {
                     Toast.makeText(
@@ -365,7 +367,8 @@ class ParticipantsListFragment : Fragment() {
 
                 val removeResponse = chatApiService.removeGroupMember(
                     token = "Bearer $token",
-                    request = RemoveGroupMemberRequest(currentAdvisor.id)
+                    slug = groupSlug,
+                    userId = currentAdvisor.userId
                 )
 
                 if (!removeResponse.isSuccessful) {

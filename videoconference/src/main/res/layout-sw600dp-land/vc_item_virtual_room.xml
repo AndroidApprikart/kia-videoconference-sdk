@@ -1,14 +1,108 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center"
     android:layout_marginVertical="@dimen/_2sdp"
     android:layout_marginHorizontal="@dimen/_4sdp"
-    android:background="@drawable/bg_comment_box"
-    android:padding="@dimen/_5sdp"
+    android:background="@drawable/bg_chatlist_item_background"
+
     android:orientation="horizontal"
     >
+    <!-- STATUS CHIP -->
+    <TextView
+        android:id="@+id/txtStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="@dimen/_10sdp"
+        android:background="@drawable/bg_status_chip"
+        android:paddingHorizontal="@dimen/_5sdp"
+        android:paddingVertical="@dimen/_1sdp"
+        android:text="Active"
+        android:fontFamily="@font/kia_signature_fix_regular"
+        android:textColor="@color/white"
+        android:textSize="12sp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:padding="@dimen/_5sdp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_filled_grey_squareborder"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="4dp">
+
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/date"
+                android:paddingHorizontal="@dimen/_6sdp"
+                android:paddingTop="@dimen/_2sdp"
+                android:textColor="@color/black"
+                android:fontFamily="@font/kia_signature_fix_bold"
+                android:text="April 03"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:layout_marginTop="@dimen/_1sdp"
+                android:textSize="18sp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/day"
+                android:paddingHorizontal="@dimen/_6sdp"
+                android:textColor="@color/black"
+                android:fontFamily="@font/kia_signature_fix_regular"
+                android:text="Friday"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:textSize="14sp"/>
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/black"
+                android:layout_marginTop="@dimen/_2sdp"
+                android:paddingHorizontal="@dimen/_2sdp"
+                android:orientation="horizontal"
+                android:id="@+id/timeLayout">
+
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/time"
+                    android:textColor="@color/white"
+                    android:fontFamily="@font/kia_signature_fix_regular"
+                    android:text="04:45 pm"
+                    android:paddingVertical="@dimen/_1sdp"
+                    android:gravity="center"
+                    android:textSize="14sp"/>
+
+
+
+
+            </LinearLayout>
+
+
+
+
+
+
+
+
+
+        </LinearLayout>
 
 
     <TextView
@@ -23,8 +117,10 @@
         android:visibility="gone"
         android:paddingBottom="2dp"
         android:text="02"
+        android:layout_marginStart="@dimen/_2sdp"
         android:textColor="@color/white"
         android:textSize="12sp" />
+
 
     <LinearLayout
         android:layout_width="0dp"
@@ -147,40 +243,7 @@
     </LinearLayout>
 
 
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_weight="2">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Status"
-            android:fontFamily="@font/kia_signature_fix_regular"
-            android:textColor="@color/grey_txt_color"
-            android:textSize="16sp" />
-
-
-    <TextView
-        android:id="@+id/txtStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:background="@drawable/vc_bg_status_chip_open"
-        android:gravity="center"
-        android:minHeight="36dp"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="8dp"
-        android:text="OPEN"
-        android:textAllCaps="false"
-        android:textFontWeight="400"
-        android:fontFamily="@font/kia_signature_fix_regular"
-        android:textColor="@color/white"
-        android:textSize="14sp" />
-
-    </LinearLayout>
 
     <LinearLayout
         android:layout_width="0dp"
@@ -195,8 +258,8 @@
         android:layout_marginStart="12dp"
         android:layout_gravity="center"
         android:textAllCaps="false"
-        android:backgroundTint="@color/black"
-        android:textColor="@color/white"
+       android:background="@drawable/bg_main_color_btn"
+        android:textColor="@color/color_kia_black"
         android:paddingVertical="@dimen/_4sdp"
         android:paddingHorizontal="@dimen/_20sdp"
         android:text="@string/vc_btn_view_room" />
@@ -204,4 +267,6 @@
     </LinearLayout>
 
 </LinearLayout>
+
+</RelativeLayout>
 

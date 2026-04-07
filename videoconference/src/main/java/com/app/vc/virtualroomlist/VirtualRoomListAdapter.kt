@@ -53,6 +53,43 @@ class VirtualRoomListAdapter(
 //        private val txtContactNumber: TextView? = itemView.findViewById(R.id.txtContactNumber)
         private val btnViewRoom: Button? = itemView.findViewById(R.id.btnViewRoom)
         private val workType: TextView? = itemView.findViewById(R.id.txtWorkType)
+        private val date: TextView? = itemView.findViewById(R.id.date)
+        private val day: TextView? = itemView.findViewById(R.id.day)
+        private val time: TextView? = itemView.findViewById(R.id.time)
+
+        fun getDate(dateStr: String?): String {
+            val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val output = SimpleDateFormat("MMMM dd", Locale.getDefault()) // April 03
+            return try {
+                val date = input.parse(dateStr)
+                output.format(date!!)
+            } catch (e: Exception) {
+                ""
+            }
+        }
+
+        fun formatTime(timeStr: String?): String {
+            val input = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val output = SimpleDateFormat("hh:mm a", Locale.getDefault())
+
+            return try {
+                val date = input.parse(timeStr)
+                output.format(date!!)
+            } catch (e: Exception) {
+                timeStr ?: ""
+            }
+        }
+
+        fun getDay(dateStr: String?): String {
+            val input = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val output = SimpleDateFormat("EEEE", Locale.getDefault()) // Friday
+            return try {
+                val date = input.parse(dateStr)
+                output.format(date!!)
+            } catch (e: Exception) {
+                ""
+            }
+        }
 
         fun formatAppointmentDate(dateStr: String?): String {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
@@ -125,7 +162,9 @@ class VirtualRoomListAdapter(
             val hasRoNumber = !room.roNumberDisplay.isNullOrBlank()
             txtReferenceLabel?.text = if (hasRoNumber) "RO No" else "Appointment No"
             txtRoNumber?.text = (room.roNumberDisplay ?: room.appointmentIdDisplay)?.takeIf { it.isNotBlank() } ?: "-"
-
+            date?.text = getDate(room.appointment_date)
+            day?.text = getDay(room.appointment_date)
+            time?.text = formatTime(room.timeLabel)
             itemView.setOnClickListener { onRoomClick(room) }
             btnViewRoom?.setOnClickListener { onRoomClick(room) }
         }

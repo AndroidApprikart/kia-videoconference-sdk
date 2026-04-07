@@ -83,7 +83,7 @@
     android:layout_width="match_parent"
     android:layout_height="0dp"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="@dimen/_6sdp"
         app:layout_constraintBottom_toTopOf="@+id/line2"
     android:background="@color/white">
 

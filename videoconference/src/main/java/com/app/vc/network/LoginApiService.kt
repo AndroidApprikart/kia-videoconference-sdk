@@ -10,6 +10,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
@@ -83,16 +84,25 @@ interface LoginApiService {
         @Path("slug") slug: String
     ): Response<List<GroupMemberResponse>>
 
-    @POST("api/groups/members/add/")
+    @POST("api/groups/{slug}/members/add/")
     suspend fun addGroupMember(
         @Header("Authorization") token: String,
+        @Path("slug") slug: String,
         @Body request: AddGroupMemberRequest
     ): Response<JsonElement>
 
-    @HTTP(method = "DELETE", path = "api/groups/members/remove/", hasBody = true)
+//    @HTTP(method = "DELETE", path = "api/groups/{slug}/members/remove/", hasBody = true)
+//    suspend fun removeGroupMember(
+//        @Header("Authorization") token: String,
+//        @Path("slug") slug: String,
+//        @Body request: RemoveGroupMemberRequest
+//    ): Response<JsonElement>
+
+    @DELETE("api/groups/{slug}/members/{user_id}/remove/")
     suspend fun removeGroupMember(
         @Header("Authorization") token: String,
-        @Body request: RemoveGroupMemberRequest
+        @Path("slug") slug: String,
+        @Path("user_id") userId: Int
     ): Response<JsonElement>
 
     @POST("api/groups/{slug}/messages/mark-all-read/")
@@ -158,8 +168,7 @@ data class MarkAllReadResponse(
 data class AddGroupMemberRequest(
     @SerializedName("unique_id") val uniqueId: String,
     @SerializedName("name") val name: String,
-    @SerializedName("role") val role: String,
-    @SerializedName("group_slug") val groupSlug: String
+    @SerializedName("role") val role: String
 )
 
 data class RemoveGroupMemberRequest(
