@@ -16,6 +16,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "KiaKandid"
-include(":app")
 include(":videoconference")
 
