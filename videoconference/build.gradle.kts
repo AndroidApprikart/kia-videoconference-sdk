@@ -116,7 +116,7 @@ afterEvaluate {
             create<MavenPublication>("release") {
                 from(components["release"])
 
-                groupId = "com.github.SanjayAradhya123"
+                groupId = "com.github.androidapprikart"
                 artifactId = "kia-videoconference-sdk"
                 version = "1.0.0"
             }
